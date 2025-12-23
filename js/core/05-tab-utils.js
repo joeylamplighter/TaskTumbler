@@ -185,33 +185,21 @@
                 return false;
             }
             
-            // Duration filter
+            // Duration filter (matches original Spin tab logic exactly)
             if (duration !== 'Any') {
-                if (duration === 'None') {
-                    if (task.estimatedTime) return false;
-                } else if (task.estimatedTime) {
-                    const est = parseInt(task.estimatedTime, 10) || 0;
-                    const unit = task.estimatedTimeUnit || 'min';
-                    const minutes = unit === 'hours' || unit === 'h' ? est * 60 :
-                                   unit === 'days' || unit === 'd' ? est * 1440 : est;
+                const est = parseInt(task.estimatedTime, 10) || 0;
 
-                    switch (duration) {
-                        case '< 5m':
-                            if (minutes >= 5) return false;
-                            break;
-                        case '< 15m':
-                            if (minutes >= 15) return false;
-                            break;
-                        case '< 30m':
-                            if (minutes >= 30) return false;
-                            break;
-                        case '< 60m':
-                            if (minutes >= 60) return false;
-                            break;
-                        case '> 1h':
-                            if (minutes <= 60) return false;
-                            break;
-                    }
+                if (duration === 'None') {
+                    // "None" filter: only show tasks WITHOUT estimated time
+                    if (est > 0) return false;
+                } else {
+                    // All other duration filters: exclude tasks without estimated time (est === 0)
+                    // and exclude tasks outside the range
+                    if (duration === '< 5m' && (est === 0 || est >= 5)) return false;
+                    if (duration === '< 15m' && (est === 0 || est >= 15)) return false;
+                    if (duration === '< 30m' && (est === 0 || est >= 30)) return false;
+                    if (duration === '< 60m' && (est === 0 || est >= 60)) return false;
+                    if (duration === '> 1h' && est < 60) return false;
                 }
             }
             
