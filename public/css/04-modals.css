@@ -1,0 +1,90 @@
+/* ===================================
+   4. MODAL CONTENT LAYOUTS
+   =================================== */
+
+/* Task Form: Effort & Probability Grid */
+.task-form-effort-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Row 1: Estimated Time */
+.effort-time-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.effort-time-row > .f-label {
+  display: inline;
+  width: auto;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.effort-time-row > .f-input {
+  width: 90px;
+  min-width: 70px;
+  margin-bottom: 0;
+}
+.effort-time-row > .f-select {
+  width: auto;
+  min-width: 75px;
+  margin-bottom: 0;
+}
+.effort-time-row > .btn-ai-purple {
+  flex-shrink: 0;
+}
+
+/* Row 2: Weight Slider */
+.task-form-weight-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-form-weight-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.task-form-weight-header .f-label {
+  margin-bottom: 0;
+}
+.task-form-weight-value {
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 30px;
+}
+.task-form-weight-track {
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+/* Add to 04-modals.css */
+.modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 99999 !important;
+}
+}.supreme-layer {
+    z-index: 2147483647 !important; /* Max Safe Integer for Z-Index */
+}
+/* !!TT/css/04-modals.css */
+
+.modal-close-x {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 32px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s ease;
+}
+
+.modal-close-x:hover {
+    color: var(--primary);
+    transform: scale(1.1);
+}

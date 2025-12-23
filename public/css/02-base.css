@@ -1,0 +1,210 @@
+/* ===========================================
+   2. BASE STYLES, FORMS & UTILITIES
+   =========================================== */
+
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* Hide scrollbar for filter buttons container */
+.filter-buttons-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.filter-buttons-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* --- RESET & GLOBAL --- */
+* { 
+    box-sizing: border-box; 
+    margin: 0; padding: 0; 
+    -webkit-tap-highlight-color: transparent; 
+    touch-action: manipulation;
+}
+
+body { 
+    font-family: 'DM Sans', sans-serif; 
+    background: var(--bg); 
+    color: var(--text); 
+    overflow-x: hidden; 
+    overscroll-behavior-y: contain;
+}
+
+/* --- FLAT INTERACTIVE ELEMENTS (Fixes Rising/Embossed Look) --- */
+/* Removed transition: transform to stop the "rising" effect */
+.btn-orange, .btn-orange-small, .btn-focus, .spin-btn, .task-row, 
+.duel-card, .nav-item, .chip-display-flat, .btn-white-outline, .btn-ai-purple {
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.1s ease !important;
+    transform: none !important; /* Forces flat state */
+    box-shadow: none !important; /* Removes embossed look */
+}
+
+/* --- PRESS GLOW LOGIC --- */
+/* Glow only triggers on physical press (:active state) */
+.btn-orange:active, 
+.btn-orange-small:active, 
+.btn-focus:active, 
+.spin-btn:active, 
+.duel-card:active { 
+    transform: scale(0.97) !important; /* Slight tactile shrink instead of rising */
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.2) inset, 0 0 0 1px rgba(255, 107, 53, 0.3) !important; /* Contained glow */
+    border-color: var(--primary);
+}
+.btn-white-outline:active,
+.btn-ai-purple:active,
+.chip-display-flat:active { 
+    transform: scale(0.97) !important; /* Slight tactile shrink instead of rising */
+    box-shadow: 0 0 20px var(--primary-glow) !important; /* Neon glow effect */
+    border-color: var(--primary);
+}
+
+/* --- INPUTS & FORMS --- */
+.f-label { 
+    display: block; font-size: 12px; font-weight: 700; 
+    color: var(--text-light); margin-bottom: 6px; text-transform: uppercase; 
+}
+
+.f-input, .f-textarea, .f-select { 
+    width: 100%; padding: 12px; 
+    border: 1px solid var(--border); border-radius: 10px; 
+    font-family: inherit; font-size: 16px; outline: none; 
+    margin-bottom: 16px; background: var(--input-bg); color: var(--text); 
+}
+.f-input:focus, .f-textarea:focus, .f-select:focus { border-color: var(--primary); }
+
+/* --- BUTTON VARIANTS (Flat Base) --- */
+.btn-primary { 
+    background: var(--primary); color: white; border: none; 
+    padding: 12px; border-radius: 10px; width: 100%; 
+    font-weight: 700; cursor: pointer; font-size: 14px; 
+    display: flex; align-items: center; justify-content: center;
+}
+
+.btn-orange-small { 
+    background: var(--primary); color: white; border: none; 
+    padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; 
+}
+
+.btn-white-outline { 
+    background: transparent; border: 0px solid var(--border);
+    color: var(--text); padding: 12px; border-radius: 10px; 
+    font-weight: 700; cursor: pointer; 
+}
+
+.btn-ai-purple { 
+    background: linear-gradient(135deg, #a29bfe, #6c5ce7); 
+    color: white; border: none; width: 44px; height: 44px; 
+    border-radius: 10px; display: flex; align-items: center; 
+    justify-content: center; cursor: pointer; font-size: 18px; 
+}
+/* --- FIXED FLAT BUTTONS --- */
+.btn-orange, .btn-primary, .btn-save-task {
+    /* Reset default browser styles that cause the 'box' look */
+    appearance: none;
+    -webkit-appearance: none;
+    border: none !important;
+    outline: none !important;
+    
+    /* Flat Design */
+    background: var(--primary);
+    color: #white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Remove any default or rising shadows */
+    box-shadow: none !important;
+    transform: none !important;
+    transition: background-color 0.2s, box-shadow 0.1s ease;
+}
+/* --- UPDATED FLAT BUTTON LOGIC --- */
+.btn-orange, .btn-primary, .btn-save-task, .btn-log {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none !important;
+    outline: none !important;
+    background: var(--primary); /* Uses theme orange */
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Force flat state: No rising, no default shadows */
+    box-shadow: none !important;
+    transform: none !important;
+    transition: background-color 0.2s, box-shadow 0.1s ease;
+}
+
+/* NEON GLOW: Triggers ONLY on physical press */
+.btn-orange:active, .btn-primary:active, .btn-save-task:active, .btn-log:active {
+    transform: scale(0.96) !important; /* Tactile shrink instead of rising */
+    box-shadow: 0 0 20px var(--primary-glow) !important; /* */
+}
+
+/* Gray/Secondary Variant (for Cancel or Log buttons) */
+.btn-secondary {
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn-secondary:active {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
+}
+/* --- TAGS & BADGES --- */
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase; background: var(--border); color: var(--text-light); }
+.badge.Urgent { background: var(--danger-light); color: var(--danger); border: 1px solid var(--danger); }
+.badge.High { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); }
+.badge.Medium { background: rgba(74, 144, 226, 0.15); color: #2563eb; border: 1px solid #2563eb; }
+
+/* --- ZEN FOCUS ANIMATIONS --- */
+@keyframes lavenderFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.focus-bg-lavender {
+    background: linear-gradient(-45deg, #f3e5f5, #e1bee7, #d1c4e9, #ede7f6);
+    background-size: 400% 400%;
+    animation: lavenderFlow 15s ease infinite;
+}
+
+[data-theme="dark"] .focus-bg-lavender {
+    background: linear-gradient(-45deg, #2d2430, #31263e, #1a1625, #241d2e);
+    background-size: 400% 400%;
+}
+.tt-select{
+  width:100%;
+  height:44px;
+  padding:0 14px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:var(--bg);
+  color:var(--text);
+  font-weight:800;
+  appearance:none;
+  -webkit-appearance:none;
+  outline:none;
+}
+.tt-select:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(255,107,53,0.18);
+}
+.tt-select option{
+  background:#121212; /* keeps dropdown dark in most browsers */
+  color:#fff;
+}

@@ -1,0 +1,128 @@
+/* ===========================================
+   1. VARIABLES & TOKENS (Expanded Themes)
+   =========================================== */
+:root {
+    /* DEFAULT (Dark Theme) */
+    --primary: #ff6b35;
+    --primary-hover: #e85d2b;
+    --primary-light: rgba(255, 107, 53, 0.1);
+    --primary-glow: rgba(255, 107, 53, 0.3);
+    
+    --success: #00b894;
+    --success-light: rgba(0, 184, 148, 0.1);
+    --danger: #ff7675;
+    --danger-light: rgba(255, 118, 117, 0.1);
+    --warning: #ffa502;
+    --warning-light: rgba(255, 165, 2, 0.1);
+    --info: #0984e3;
+    --info-light: rgba(9, 132, 227, 0.1);
+    
+    --bg: #121212;
+    --card: #1e1e1e;
+    --input-bg: #2d2d2d;
+    --text: #ffffff;
+    --text-light: #a0a0a0;
+    --text-muted: #666666;
+    --border: #333333;
+    --border-light: #444444;
+    
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+    --shadow-glow: 0 4px 15px var(--primary-glow);
+    
+    --space-sm: 8px; --space-md: 16px; --space-lg: 24px;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 20px;
+    
+    --text-xs: 10px; --text-sm: 12px; --text-base: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 28px;
+    --font-bold: 700;
+    
+    --z-base: 1; --z-sticky: 20; --z-nav: 50; --z-modal-backdrop: 100; --z-modal: 101; --z-toast: 200;
+    
+    --tumbler-bg: linear-gradient(to bottom, #2d2d2d, #000000, #2d2d2d);
+    --tumbler-highlight: white;
+    --xp-gradient: linear-gradient(90deg, var(--primary), #ff9f43);
+    --focus-gradient: linear-gradient(135deg, #6c5ce7, #a29bfe);
+}
+
+/* 1. LIGHT THEME */
+[data-theme="light"] {
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --input-bg: #f1f2f6;
+    --text: #1a1a1a;
+    --text-light: #4a4a4a;
+    --text-muted: #6a6a6a;
+    --border: #cbd5e0;
+    --border-light: #e2e8f0;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --tumbler-bg: linear-gradient(to bottom, #d1d5db, #f3f4f6, #d1d5db);
+    --tumbler-highlight: var(--primary);
+}
+
+/* 2. MIDNIGHT (Deep Blue) */
+[data-theme="midnight"] {
+    --primary: #38bdf8;       /* Sky Blue */
+    --primary-hover: #0ea5e9;
+    --bg: #0f172a;            /* Slate 900 */
+    --card: #1e293b;          /* Slate 800 */
+    --input-bg: #334155;      /* Slate 700 */
+    --text: #f8fafc;
+    --text-light: #94a3b8;
+    --border: #475569;
+    --tumbler-bg: linear-gradient(to bottom, #334155, #0f172a, #334155);
+    --xp-gradient: linear-gradient(90deg, #38bdf8, #818cf8);
+}
+
+/* 3. FOREST (Nature Green) */
+[data-theme="forest"] {
+    --primary: #4ade80;       /* Bright Green */
+    --primary-hover: #22c55e;
+    --bg: #052e16;            /* Deep Forest */
+    --card: #14532d;          /* Dark Green */
+    --input-bg: #166534;      /* Green 800 */
+    --text: #f0fdf4;
+    --text-light: #86efac;
+    --border: #15803d;
+    --tumbler-bg: linear-gradient(to bottom, #166534, #052e16, #166534);
+    --xp-gradient: linear-gradient(90deg, #4ade80, #facc15);
+}
+
+/* 4. SYNTHWAVE (Neon Purple/Pink) */
+[data-theme="synthwave"] {
+    --primary: #d946ef;       /* Fuchsia */
+    --primary-hover: #c026d3;
+    --bg: #2e1065;            /* Deep Purple */
+    --card: #4c1d95;          /* Violet */
+    --input-bg: #5b21b6;      /* Violet 800 */
+    --text: #fae8ff;
+    --text-light: #e9d5ff;
+    --border: #7c3aed;
+    --tumbler-bg: linear-gradient(to bottom, #5b21b6, #2e1065, #5b21b6);
+    --xp-gradient: linear-gradient(90deg, #d946ef, #06b6d4);
+    --primary-glow: rgba(217, 70, 239, 0.5);
+}
+
+/* 5. COFFEE (Warm Brown) */
+[data-theme="coffee"] {
+    --primary: #d4a373;       /* Latte */
+    --primary-hover: #bc8a5f;
+    --bg: #231e18;            /* Espresso */
+    --card: #382e26;          /* Mocha */
+    --input-bg: #4a3b32;      /* Cappuccino */
+    --text: #faedcd;          /* Cream */
+    --text-light: #d4c5b0;
+    --border: #5e503f;
+    --tumbler-bg: linear-gradient(to bottom, #4a3b32, #231e18, #4a3b32);
+    --xp-gradient: linear-gradient(90deg, #d4a373, #e9edc9);
+}
+
+/* GLOBAL ANIMATIONS */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideUpFade { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }

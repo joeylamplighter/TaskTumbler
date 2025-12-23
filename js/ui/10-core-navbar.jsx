@@ -1,0 +1,84 @@
+// js/components/10-core-navbar.jsx
+// ===========================================
+// BOTTOM DOCK NAVBAR (slides down when hidden)
+// Updated: 2025-12-18 - More washed out unselected icons
+// ===========================================
+
+function NavBar({ current, set, items, hidden, dockHidden }) {
+  const isHidden = !!hidden || !!dockHidden;
+
+const style = {
+  position: 'fixed',
+  left: '50%',
+  bottom: 'max(10px, env(safe-area-inset-bottom))',
+  transform: isHidden ? 'translate(-50%, 140%)' : 'translate(-50%, 0%)',
+  opacity: isHidden ? 0 : 1,
+  transition: 'transform 300ms cubic-bezier(0.25, 0.9, 0.3, 1), opacity 200ms ease-out',
+  willChange: 'transform, opacity',
+  zIndex: 999,
+  width: 'min(520px, 94vw)',
+  padding: 8,
+
+  // almost square
+  borderRadius: 3,
+
+  // ultra-light glass black
+  background: 'rgba(0,0,0,0.18)',
+  backdropFilter: 'blur(26px) saturate(150%)',
+  WebkitBackdropFilter: 'blur(26px) saturate(150%)',
+
+  // very subtle edge definition
+  border: '1px solid rgba(255,255,255,0.08)',
+
+  // lighter shadow so it doesn’t look like a slab
+  boxShadow:
+    '0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)',
+
+  display: 'flex',
+  justifyContent: 'space-around',
+  alignItems: 'center',
+  pointerEvents: isHidden ? 'none' : 'auto',
+};
+
+  return (
+    <div style={style}>
+      {(items || []).map((item) => {
+        const active = current === item.key;
+        return (
+          <button
+            key={item.key}
+            onClick={() => {
+              // Explicitly no sounds on tab changes
+              set(item.key);
+            }}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              color: active ? 'white' : 'rgba(255,255,255,0.30)',
+              padding: '10px 6px',
+              borderRadius: 20,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+              filter: active ? 'none' : 'grayscale(100%)',
+              opacity: active ? 1 : 0.4,
+              transition: 'all 0.2s ease'
+            }}
+            title={item.label}
+          >
+            <div style={{fontSize: 18, lineHeight: '18px'}}>{item.icon}</div>
+            <div style={{fontSize: 10, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase'}}>
+              {item.label}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+window.NavBar = NavBar;
+console.log('✅ 10-core-navbar.jsx loaded');

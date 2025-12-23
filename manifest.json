@@ -1,0 +1,16 @@
+{
+  "name": "TaskTumbler",
+  "short_name": "TaskTumbler",
+  "description": "Gamified task management with a slot machine spin!",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#ff6b35",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2997/2997985.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
