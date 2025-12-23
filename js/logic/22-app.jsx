@@ -2118,6 +2118,7 @@ const removeSubCategory = (parentCat, subName) => {
                 tasks={tasks}
                 categories={categories}
                 onView={(t) => setViewTask(t)}
+                onEdit={(t) => setEditTask(t)}
                 onFocus={(t, src) => enterFocusMode(t, src || "spin")}
                 onAdd={addTask}
                 onComplete={completeTask}
@@ -2166,7 +2167,7 @@ const removeSubCategory = (parentCat, subName) => {
             )}
 
             {tab === "goals" && <GoalsTabComp goals={goals} setGoals={setGoals} tasks={tasks} notify={notify} />}
-            {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} userStats={userStats} onViewTask={setViewTask} />}
+            {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} userStats={userStats} onViewTask={setViewTask} />}
             {tab === "people" && (
               <PeopleTabComp 
                 tasks={tasks} 

@@ -9,8 +9,9 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
   const [fighter1Anim, setFighter1Anim] = useState('');
   const [fighter2Anim, setFighter2Anim] = useState('');
   const [weightChange, setWeightChange] = useState({ id: null, text: '' });
-  const [fighter1Action, setFighter1Action] = useState(null);
-  const [fighter2Action, setFighter2Action] = useState(null);
+  const [loserWeightChange, setLoserWeightChange] = useState({ id: null, text: '' });
+  const [fighter1Emoji, setFighter1Emoji] = useState(null);
+  const [fighter2Emoji, setFighter2Emoji] = useState(null);
   const [comboCount, setComboCount] = useState(0);
   const [lastChoiceTime, setLastChoiceTime] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -281,15 +282,15 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
     const newWinnerWeight = Math.min(weightMax, winnerBase + winBoost);
     const newLoserWeight = Math.max(1, loserBase - lossPenalty);
 
-    // Variable speed based on interaction speed
-    const speedMultiplier = Math.max(0.5, Math.min(2, interactionSpeedRef.current / 50));
-    const animDelay = 200 / speedMultiplier;
+    // Fast snappy timing for rapid-fire duels
+    const animDelay = 100; // Reduced from 200ms for faster response
 
     setTimeout(() => {
       onUpdate(winner.id, { weight: newWinnerWeight });
       onUpdate(loser.id, { weight: newLoserWeight });
 
       setWeightChange({ id: winner.id, text: `+${winBoost}` });
+      setLoserWeightChange({ id: loser.id, text: `-${lossPenalty}` });
 
       // Set random actions for winner and loser
       const winnerActionText = getRandomAction(WINNER_ACTIONS);
@@ -337,37 +338,21 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       if (winnerIndex === 0) {
         setFighter1Anim('win');
         setFighter2Anim('lose');
-        setFighter1Action(winnerActionText);
-        setFighter2Action(loserActionText);
+        setFighter1Emoji(randomEmoji);
+        setFighter2Emoji(null);
         
-        // Generate animated characters for winner (fighter 1)
-        const winnerChars = ['trophy', 'star', 'confetti', 'celebration'].sort(() => Math.random() - 0.5).slice(0, 2);
-        const winnerCharsArray = winnerChars.map((type, i) => ({ id: `winner-${i}`, type, key: Date.now() + i }));
-        setWinnerCharacters(winnerCharsArray);
-        console.log('🎉 Setting winner characters:', winnerCharsArray);
-        
-        // Generate animated characters for loser (fighter 2)
-        const loserChars = ['sad', 'broken-heart', 'defeat'].sort(() => Math.random() - 0.5).slice(0, 2);
-        const loserCharsArray = loserChars.map((type, i) => ({ id: `loser-${i}`, type, key: Date.now() + i + 10 }));
-        setLoserCharacters(loserCharsArray);
-        console.log('😢 Setting loser characters:', loserCharsArray);
+        // Decorative characters removed - keeping it clean
+        setWinnerCharacters([]);
+        setLoserCharacters([]);
       } else {
         setFighter1Anim('lose');
         setFighter2Anim('win');
-        setFighter1Action(loserActionText);
-        setFighter2Action(winnerActionText);
+        setFighter1Emoji(null);
+        setFighter2Emoji(randomEmoji);
         
-        // Generate animated characters for loser (fighter 1)
-        const loserChars = ['sad', 'broken-heart', 'defeat'].sort(() => Math.random() - 0.5).slice(0, 2);
-        const loserCharsArray = loserChars.map((type, i) => ({ id: `loser-${i}`, type, key: Date.now() + i }));
-        setLoserCharacters(loserCharsArray);
-        console.log('😢 Setting loser characters:', loserCharsArray);
-        
-        // Generate animated characters for winner (fighter 2)
-        const winnerChars = ['trophy', 'star', 'confetti', 'celebration'].sort(() => Math.random() - 0.5).slice(0, 2);
-        const winnerCharsArray = winnerChars.map((type, i) => ({ id: `winner-${i}`, type, key: Date.now() + i + 10 }));
-        setWinnerCharacters(winnerCharsArray);
-        console.log('🎉 Setting winner characters:', winnerCharsArray);
+        // Decorative characters removed - keeping it clean
+        setWinnerCharacters([]);
+        setLoserCharacters([]);
       }
 
       // Particle explosion for loser
@@ -383,29 +368,24 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
     }, animDelay);
 
 
+    // Ultra-fast finish for rapid-fire duels (reduced from 1500ms)
     const finishTimeout = window.setTimeout(() => {
-      notify(`Priorities Adjusted (+${winBoost} / -${lossPenalty})`, "⚖️");
+      // No toast notifications - keeping it clean like a video game
       setWeightChange({ id: null, text: '' });
-      setFighter1Action(null);
-      setFighter2Action(null);
-      
-      // Keep characters visible longer for fidget-toy satisfaction
-      setTimeout(() => {
-        setWinnerCharacters([]);
-        setLoserCharacters([]);
-      }, 500);
+      setLoserWeightChange({ id: null, text: '' });
+      setFighter1Emoji(null);
+      setFighter2Emoji(null);
 
       if (settings?.duelAutoAdvance !== false) { // Default to true
-          setTimeout(() => {
-            setAnimState(null);
-            setFighter1Anim('');
-            setFighter2Anim('');
-            pickPair();
-          }, 500);
+          // Immediately advance for speed running
+          setAnimState(null);
+          setFighter1Anim('');
+          setFighter2Anim('');
+          pickPair();
       } else {
           setAnimState('complete');
       }
-    }, 1500);
+    }, 400); // Reduced from 1500ms for much faster response
   };
 
   // Particle animation effect - MUST be before any early returns
@@ -484,7 +464,6 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
         className={`duel-card ${animState === 'left' ? 'winner' : animState === 'right' ? 'loser' : ''} ${isUrgent && isUrgent(pair[0]) ? 'urgent-pulse' : ''}`}
         onClick={() => handleChoice(0)}
         style={{
-          opacity: animState && animState !== 'complete' ? 0.5 : 1,
           pointerEvents: animState && animState !== 'complete' ? 'none' : 'auto',
           position: 'relative',
           transform: `scale(${getWeightScale ? getWeightScale(pair[0]?.weight ?? 10) : 1})`,
@@ -493,8 +472,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       >
         {weightChange.id === pair[0].id && (
           <span
-            className="weight-change-fx"
-            style={{ color: 'var(--success)', left: '50%', transform: 'translateX(-50%)' }}
+            className="weight-change-fx winner-score"
+            style={{ color: 'var(--success)' }}
           >
             {weightChange.text}
           </span>
@@ -502,49 +481,17 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         <div className={`pixel-fighter pixel-fighter-${getFighterColor(pair[0]?.priority)} ${fighter1Anim}`}>
           <div className="pixel-fighter-sprite"></div>
-          {fighter1Action && settings?.duelShowActionBubbles !== false && (
-            <div className={`duel-action-badge ${fighter1Anim === 'win' ? 'duel-action-winner' : 'duel-action-loser'}`}>
-              {fighter1Action}
+          {fighter1Emoji && fighter1Anim === 'win' && (
+            <div className="duel-emoji-fx">
+              {fighter1Emoji}
             </div>
           )}
         </div>
 
-        {/* Animated 32-bit characters for Fighter 1 */}
-        {animState === 'left' && winnerCharacters && winnerCharacters.length > 0 && winnerCharacters.map((char, idx) => {
-          const topPos = char.type === 'trophy' ? '10%' : char.type === 'star' ? '5%' : char.type === 'confetti' ? '15%' : '0%';
-          const leftPos = idx === 0 ? '20%' : '80%';
-          return (
-            <div 
-              key={char.key || `winner-${idx}-${char.type}`} 
-              className={`duel-character-fx ${char.type}`} 
-              style={{ 
-                left: leftPos,
-                top: topPos
-              }}
-            >
-              {char.type === 'celebration' && <span>🎉</span>}
-            </div>
-          );
-        })}
-        {animState === 'right' && loserCharacters && loserCharacters.length > 0 && loserCharacters.map((char, idx) => {
-          const topPos = char.type === 'sad' ? '10%' : char.type === 'broken-heart' ? '5%' : '0%';
-          const leftPos = idx === 0 ? '20%' : '80%';
-          return (
-            <div 
-              key={char.key || `loser-${idx}-${char.type}`} 
-              className={`duel-character-fx ${char.type}`} 
-              style={{ 
-                left: leftPos,
-                top: topPos
-              }}
-            >
-              {char.type === 'defeat' && <span>😢</span>}
-            </div>
-          );
-        })}
+        {/* Animated characters removed - keeping it clean with just fighters and speech bubbles */}
 
         <div style={{ textAlign: 'center', width: '100%' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, lineHeight: 1.3 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
             {pair[0].title}
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
@@ -633,8 +580,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
         className={`duel-card ${animState === 'right' ? 'winner' : animState === 'left' ? 'loser' : ''} ${isUrgent && isUrgent(pair[1]) ? 'urgent-pulse' : ''}`}
         onClick={() => handleChoice(1)}
         style={{
-          opacity: animState === 'left' ? 0.5 : 1,
-          pointerEvents: animState ? 'none' : 'auto',
+          pointerEvents: animState && animState !== 'complete' ? 'none' : 'auto',
           position: 'relative',
           transform: `scale(${getWeightScale ? getWeightScale(pair[1]?.weight ?? 10) : 1})`,
           transition: 'transform 0.2s ease-out'
@@ -642,8 +588,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       >
         {weightChange.id === pair[1].id && (
           <span
-            className="weight-change-fx"
-            style={{ color: 'var(--success)', left: '50%', transform: 'translateX(-50%)' }}
+            className="weight-change-fx winner-score"
+            style={{ color: 'var(--success)' }}
           >
             {weightChange.text}
           </span>
@@ -651,49 +597,17 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         <div className={`pixel-fighter pixel-fighter-${getFighterColor(pair[1]?.priority)} ${fighter2Anim}`}>
           <div className="pixel-fighter-sprite"></div>
-          {fighter2Action && settings?.duelShowActionBubbles !== false && (
-            <div className={`duel-action-badge ${fighter2Anim === 'win' ? 'duel-action-winner' : 'duel-action-loser'}`}>
-              {fighter2Action}
+          {fighter2Emoji && fighter2Anim === 'win' && (
+            <div className="duel-emoji-fx">
+              {fighter2Emoji}
             </div>
           )}
         </div>
 
-        {/* Animated 32-bit characters for Fighter 2 */}
-        {animState === 'right' && winnerCharacters && winnerCharacters.length > 0 && winnerCharacters.map((char, idx) => {
-          const topPos = char.type === 'trophy' ? '10%' : char.type === 'star' ? '5%' : char.type === 'confetti' ? '15%' : '0%';
-          const leftPos = idx === 0 ? '20%' : '80%';
-          return (
-            <div 
-              key={char.key || `winner-${idx}-${char.type}`} 
-              className={`duel-character-fx ${char.type}`} 
-              style={{ 
-                left: leftPos,
-                top: topPos
-              }}
-            >
-              {char.type === 'celebration' && <span>🎉</span>}
-            </div>
-          );
-        })}
-        {animState === 'left' && loserCharacters && loserCharacters.length > 0 && loserCharacters.map((char, idx) => {
-          const topPos = char.type === 'sad' ? '10%' : char.type === 'broken-heart' ? '5%' : '0%';
-          const leftPos = idx === 0 ? '20%' : '80%';
-          return (
-            <div 
-              key={char.key || `loser-${idx}-${char.type}`} 
-              className={`duel-character-fx ${char.type}`} 
-              style={{ 
-                left: leftPos,
-                top: topPos
-              }}
-            >
-              {char.type === 'defeat' && <span>😢</span>}
-            </div>
-          );
-        })}
+        {/* Animated characters removed - keeping it clean with just fighters and speech bubbles */}
 
         <div style={{ textAlign: 'center', width: '100%' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, lineHeight: 1.3 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
             {pair[1].title}
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap' }}>

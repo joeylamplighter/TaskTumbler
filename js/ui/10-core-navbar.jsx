@@ -22,10 +22,10 @@ const style = {
   // almost square
   borderRadius: 3,
 
-  // ultra-light glass black
-  background: 'rgba(0,0,0,0.18)',
-  backdropFilter: 'blur(26px) saturate(150%)',
-  WebkitBackdropFilter: 'blur(26px) saturate(150%)',
+  // more opaque to reduce color bleed
+  background: 'rgba(0,0,0,0.55)',
+  backdropFilter: 'blur(16px) saturate(100%)',
+  WebkitBackdropFilter: 'blur(16px) saturate(100%)',
 
   // very subtle edge definition
   border: '1px solid rgba(255,255,255,0.08)',

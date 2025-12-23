@@ -1,12 +1,12 @@
-// StatsTabLegacy - Migrated from legacy 13-09-stats.jsx
-// Updated: 2025-12-17 10:08 PT
+// !!TT/js/features/13-09-stats.jsx
 // ===========================================
 // DATA TAB (Insights + Database)
 // Includes: LocationsManager, PeopleManager, Charts, History (Journal Style)
 // ===========================================
 
-import React from "react";
-import ReactDOM from "react-dom";
+import React from 'react'
+
+(function () {
 
 // --- INTERNAL COMPONENT: PEOPLE MANAGER ---
 // Adds: Compass CRM link, extra links, notes, and People analytics + per-person history
@@ -946,23 +946,6 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
 
     const [timeRange, setTimeRange] = React.useState(7);
     const [unit, setUnit] = React.useState('minutes');
-    const [chartType, setChartType] = React.useState('bar');
-    const [chartCategoryFilter, setChartCategoryFilter] = React.useState('All');
-    const [chartLocationFilter, setChartLocationFilter] = React.useState('All');
-    const [chartTypeFilter, setChartTypeFilter] = React.useState('All');
-    const [showChartFilters, setShowChartFilters] = React.useState(false);
-
-    // Handle Escape key to close chart filters modal
-    React.useEffect(() => {
-        if (!showChartFilters) return;
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                setShowChartFilters(false);
-            }
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [showChartFilters]);
 
     const [historyRange, setHistoryRange] = React.useState('week');
     const [historyType, setHistoryType] = React.useState([]); // Changed to array for multi-select
@@ -1402,126 +1385,26 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
     const totalHrs = (totalMin / 60).toFixed(1);
 
     const getChartData = (days) => {
-        try {
-            const data = {};
-            const now = new Date();
-            for (let i = 0; i < days; i++) {
-                const d = new Date();
-                d.setDate(now.getDate() - i);
-                data[d.toDateString()] = 0;
-            }
-            safeHistory.forEach(h => {
-                try {
-                    const normalized = normalizeActivity(h);
-                    if (!normalized) return;
-                    // Apply filters
-                    if (chartCategoryFilter !== 'All' && normalized.category !== chartCategoryFilter) return;
-                    if (chartLocationFilter !== 'All' && normalized.locationLabel !== chartLocationFilter) return;
-                    if (chartTypeFilter !== 'All' && normalized.type !== chartTypeFilter) return;
-                    
-                    const dateKey = (normalized.createdAt || new Date()).toDateString();
-                    if (data[dateKey] !== undefined) {
-                        const duration = Number(normalized.duration) || 0;
-                        data[dateKey] += (unit === 'hours' ? duration / 60 : duration);
-                    }
-                } catch (e) {
-                    console.warn('Error processing history item for chart:', e);
-                }
-            });
-            return Object.entries(data).reverse().map(([date, value]) => {
-                try {
-                    return {
-                        date: new Date(date).toLocaleDateString(undefined, {weekday:'short'}),
-                        value: parseFloat(Number(value).toFixed(1)) || 0
-                    };
-                } catch (e) {
-                    return { date: date, value: 0 };
-                }
-            });
-        } catch (e) {
-            console.error('Error generating chart data:', e);
-            return [];
+        const data = {};
+        const now = new Date();
+        for (let i = 0; i < days; i++) {
+            const d = new Date();
+            d.setDate(now.getDate() - i);
+            data[d.toDateString()] = 0;
         }
+        safeHistory.forEach(h => {
+            if(!h.completedAt) return;
+            const d = new Date(h.completedAt).toDateString();
+            if (data[d] !== undefined) data[d] += (unit === 'hours' ? (h.duration||0)/60 : (h.duration||0));
+        });
+        return Object.entries(data).reverse().map(([date, value]) => ({
+            date: new Date(date).toLocaleDateString(undefined, {weekday:'short'}),
+            value: parseFloat(value.toFixed(1))
+        }));
     };
 
-    const chartData = React.useMemo(() => getChartData(timeRange), [timeRange, unit, chartCategoryFilter, chartLocationFilter, chartTypeFilter, safeHistory]);
-    const maxChartVal = React.useMemo(() => {
-        if (chartData.length === 0) return 10;
-        const values = chartData.map(d => Number(d.value) || 0).filter(v => isFinite(v));
-        return values.length > 0 ? Math.max(...values, 10) : 10;
-    }, [chartData]);
-
-    // Category stats for pie chart
-    const categoryStats = React.useMemo(() => {
-        try {
-            const map = {};
-            safeHistory.forEach(h => {
-                try {
-                    const normalized = normalizeActivity(h);
-                    if (!normalized) return;
-                    if (chartLocationFilter !== 'All' && normalized.locationLabel !== chartLocationFilter) return;
-                    if (chartTypeFilter !== 'All' && normalized.type !== chartTypeFilter) return;
-                    
-                    const cat = normalized.category || 'Uncategorized';
-                    if (!map[cat]) map[cat] = { name: cat, minutes: 0, count: 0 };
-                    map[cat].minutes += (Number(normalized.duration) || 0);
-                    map[cat].count += 1;
-                } catch (e) {
-                    console.warn('Error processing history item for category stats:', e);
-                }
-            });
-            return Object.values(map).sort((a, b) => (Number(b.minutes) || 0) - (Number(a.minutes) || 0));
-        } catch (e) {
-            console.error('Error generating category stats:', e);
-            return [];
-        }
-    }, [safeHistory, chartLocationFilter, chartTypeFilter]);
-
-    // Location stats for location filter dropdown
-    const locationStats = React.useMemo(() => {
-        try {
-            const map = {};
-            safeHistory.forEach(h => {
-                try {
-                    const normalized = normalizeActivity(h);
-                    if (!normalized) return;
-                    const loc = normalized.locationLabel || 'No Location';
-                    if (!map[loc]) map[loc] = { name: loc, minutes: 0, count: 0 };
-                    map[loc].minutes += (Number(normalized.duration) || 0);
-                    map[loc].count += 1;
-                } catch (e) {
-                    console.warn('Error processing history item for location stats:', e);
-                }
-            });
-            return Object.values(map).sort((a, b) => (Number(b.minutes) || 0) - (Number(a.minutes) || 0));
-        } catch (e) {
-            console.error('Error generating location stats:', e);
-            return [];
-        }
-    }, [safeHistory]);
-
-    // Type stats for type filter dropdown
-    const typeStats = React.useMemo(() => {
-        try {
-            const map = {};
-            safeHistory.forEach(h => {
-                try {
-                    const normalized = normalizeActivity(h);
-                    if (!normalized) return;
-                    const type = normalized.type || 'Unknown';
-                    if (!map[type]) map[type] = { name: type, minutes: 0, count: 0 };
-                    map[type].minutes += (Number(normalized.duration) || 0);
-                    map[type].count += 1;
-                } catch (e) {
-                    console.warn('Error processing history item for type stats:', e);
-                }
-            });
-            return Object.values(map).sort((a, b) => (Number(b.minutes) || 0) - (Number(a.minutes) || 0));
-        } catch (e) {
-            console.error('Error generating type stats:', e);
-            return [];
-        }
-    }, [safeHistory]);
+    const chartData = getChartData(timeRange);
+    const maxChartVal = Math.max(...chartData.map(d => d.value), 10);
 
     const peopleData = (() => {
         const map = {};
@@ -1564,16 +1447,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                     padding:20,
                     animation:'fadeIn 0.2s'
                 }}
-                onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) {
-                        onClose();
-                    }
-                }}
-                onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                        onClose();
-                    }
-                }}
+                onClick={onClose}
             >
                 <div 
                     style={{
@@ -1588,8 +1462,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                         boxShadow:'0 20px 50px rgba(0,0,0,0.5)',
                         animation:'slideUp 0.3s'
                     }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                 >
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20}}>
                         <div style={{flex:1}}>
@@ -1601,11 +1474,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                             </h3>
                         </div>
                         <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onClose();
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={onClose}
                             style={{
                                 background:'none',
                                 border:'none',
@@ -1768,552 +1637,26 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
 
             {subView === 'charts' && (
                 <div className="fade-in">
-                    {/* Top Controls Bar */}
-                    <div style={{display:'flex', gap:8, alignItems:'center', marginBottom:16}}>
-                        {/* Chart Type Selector */}
-                        <div style={{display:'flex', gap:3, background:'var(--bg)', padding:4, borderRadius:10, border:'1px solid var(--border)', flex:1}}>
-                            {['bar', 'line', 'area', 'pie', 'heatmap'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setChartType(type)}
-                                    style={{
-                                        padding:'8px 12px',
-                                        fontSize:12,
-                                        fontWeight:700,
-                                        textTransform:'capitalize',
-                                        border:'none',
-                                        background: chartType === type ? 'var(--primary)' : 'transparent',
-                                        color: chartType === type ? 'white' : 'var(--text-light)',
-                                        borderRadius:8,
-                                        cursor:'pointer',
-                                        transition:'all 0.2s',
-                                        flex:1,
-                                        whiteSpace:'nowrap'
-                                    }}
-                                >
-                                    {type}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Filter Button */}
-                        {(() => {
-                            const hasActiveFilters = chartCategoryFilter !== 'All' || chartLocationFilter !== 'All' || chartTypeFilter !== 'All' || timeRange !== 7 || unit !== 'minutes';
-                            const activeFilterCount = [
-                                chartCategoryFilter !== 'All',
-                                chartLocationFilter !== 'All',
-                                chartTypeFilter !== 'All',
-                                timeRange !== 7,
-                                unit !== 'minutes'
-                            ].filter(Boolean).length;
-                            
-                            return (
-                                <button
-                                    onClick={() => setShowChartFilters(true)}
-                                    style={{
-                                        padding:'8px 14px',
-                                        fontSize:12,
-                                        fontWeight:700,
-                                        border:'1px solid var(--border)',
-                                        borderRadius:10,
-                                        background: hasActiveFilters ? 'var(--primary)' : 'var(--card)',
-                                        color: hasActiveFilters ? 'white' : 'var(--text)',
-                                        cursor:'pointer',
-                                        transition:'all 0.2s',
-                                        display:'flex',
-                                        alignItems:'center',
-                                        gap:6
-                                    }}
-                                >
-                                    🎛️ Filters
-                                    {activeFilterCount > 0 && (
-                                        <span style={{
-                                            background: hasActiveFilters ? 'rgba(255,255,255,0.3)' : 'var(--primary)',
-                                            color: 'white',
-                                            fontSize:9,
-                                            fontWeight:700,
-                                            padding:'2px 6px',
-                                            borderRadius:8,
-                                            minWidth:18,
-                                            textAlign:'center'
-                                        }}>
-                                            {activeFilterCount}
-                                        </span>
-                                    )}
-                                </button>
-                            );
-                        })()}
+                    <div style={{display:'flex', justifyContent:'flex-end', marginBottom:15}}>
+                        <select className="f-select" style={{width:'auto'}} value={timeRange} onChange={e=>setTimeRange(Number(e.target.value))}>
+                            <option value={7}>Last 7 Days</option>
+                            <option value={14}>Last 14 Days</option>
+                            <option value={30}>Last 30 Days</option>
+                        </select>
+                    </div>
+                    <div style={{height:200, display:'flex', alignItems:'flex-end', gap:8, padding:'10px 0'}}>
+                        {chartData.map((d, i) => (
+                            <div key={i} style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:6}}>
+                                <div style={{ width:'100%', background: 'var(--primary)', opacity: 0.8, borderRadius: '4px 4px 0 0', height: `${(d.value / maxChartVal) * 100}%`, minHeight: 4, transition: 'height 0.3s' }} />
+                                <div style={{fontSize:10, opacity:0.6}}>{d.date}</div>
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Chart Filters Modal */}
-                    {showChartFilters && ReactDOM.createPortal(
-                        <div 
-                            onMouseDown={(e) => {
-                                if (e.target === e.currentTarget) {
-                                    setShowChartFilters(false);
-                                }
-                            }}
-                            onClick={(e) => {
-                                if (e.target === e.currentTarget) {
-                                    setShowChartFilters(false);
-                                }
-                            }}
-                            style={{ 
-                                position: 'fixed', 
-                                inset: 0, 
-                                background: 'rgba(0,0,0,0.6)', 
-                                zIndex: 999999, 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                padding: 16, 
-                                backdropFilter: 'blur(4px)' 
-                            }}
-                        >
-                            <div 
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()} 
-                                style={{ 
-                                    background: 'var(--card)', 
-                                    borderRadius: 14, 
-                                    width: 'min(400px, 92vw)', 
-                                    overflow: 'hidden',
-                                    border: '1px solid var(--border)', 
-                                    boxShadow: '0 25px 60px rgba(0,0,0,0.4)' 
-                                }}
-                            >
-                                <div style={{ 
-                                    padding: '12px 16px', 
-                                    borderBottom: '1px solid var(--border)',
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'center',
-                                    background: 'var(--input-bg)'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <span style={{ fontSize: 16 }}>🎛️</span>
-                                        <span style={{ fontWeight: 800, fontSize: 14 }}>Chart Filters</span>
-                                    </div>
-                                    <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowChartFilters(false);
-                                        }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        style={{ 
-                                            background: 'none', 
-                                            border: 'none', 
-                                            fontSize: 20, 
-                                            cursor: 'pointer', 
-                                            color: 'var(--text-light)', 
-                                            lineHeight: 1,
-                                            padding: 0,
-                                            width: 24,
-                                            height: 24,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                                
-                                <div style={{ padding: '16px', maxHeight: '70vh', overflowY: 'auto' }}>
-                                    <div style={{display:'flex', flexDirection:'column', gap:14}}>
-                                        <div>
-                                            <label className="f-label" style={{fontSize:11, marginBottom:6}}>Time Range</label>
-                                            <select className="f-select" value={timeRange} onChange={e=>setTimeRange(Number(e.target.value))}>
-                                                <option value={7}>Last 7 Days</option>
-                                                <option value={14}>Last 14 Days</option>
-                                                <option value={30}>Last 30 Days</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="f-label" style={{fontSize:11, marginBottom:6}}>Unit</label>
-                                            <select className="f-select" value={unit} onChange={e=>setUnit(e.target.value)}>
-                                                <option value="minutes">Minutes</option>
-                                                <option value="hours">Hours</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="f-label" style={{fontSize:11, marginBottom:6}}>Category</label>
-                                            <select className="f-select" value={chartCategoryFilter} onChange={e=>setChartCategoryFilter(e.target.value)}>
-                                                <option value="All">All Categories</option>
-                                                {safeCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="f-label" style={{fontSize:11, marginBottom:6}}>Location</label>
-                                            <select className="f-select" value={chartLocationFilter} onChange={e=>setChartLocationFilter(e.target.value)}>
-                                                <option value="All">All Locations</option>
-                                                {locationStats.map(loc => <option key={loc.name} value={loc.name}>{loc.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="f-label" style={{fontSize:11, marginBottom:6}}>Type</label>
-                                            <select className="f-select" value={chartTypeFilter} onChange={e=>setChartTypeFilter(e.target.value)}>
-                                                <option value="All">All Types</option>
-                                                {typeStats.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>,
-                        document.body
-                    )}
-                    
-                    {/* Bar Chart */}
-                    {chartType === 'bar' && (
-                        <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16}}>
-                            {chartData.length === 0 ? (
-                                <div style={{height:240, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.5, fontSize:13}}>No data available</div>
-                            ) : (
-                                <div style={{height:240, display:'flex', alignItems:'flex-end', gap:4, padding:'12px 4px 8px 4px'}}>
-                                    {chartData.map((d, i) => (
-                                        <div key={i} style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, position:'relative'}}>
-                                            {d.value > 0 && (
-                                                <div style={{position:'absolute', top:-20, fontSize:9, fontWeight:700, opacity:0.9, whiteSpace:'nowrap'}}>
-                                                    {unit === 'hours' ? d.value.toFixed(1) + 'h' : Math.round(d.value) + 'm'}
-                                                </div>
-                                            )}
-                                            <div style={{ width:'100%', background: 'linear-gradient(180deg, var(--primary), #ff9f43)', borderRadius: '6px 6px 0 0', height: `${Math.max(4, (d.value / maxChartVal) * 100)}%`, minHeight: 4, transition: 'height 0.3s', boxShadow:'0 2px 8px rgba(255,107,53,0.3)' }} />
-                                            <div style={{fontSize:10, opacity:0.7, textAlign:'center', fontWeight:500}}>{d.date}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Line Chart */}
-                    {chartType === 'line' && (
-                        <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16}}>
-                            {chartData.length === 0 ? (
-                                <div style={{height:240, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.5, fontSize:13}}>No data available</div>
-                            ) : (
-                                <div style={{height:240, position:'relative', padding:'20px 0 30px 0'}}>
-                                    <svg width="100%" height="100%" style={{position:'absolute', top:0, left:0}}>
-                                        <defs>
-                                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.3" />
-                                                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                                            </linearGradient>
-                                        </defs>
-                                        {chartData.length > 1 && chartData.map((d, i) => {
-                                            if (i === 0) return null;
-                                            const prev = chartData[i - 1];
-                                            const divisor = Math.max(1, chartData.length - 1);
-                                            const x1 = ((i - 1) / divisor) * 100;
-                                            const y1 = 100 - ((prev.value / maxChartVal) * 100);
-                                            const x2 = (i / divisor) * 100;
-                                            const y2 = 100 - ((d.value / maxChartVal) * 100);
-                                            return (
-                                                <line
-                                                    key={i}
-                                                    x1={`${x1}%`}
-                                                    y1={`${y1}%`}
-                                                    x2={`${x2}%`}
-                                                    y2={`${y2}%`}
-                                                    stroke="var(--primary)"
-                                                    strokeWidth="3"
-                                                    strokeLinecap="round"
-                                                />
-                                            );
-                                        })}
-                                        {chartData.length > 0 && chartData.map((d, i) => {
-                                            const divisor = Math.max(1, chartData.length - 1);
-                                            const x = (i / divisor) * 100;
-                                            const y = 100 - ((d.value / maxChartVal) * 100);
-                                            return (
-                                                <circle
-                                                    key={i}
-                                                    cx={`${x}%`}
-                                                    cy={`${y}%`}
-                                                    r="5"
-                                                    fill="var(--primary)"
-                                                    stroke="var(--card)"
-                                                    strokeWidth="2"
-                                                />
-                                            );
-                                        })}
-                                    </svg>
-                                    <div style={{display:'flex', justifyContent:'space-between', marginTop:'auto', fontSize:9, opacity:0.6}}>
-                                        {chartData.map((d, i) => (
-                                            <div key={i} style={{flex:1, textAlign:'center'}}>{d.date}</div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Area Chart */}
-                    {chartType === 'area' && (
-                        <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16}}>
-                            {chartData.length === 0 ? (
-                                <div style={{height:240, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.5, fontSize:13}}>No data available</div>
-                            ) : (
-                                <div style={{height:240, position:'relative', padding:'20px 0 30px 0'}}>
-                                    <svg width="100%" height="100%" style={{position:'absolute', top:0, left:0}}>
-                                        <defs>
-                                            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
-                                                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                                            </linearGradient>
-                                        </defs>
-                                        {chartData.length > 0 && (
-                                            <>
-                                                <path
-                                                    d={`M 0,100 ${chartData.map((d, i) => {
-                                                        const divisor = Math.max(1, chartData.length - 1);
-                                                        const x = (i / divisor) * 100;
-                                                        const y = 100 - ((d.value / maxChartVal) * 100);
-                                                        return `L ${x},${y}`;
-                                                    }).join(' ')} L 100,100 Z`}
-                                                    fill="url(#areaGradient)"
-                                                />
-                                                {chartData.length > 1 && chartData.map((d, i) => {
-                                                    if (i === 0) return null;
-                                                    const prev = chartData[i - 1];
-                                                    const divisor = Math.max(1, chartData.length - 1);
-                                                    const x1 = ((i - 1) / divisor) * 100;
-                                                    const y1 = 100 - ((prev.value / maxChartVal) * 100);
-                                                    const x2 = (i / divisor) * 100;
-                                                    const y2 = 100 - ((d.value / maxChartVal) * 100);
-                                                    return (
-                                                        <line
-                                                            key={i}
-                                                            x1={`${x1}%`}
-                                                            y1={`${y1}%`}
-                                                            x2={`${x2}%`}
-                                                            y2={`${y2}%`}
-                                                            stroke="var(--primary)"
-                                                            strokeWidth="3"
-                                                            strokeLinecap="round"
-                                                        />
-                                                    );
-                                                })}
-                                                {chartData.map((d, i) => {
-                                                    const divisor = Math.max(1, chartData.length - 1);
-                                                    const x = (i / divisor) * 100;
-                                                    const y = 100 - ((d.value / maxChartVal) * 100);
-                                                    return (
-                                                        <circle
-                                                            key={i}
-                                                            cx={`${x}%`}
-                                                            cy={`${y}%`}
-                                                            r="4"
-                                                            fill="var(--primary)"
-                                                            stroke="var(--card)"
-                                                            strokeWidth="2"
-                                                        />
-                                                    );
-                                                })}
-                                            </>
-                                        )}
-                                    </svg>
-                                    <div style={{display:'flex', justifyContent:'space-between', marginTop:'auto', fontSize:9, opacity:0.6}}>
-                                        {chartData.map((d, i) => (
-                                            <div key={i} style={{flex:1, textAlign:'center'}}>{d.date}</div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Pie Chart for Categories */}
-                    {chartType === 'pie' && (
-                        <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16}}>
-                            {categoryStats.length === 0 ? (
-                                <div style={{minHeight:280, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.5, fontSize:13}}>No category data available</div>
-                            ) : (
-                                <div style={{display:'flex', alignItems:'center', justifyContent:'center', minHeight:280, gap:24, flexWrap:'wrap'}}>
-                                    <div style={{position:'relative', width:200, height:200}}>
-                                        <svg width="200" height="200" viewBox="0 0 200 200" style={{transform:'rotate(-90deg)'}}>
-                                            {(() => {
-                                                let currentAngle = 0;
-                                                const totalMinForPie = categoryStats.reduce((sum, cat) => sum + (Number(cat.minutes) || 0), 0);
-                                                return categoryStats.slice(0, 8).map((cat, idx) => {
-                                                    const minutes = Number(cat.minutes) || 0;
-                                                    const pct = totalMinForPie > 0 ? (minutes / totalMinForPie) : 0;
-                                                    const angle = pct * 360;
-                                                    const startAngle = currentAngle;
-                                                    const endAngle = currentAngle + angle;
-                                                    currentAngle += angle;
-                                                    
-                                                    const startAngleRad = (startAngle * Math.PI) / 180;
-                                                    const endAngleRad = (endAngle * Math.PI) / 180;
-                                                    const largeArc = angle > 180 ? 1 : 0;
-                                                    const x1 = 100 + 80 * Math.cos(startAngleRad);
-                                                    const y1 = 100 + 80 * Math.sin(startAngleRad);
-                                                    const x2 = 100 + 80 * Math.cos(endAngleRad);
-                                                    const y2 = 100 + 80 * Math.sin(endAngleRad);
-                                                    
-                                                    const hue = (idx * 60) % 360;
-                                                    return (
-                                                        <path
-                                                            key={idx}
-                                                            d={`M 100,100 L ${x1},${y1} A 80,80 0 ${largeArc},1 ${x2},${y2} Z`}
-                                                            fill={`hsl(${hue}, 70%, 50%)`}
-                                                            stroke="var(--card)"
-                                                            strokeWidth="2"
-                                                        />
-                                                    );
-                                                });
-                                            })()}
-                                        </svg>
-                                    </div>
-                                    <div style={{flex:1, minWidth:150}}>
-                                        {(() => {
-                                            try {
-                                                const totalMinForPie = categoryStats.reduce((sum, cat) => sum + (Number(cat.minutes) || 0), 0);
-                                                return categoryStats.slice(0, 8).map((cat, idx) => {
-                                                    const minutes = Number(cat.minutes) || 0;
-                                                    const pct = totalMinForPie > 0 ? ((minutes / totalMinForPie) * 100).toFixed(1) : '0.0';
-                                                    const hue = (idx * 60) % 360;
-                                                    return (
-                                                        <div key={idx} style={{display:'flex', alignItems:'center', gap:10, marginBottom:10}}>
-                                                            <div style={{width:16, height:16, borderRadius:4, background:`hsl(${hue}, 70%, 50%)`}} />
-                                                            <div style={{flex:1, fontSize:12, fontWeight:700}}>{cat.name || 'Unknown'}</div>
-                                                            <div style={{fontSize:11, fontWeight:800, color:'var(--text-light)'}}>{pct}%</div>
-                                                        </div>
-                                                    );
-                                                });
-                                            } catch (e) {
-                                                console.error('Error rendering pie chart legend:', e);
-                                                return <div style={{opacity:0.6}}>Error rendering chart</div>;
-                                            }
-                                        })()}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Heatmap Chart */}
-                    {chartType === 'heatmap' && (
-                        <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16}}>
-                            <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                                {(() => {
-                                    try {
-                                        const heatmapData = {};
-                                        const now = new Date();
-                                        for (let i = 0; i < 30; i++) {
-                                            const d = new Date(now);
-                                            d.setDate(now.getDate() - i);
-                                            const key = d.toDateString();
-                                            heatmapData[key] = { date: d, count: 0, minutes: 0 };
-                                        }
-                                        safeHistory.forEach(h => {
-                                            try {
-                                                const normalized = normalizeActivity(h);
-                                                if (!normalized) return;
-                                                if (chartCategoryFilter !== 'All' && normalized.category !== chartCategoryFilter) return;
-                                                if (chartLocationFilter !== 'All' && normalized.locationLabel !== chartLocationFilter) return;
-                                                if (chartTypeFilter !== 'All' && normalized.type !== chartTypeFilter) return;
-                                                
-                                                const date = safeDate(normalized.createdAt);
-                                                const key = date.toDateString();
-                                                if (heatmapData[key]) {
-                                                    heatmapData[key].count += 1;
-                                                    heatmapData[key].minutes += (Number(normalized.duration) || 0);
-                                                }
-                                            } catch (e) {
-                                                console.warn('Error processing history item for heatmap:', e);
-                                            }
-                                        });
-                                        
-                                        const maxMinutes = Math.max(...Object.values(heatmapData).map(d => d.minutes), 1);
-                                        const days = Object.values(heatmapData).reverse();
-                                        
-                                        return (
-                                            <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4}}>
-                                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                                    <div key={day} style={{fontSize:9, fontWeight:700, textAlign:'center', opacity:0.6, padding:4}}>
-                                                        {day}
-                                                    </div>
-                                                ))}
-                                                {days.map((day, idx) => {
-                                                    const intensity = maxMinutes > 0 ? Math.min(1, day.minutes / maxMinutes) : 0;
-                                                    const hue = 120 - (intensity * 120);
-                                                    const saturation = 50 + (intensity * 30);
-                                                    const lightness = 40 + (intensity * 20);
-                                                    return (
-                                                        <div
-                                                            key={idx}
-                                                            style={{
-                                                                aspectRatio:1,
-                                                                background: day.minutes > 0 
-                                                                    ? `hsl(${hue}, ${saturation}%, ${lightness}%)`
-                                                                    : 'var(--bg)',
-                                                                borderRadius:4,
-                                                                border:'1px solid var(--border)',
-                                                                position:'relative',
-                                                                cursor:'pointer',
-                                                                transition:'transform 0.2s'
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.transform='scale(1.1)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.transform='scale(1)'}
-                                                            title={`${day.date.toLocaleDateString()}: ${day.count} entries, ${Math.round(day.minutes)}m`}
-                                                        >
-                                                            {day.minutes > 0 && (
-                                                                <div style={{
-                                                                    position:'absolute',
-                                                                    top:'50%',
-                                                                    left:'50%',
-                                                                    transform:'translate(-50%, -50%)',
-                                                                    fontSize:8,
-                                                                    fontWeight:800,
-                                                                    color: intensity > 0.5 ? 'white' : 'var(--text)'
-                                                                }}>
-                                                                    {day.count}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    } catch (e) {
-                                        console.error('Error generating heatmap:', e);
-                                        return <div style={{opacity:0.6, padding:20, textAlign:'center'}}>Error generating heatmap</div>;
-                                    }
-                                })()}
-                            </div>
-                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, fontSize:10, opacity:0.6}}>
-                                <span>Less</span>
-                                <div style={{display:'flex', gap:2}}>
-                                    {[0, 0.25, 0.5, 0.75, 1].map((val, idx) => {
-                                        const hue = 120 - (val * 120);
-                                        const saturation = 50 + (val * 30);
-                                        const lightness = 40 + (val * 20);
-                                        return (
-                                            <div
-                                                key={idx}
-                                                style={{
-                                                    width:12,
-                                                    height:12,
-                                                    background:`hsl(${hue}, ${saturation}%, ${lightness}%)`,
-                                                    borderRadius:2
-                                                }}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                                <span>More</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* People Mentions Section */}
-                    <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:16}}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                            <div style={{fontSize:14, fontWeight:700}}>People Mentions</div>
-                            <input className="f-input" style={{width:180, margin:0, padding:'8px 12px', fontSize:13}} placeholder="Search people..." value={peopleSearch} onChange={e=>setPeopleSearch(e.target.value)} />
+                    <div style={{background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:14, marginTop:18}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10}}>
+                            <div style={{fontFamily:'Fredoka', fontWeight:800}}>People Mentions</div>
+                            <input className="f-input" style={{width:160, margin:0}} placeholder="Search..." value={peopleSearch} onChange={e=>setPeopleSearch(e.target.value)} />
                         </div>
                         {peopleData.length === 0 ? (
                             <div style={{opacity:0.6, fontSize:12}}>No people activity yet.</div>

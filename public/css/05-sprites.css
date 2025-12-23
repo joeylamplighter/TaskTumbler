@@ -4,7 +4,7 @@
 
 /* BASE FIGHTER - Enhanced Quality - Higher Resolution */
 .pixel-fighter {
-    width: 80px; height: 80px; position: relative; margin: 8px auto 8px; 
+    width: 80px; height: 80px; position: relative; margin: 8px auto 20px; 
     display: flex; align-items: center; justify-content: center;
     image-rendering: crisp-edges; /* Better pixel clarity */
     transform-origin: 50% 50%;
@@ -81,11 +81,11 @@
     }
     50% {
         transform: scale(0.8) translateY(35px) translateX(25px) rotate(70deg);
-        opacity: 0.8;
+        opacity: 1;
     }
     100% {
         transform: scale(0.72) translateY(55px) translateX(38px) rotate(90deg);
-        opacity: 0.7;
+        opacity: 1;
     }
 }
 
@@ -183,57 +183,90 @@
         8px 20px 0 0 #000, 12px 20px 0 0 #000, 16px 20px 0 0 #000, 20px 20px 0 0 #000;
 }
 
-/* --- WEIGHT FX --- */
+/* --- WEIGHT FX (Video Game Style Score Popup) --- */
 @keyframes weightChange {
-    0% { opacity: 0; transform: translateY(10px) scale(0.8); }
-    30% { opacity: 1; transform: translateY(0px) scale(1); }
-    70% { opacity: 1; transform: translateY(0px) scale(1); }
-    100% { opacity: 0; transform: translateY(-10px) scale(0.8); }
+    0% { 
+        opacity: 0; 
+        transform: translateY(20px) scale(0.8); 
+    }
+    25% { 
+        opacity: 1; 
+        transform: translateY(-5px) scale(1.2); 
+    }
+    50% { 
+        opacity: 1; 
+        transform: translateY(-10px) scale(1.1); 
+    }
+    100% { 
+        opacity: 0; 
+        transform: translateY(-25px) scale(0.95); 
+    }
 }
 
 .weight-change-fx {
     position: absolute;
-    top: 30px; /* Position above the fighter */
-    font-size: 18px;
+    left: 20px; /* Position to the left of the figure */
+    font-size: 22px;
     font-family: 'Fredoka', sans-serif;
-    font-weight: 800;
+    font-weight: 900;
     letter-spacing: 1px;
-    animation: weightChange 1.2s ease-out forwards;
+    animation: weightChange 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     pointer-events: none;
-    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    text-shadow: 
+        0 0 10px rgba(0,0,0,0.9),
+        0 2px 4px rgba(0,0,0,0.8),
+        0 4px 8px rgba(0,0,0,0.6);
+    z-index: 100;
+    white-space: nowrap;
 }
 
-/* --- XP CHANGE FX (Slowly fading, not distracting, away from fighters) --- */
+.weight-change-fx.winner-score {
+    top: 10%; /* Away from character, near top of card */
+}
+
+.weight-change-fx.loser-score {
+    top: 25%; /* Positioned below winner score */
+}
+
+/* --- XP CHANGE FX (Video Game Style Score Popup) --- */
 @keyframes xpChange {
     0% { 
         opacity: 0; 
-        transform: translateY(10px) scale(0.9);
+        transform: translateY(20px) translateX(-50%) scale(0.8); 
     }
-    20% { 
-        opacity: 0.9; 
-        transform: translateY(0px) scale(1);
+    15% { 
+        opacity: 1; 
+        transform: translateY(-5px) translateX(-50%) scale(1.2); 
+    }
+    30% { 
+        opacity: 1; 
+        transform: translateY(-10px) translateX(-50%) scale(1.15); 
     }
     60% { 
-        opacity: 0.9; 
-        transform: translateY(0px) scale(1);
+        opacity: 1; 
+        transform: translateY(-15px) translateX(-50%) scale(1.1); 
     }
     100% { 
         opacity: 0; 
-        transform: translateY(-15px) scale(0.85);
+        transform: translateY(-30px) translateX(-50%) scale(0.95); 
     }
 }
 
 .xp-change-fx {
-    position: fixed;
-    z-index: 1000;
-    font-size: 16px;
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    z-index: 100;
+    font-size: 24px;
     font-family: 'Fredoka', sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    animation: xpChange 2.5s ease-out forwards;
+    font-weight: 900;
+    letter-spacing: 1px;
+    animation: xpChange 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     pointer-events: none;
-    text-shadow: 0 0 10px rgba(0,0,0,0.7), 0 0 15px rgba(0,0,0,0.5);
-    opacity: 0;
+    text-shadow: 
+        0 0 10px rgba(0,0,0,0.9),
+        0 2px 4px rgba(0,0,0,0.8),
+        0 4px 8px rgba(0,0,0,0.6);
 }
 
 /* ===========================================
@@ -246,10 +279,11 @@
     width: 48px;
     height: 48px;
     pointer-events: none;
-    z-index: 100;
+    z-index: -1; /* Behind everything */
     image-rendering: crisp-edges;
     overflow: visible;
     transform-origin: center center;
+    opacity: 0.15; /* Very subtle */
 }
 
 /* === VICTORY CHARACTERS === */

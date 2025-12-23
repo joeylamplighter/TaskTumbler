@@ -100,38 +100,57 @@ import React from 'react'
     };
 
     return (
-      <div
-        onClick={(e) => {
-          // Only close if clicking the backdrop, not the modal content
-          if (e.target === e.currentTarget) {
-            onClose?.();
+      <>
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
-        }}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-          background: "rgba(0,0,0,0.78)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-        }}
-      >
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}</style>
         <div
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            // Only close if clicking the backdrop, not the modal content
+            if (e.target === e.currentTarget) {
+              onClose?.();
+            }
+          }}
           style={{
-            width: "min(420px, 94vw)",
-            background: "var(--card)",
-            borderRadius: 18,
-            overflow: "hidden",
-            boxShadow: "0 22px 60px rgba(0,0,0,0.6)",
-            border: "1px solid var(--border)",
-            position: "relative",
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            background: "rgba(0,0,0,0.78)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            animation: "fadeIn 0.3s ease-out",
           }}
         >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(420px, 94vw)",
+              background: "var(--card)",
+              borderRadius: 18,
+              overflow: "hidden",
+              boxShadow: "0 22px 60px rgba(0,0,0,0.6)",
+              border: "1px solid var(--border)",
+              position: "relative",
+              animation: "slideUp 0.3s ease-out",
+            }}
+          >
           <div style={{ height: 4, background: "var(--primary)" }} />
 
           <div style={{ padding: 18, paddingBottom: 14, position: "relative" }}>
@@ -220,27 +239,31 @@ import React from 'react'
               onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
               title="Open Focus Mode"
             >
-              🎯 Start Focus
+              Start Focus
             </button>
 
             <div style={{ height: 10 }} />
 
-            <div style={{ display: "grid", gridTemplateColumns: onStartTimer ? "1fr 1fr 1fr" : "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => {
                   // Don't close winner popup when opening view - let them stack
                   onView?.(task);
                 }}
-                style={secondaryBtn}
+                style={{ ...secondaryBtn, flex: 1 }}
                 onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.99)")}
                 onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 title="Open task details"
               >
-                📋 View
+                View
               </button>
+            </div>
 
-              {onStartTimer ? (
+            <div style={{ height: 10 }} />
+
+            <div style={{ display: "grid", gridTemplateColumns: onStartTimer ? "1fr 1fr 1fr" : "1fr 1fr", gap: 10 }}>
+              {onStartTimer && (
                 <button
                   onClick={() => {
                     onClose?.();
@@ -252,10 +275,9 @@ import React from 'react'
                   onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   title="Start Timer for this task"
                 >
-                  ⏱️ Start Timer
+                  Start Timer
                 </button>
-              ) : null}
-
+              )}
               <button
                 onClick={() => {
                   onClose?.();
@@ -267,13 +289,8 @@ import React from 'react'
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 title="Spin again"
               >
-                🔄 Respin
+                Respin
               </button>
-            </div>
-
-            <div style={{ height: 10 }} />
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <button
                 onClick={() => {
                   onClose?.();
@@ -285,21 +302,7 @@ import React from 'react'
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 title="Mark done"
               >
-                ✅ Done
-              </button>
-
-              <button
-                onClick={() => {
-                  // Don't close winner popup when opening view - let them stack
-                  onView?.(task);
-                }}
-                style={secondaryBtn}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.99)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                title="Open task details"
-              >
-                ✏️ Edit View
+                Done
               </button>
             </div>
 
@@ -321,6 +324,7 @@ import React from 'react'
           </div>
         </div>
       </div>
+      </>
     );
   }
 

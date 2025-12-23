@@ -15,13 +15,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
   const [xpChange, setXpChange] = useState({ text: '', visible: false });
   const [fighter1Action, setFighter1Action] = useState(null);
   const [fighter2Action, setFighter2Action] = useState(null);
-  const [comboCount, setComboCount] = useState(0);
-  const [lastChoiceTime, setLastChoiceTime] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [particles, setParticles] = useState([]);
   const [screenShake, setScreenShake] = useState(false);
-  const interactionSpeedRef = useRef(50);
-  const comboTimeoutRef = useRef(null);
 
   const activeTasks = useMemo(
     () => (tasks || []).filter(t => !t.completed),
@@ -39,33 +33,9 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     return colors[priority] || 'blue';
   };
 
-  const WINNER_ACTIONS = [
-    '💥 BOOM!', '🔥 DOMINATED!', '⚡ ZAPPED!', '🎯 PERFECT!', '💪 CRUSHED!',
-    '🚀 BLASTED!', '⭐ CHAMPION!', '✨ VICTORY!', '🎉 WON!', '🏆 CHAMP!',
-    '💫 STUNNED!', '🔥 ON FIRE!', '⚡ LIGHTNING!', '💥 SMASHED!', '🎯 BULLSEYE!',
-    '🚀 LAUNCHED!', '⭐ SHINING!', '✨ MAGIC!', '💪 POWER!', '🔥 BURNED!',
-    '🎊 EPIC!', '💎 DIAMOND!', '🌟 STAR!', '⚔️ SLAYED!', '🔥 INFERNO!',
-    '💨 ZOOM!', '🎯 DEADEYE!', '⚡ THUNDER!', '💥 KABOOM!', '🚀 ROCKET!',
-    '🏅 GOLD!', '👑 CROWN!', '💪 BEAST!', '🔥 FLAME!', '⭐ GLOW!',
-    '🎪 SHOW!', '💫 COMET!', '⚡ BOLT!', '🔥 BLAZE!', '🎯 HIT!',
-    '🚀 SOAR!', '💎 GEM!', '🌟 BRIGHT!', '⚔️ STRIKE!', '💥 BANG!'
-  ];
-
-  const LOSER_ACTIONS = [
-    '😢 OOF!', '💔 DEFEATED!', '😓 MISSED!', '😔 SORRY!', '😞 DOWN!',
-    '😰 WHIFF!', '😪 TIRED!', '😭 LOST!', '😤 GRR!', '😑 MEH!',
-    '😕 OOPS!', '😟 SIGH!', '😣 OUCH!', '😩 FAIL!', '😫 NOPE!',
-    '😤 HMPH!', '😒 WHATEVER!', '😓 WHEW!', '😔 ALAS!', '😞 NEXT!',
-    '😴 ZZZ!', '😮‍💨 PHEW!', '😵 WOAH!', '😬 YIKES!', '😅 OOPS!',
-    '😰 EEP!', '😱 GASP!', '😨 YIKES!', '😧 WHOA!', '😦 HUH!',
-    '😯 OH!', '😮 WOW!', '😲 GEEZ!', '😳 OOF!', '😵‍💫 SPIN!',
-    '🤷 SHRUG!', '😑 BLANK!', '😐 FLAT!', '😶 MUTE!', '😏 SMIRK!',
-    '🤔 HMM!', '😌 RELAX!', '😊 OKAY!', '🙃 FLIP!', '😉 WINK!'
-  ];
-
-  const getRandomAction = (actions) => {
-    return actions[Math.floor(Math.random() * actions.length)];
-  };
+  // Simple, consistent action text - no random variety to keep flow fast
+  const WINNER_ACTION = 'WIN!';
+  const LOSER_ACTION = 'LOST';
 
   const pickPair = useCallback(() => {
     if (activeTasks.length < 2) {
@@ -144,45 +114,6 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTasks.length]);
 
-  const updateCombo = useCallback(() => {
-    const now = Date.now();
-    if (lastChoiceTime && now - lastChoiceTime < 3000) {
-      setComboCount(prev => prev + 1);
-      interactionSpeedRef.current = Math.min(100, interactionSpeedRef.current + 10);
-    } else {
-      setComboCount(1);
-      interactionSpeedRef.current = 50;
-    }
-    setLastChoiceTime(now);
-    
-    if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
-    comboTimeoutRef.current = setTimeout(() => {
-      setComboCount(0);
-      interactionSpeedRef.current = 50;
-    }, 3000);
-  }, [lastChoiceTime]);
-
-  const createParticleExplosion = useCallback((element) => {
-    if (!element) return;
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const newParticles = [];
-    for (let i = 0; i < 20; i++) {
-      const angle = (Math.PI * 2 * i) / 20;
-      const speed = 50 + Math.random() * 50;
-      newParticles.push({
-        id: Date.now() + i,
-        x: centerX,
-        y: centerY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1.0
-      });
-    }
-    setParticles(prev => [...prev, ...newParticles]);
-  }, []);
 
   const isUrgent = useCallback((task) => {
     if (!task) return false;
@@ -214,23 +145,8 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
 
     if (!winner || !loser) return;
 
-    updateCombo();
-
     setScreenShake(true);
     setTimeout(() => setScreenShake(false), 300);
-
-    setProgress(0);
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 20);
-    
-    setTimeout(() => clearInterval(progressInterval), 500);
 
     // Set initial attack/defend states briefly, then immediately set win/lose
     // This gives a brief moment before the main animations
@@ -271,7 +187,6 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     const newWinnerWeight = Math.min(weightMax, winnerBase + winBoost);
     const newLoserWeight = Math.max(1, loserBase - lossPenalty);
 
-    const speedMultiplier = Math.max(0.5, Math.min(2, interactionSpeedRef.current / 50));
     const animDelay = 150; // Ultra-fast delay for rapid-fire duels
 
     setTimeout(() => {
@@ -280,8 +195,8 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
 
       setWeightChange({ id: winner.id, text: `+${winBoost}` });
 
-      const winnerActionText = getRandomAction(WINNER_ACTIONS);
-      const loserActionText = getRandomAction(LOSER_ACTIONS);
+      const winnerActionText = WINNER_ACTION;
+      const loserActionText = LOSER_ACTION;
 
       if (typeof addActivity === "function") {
         try {
@@ -311,7 +226,6 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
                 weight: newLoserWeight,
                 weightChange: -lossPenalty
               },
-              comboCount: comboCount
             }
           };
           console.log("⚔️ Logging duel activity:", JSON.stringify(duelActivity, null, 2));
@@ -419,27 +333,6 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     }, 350); // Ultra-fast total time: 50ms delay + 200ms animation + 100ms buffer
   };
 
-  useEffect(() => {
-    if (!particles || particles.length === 0) {
-      return;
-    }
-    
-    const interval = setInterval(() => {
-      setParticles(prev => {
-        if (!prev || prev.length === 0) return [];
-        const updated = prev.map(p => ({
-          ...p,
-          x: (p.x || 0) + (p.vx || 0) * 0.1,
-          y: (p.y || 0) + (p.vy || 0) * 0.1,
-          vy: (p.vy || 0) + 2,
-          life: (p.life || 0) - 0.02
-        })).filter(p => (p.life || 0) > 0 && (p.y || 0) < (window.innerHeight || 1000));
-        return updated;
-      });
-    }, 16);
-    
-    return () => clearInterval(interval);
-  }, [particles.length]);
 
   if (activeTasks.length < 2) {
     return (
@@ -471,33 +364,12 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
         <div 
           className="xp-change-fx"
           style={{ 
-            color: xpChange.text.startsWith('+') ? 'var(--success)' : 'var(--danger)',
-            left: '50%',
-            top: '20%',
-            transform: 'translateX(-50%)'
+            color: xpChange.text.startsWith('+') ? 'var(--success)' : 'var(--danger)'
           }}
         >
           {xpChange.text}
         </div>
       )}
-      {comboCount > 1 && (
-        <div className="combo-display">
-          COMBO x{comboCount}!
-        </div>
-      )}
-
-      {particles && particles.length > 0 && particles.map(particle => (
-        <div
-          key={particle.id}
-          className="duel-particle"
-          style={{
-            left: `${particle.x}px`,
-            top: `${particle.y}px`,
-            opacity: particle.life || 0,
-            transform: `scale(${particle.life || 0})`
-          }}
-        />
-      ))}
 
       <div
         className={`duel-card ${animState === 'left' ? 'winner' : animState === 'right' ? 'loser' : ''} ${isUrgent && isUrgent(pair[0]) ? 'urgent-pulse' : ''}`}
@@ -630,7 +502,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
         {weightChange.id === pair[1].id && (
           <span
             className="weight-change-fx"
-            style={{ color: 'var(--success)', left: '50%', transform: 'translateX(-50%)' }}
+            style={{ color: 'var(--success)' }}
           >
             {weightChange.text}
           </span>

@@ -13,6 +13,8 @@ export default function PeopleTab({
   notify, 
   locations = [], 
   setLocations = () => {},
+  setPeople = () => {},
+  setTasks = () => {},
   onViewTask 
 }) {
   // Get PeopleManager from window (exported from 13-09-stats.jsx)
@@ -34,6 +36,9 @@ export default function PeopleTab({
         history={history}
         tasks={tasks}
         locations={locations}
+        setLocations={setLocations}
+        setPeople={setPeople}
+        setTasks={setTasks}
         initialSelectedPersonName={null}
         onPersonSelected={(name) => {}}
         onViewTask={onViewTask}

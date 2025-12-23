@@ -15,6 +15,14 @@
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState(null);
+    // Start with all items collapsed (showing just letters)
+    const [collapsedItems, setCollapsedItems] = useState(() => {
+      const set = new Set();
+      safePeople.forEach(p => {
+        if (p.id) set.add(p.id);
+      });
+      return set;
+    });
 
     const [formData, setFormData] = useState({
       name: '',
@@ -110,6 +118,33 @@
       if (editId === id) resetForm();
     };
 
+    const toggleCollapse = (id, e) => {
+      if (e) e.stopPropagation();
+      setCollapsedItems(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    };
+
+    const expandAll = () => {
+      setCollapsedItems(new Set());
+    };
+
+    const collapseAll = () => {
+      const allIds = new Set();
+      filtered.forEach(p => {
+        if (p.id) allIds.add(p.id);
+      });
+      setCollapsedItems(allIds);
+    };
+
+    const allCollapsed = filtered.length > 0 && collapsedItems.size === filtered.length;
+
     const onEditKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (isEditing) resetForm();
@@ -146,7 +181,46 @@
           {/* HEADER */}
           <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1, color: 'var(--text-light)' }}>PEOPLE</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1, color: 'var(--text-light)' }}>PEOPLE</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {filtered.length > 0 && (
+                    <button
+                      onClick={allCollapsed ? expandAll : collapseAll}
+                      title={allCollapsed ? "Expand All" : "Collapse All"}
+                      style={{ 
+                        background: 'transparent', 
+                        color: 'var(--text-light)', 
+                        border: '1px solid var(--border)',
+                        padding: '4px 8px', 
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        opacity: 0.7
+                      }}
+                    >
+                      {allCollapsed ? '▶▶ Expand All' : '▼▼ Collapse All'}
+                    </button>
+                  )}
+                  <button
+                    onClick={startAdd}
+                    title="Add person"
+                    style={{ 
+                      background: 'var(--primary)', 
+                      color: 'white', 
+                      border: 'none',
+                      padding: '6px 12px', 
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
               <input
                 className="f-input"
                 value={searchTerm}
@@ -155,15 +229,6 @@
                 style={{ marginBottom: 0 }}
               />
             </div>
-
-            <button
-              className="btn-ai-purple"
-              onClick={startAdd}
-              title="Add person"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              🧠 Add
-            </button>
 
             <button
               className="btn-white-outline"
@@ -184,49 +249,121 @@
                   No people yet.
                 </div>
               ) : (
-                filtered.map(p => (
-                  <div
-                    key={p.id}
-                    onClick={() => startEdit(p)}
-                    style={{
-                      padding: 14,
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10
-                    }}
-                  >
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'var(--input-bg)', fontWeight: 900
-                    }}>
-                      {(p.name || '?').trim().slice(0, 1).toUpperCase()}
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.name || 'Untitled'}
+                filtered.map(p => {
+                  const initials = (p.name || '?').trim().slice(0, 1).toUpperCase();
+                  const isCollapsed = collapsedItems.has(p.id);
+                  
+                  // Collapsed state: just show the letter in a compact horizontal bar
+                  if (isCollapsed) {
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCollapse(p.id, e);
+                        }}
+                        onDoubleClick={() => startEdit(p)}
+                        style={{
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          gap: 8,
+                          background: editId === p.id ? 'rgba(255,107,53,0.1)' : 'transparent',
+                          borderLeft: editId === p.id ? '3px solid var(--primary)' : 'none',
+                          transition: 'all 0.2s ease',
+                          minHeight: 32
+                        }}
+                        title={`${p.name || 'Untitled'} - Click to expand, double-click to edit`}
+                      >
+                        <span style={{ fontSize: 10, opacity: 0.5, color: 'var(--text-light)' }}>▶</span>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%',
+                          border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: editId === p.id ? 'var(--primary)' : 'var(--input-bg)', 
+                          color: editId === p.id ? 'white' : 'var(--text)',
+                          fontWeight: 900,
+                          fontSize: 13
+                        }}>
+                          {initials}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-light)', opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {(p.type || 'client').toUpperCase()}
-                        {p.email ? ` • ${p.email}` : ''}
-                        {p.phone ? ` • ${p.phone}` : ''}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      className="btn-white-outline"
-                      title="Delete"
-                      style={{ width: 40, height: 40, borderRadius: 12, opacity: 0.8 }}
+                    );
+                  }
+                  
+                  // Expanded state: show full details
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => startEdit(p)}
+                      style={{
+                        padding: 14,
+                        cursor: 'pointer',
+                        borderBottom: '1px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        background: editId === p.id ? 'rgba(255,107,53,0.1)' : 'transparent',
+                        borderLeft: editId === p.id ? '3px solid var(--primary)' : 'none',
+                        transition: 'all 0.2s ease'
+                      }}
                     >
-                      🗑️
-                    </button>
-                  </div>
-                ))
+                      <button
+                        onClick={(e) => toggleCollapse(p.id, e)}
+                        className="btn-white-outline"
+                        title="Collapse"
+                        style={{ 
+                          width: 24, 
+                          height: 24, 
+                          borderRadius: 6, 
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 10,
+                          opacity: 0.6,
+                          minWidth: 24,
+                          flexShrink: 0
+                        }}
+                      >
+                        ▼
+                      </button>
+
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 12,
+                        border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--input-bg)', fontWeight: 900,
+                        flexShrink: 0
+                      }}>
+                        {initials}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.name || 'Untitled'}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-light)', opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(p.type || 'client').toUpperCase()}
+                          {p.email ? ` • ${p.email}` : ''}
+                          {p.phone ? ` • ${p.phone}` : ''}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                        className="btn-white-outline"
+                        title="Delete"
+                        style={{ width: 40, height: 40, borderRadius: 12, opacity: 0.8 }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
 

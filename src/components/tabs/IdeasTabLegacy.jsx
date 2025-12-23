@@ -3,16 +3,69 @@
 // IDEAS TAB (Scratchpad/AI Import)
 // ===========================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+const CURRENT_NOTE_ID_KEY = 'tt_ideas_current_note_id';
 
 export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, notify, savedNotes, setSavedNotes }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [noteTitle, setNoteTitle] = useState('');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
-    const [currentNoteId, setCurrentNoteId] = useState(null);
+    
+    // Load currentNoteId from localStorage on mount
+    const [currentNoteId, setCurrentNoteId] = useState(() => {
+        try {
+            return localStorage.getItem(CURRENT_NOTE_ID_KEY) || null;
+        } catch {
+            return null;
+        }
+    });
 
     const currentNote = savedNotes?.find(n => n.id === currentNoteId);
+
+    // Restore currentNoteId when component mounts - check if text matches saved note
+    useEffect(() => {
+        if (currentNoteId && currentNote) {
+            // If we have a currentNoteId, check if text still matches
+            if (text === currentNote.body) {
+                // Text matches, keep the currentNoteId
+                return;
+            }
+            // Text doesn't match, but don't clear it automatically - let user decide
+            // The currentNoteId will be cleared when they save as new or start new
+        } else if (!currentNoteId && savedNotes && savedNotes.length > 0 && text) {
+            // No currentNoteId but we have text - try to find matching note
+            const matchingNote = savedNotes.find(note => note.body === text);
+            if (matchingNote) {
+                setCurrentNoteId(matchingNote.id);
+            }
+        }
+    }, [savedNotes]); // Run when savedNotes changes (including on mount)
+
+    // Track text changes - if text changes and doesn't match current note, clear currentNoteId
+    useEffect(() => {
+        if (currentNoteId && currentNote) {
+            if (text !== currentNote.body) {
+                // Text has changed from saved note, clear currentNoteId
+                setCurrentNoteId(null);
+                try {
+                    localStorage.removeItem(CURRENT_NOTE_ID_KEY);
+                } catch {}
+            }
+        }
+    }, [text, currentNoteId, currentNote]); // Track text changes and current note
+
+    // Save currentNoteId to localStorage whenever it changes
+    useEffect(() => {
+        try {
+            if (currentNoteId) {
+                localStorage.setItem(CURRENT_NOTE_ID_KEY, currentNoteId);
+            } else {
+                localStorage.removeItem(CURRENT_NOTE_ID_KEY);
+            }
+        } catch {}
+    }, [currentNoteId]);
 
     const handleAiBrainstorm = async () => {
         if (!settings?.geminiApiKey) return notify?.("Add API Key in Settings", "⚠️");
@@ -35,29 +88,6 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
         setIsGenerating(false);
     };
 
-    const handleConvertToTasks = () => {
-        if (!text?.trim()) return notify?.("Scratchpad is empty", "⚠️");
-
-        const lines = text.split('\n');
-        let count = 0;
-
-        lines.forEach(line => {
-            const cleanLine = line.replace(/^[-*•]\s*/, '').trim();
-            if (cleanLine.length > 2) {
-                const normalizeTask = window.normalizeTask || ((t) => ({ ...t, id: 't_' + Date.now() + Math.random(), completed: false }));
-                onAddTasks?.(normalizeTask({ title: cleanLine, category: 'General' }));
-                count++;
-            }
-        });
-
-        if (count > 0) {
-            notify?.(`Created ${count} Tasks`, "✅");
-            setText?.('');
-        } else {
-            notify?.("No valid tasks found", "⚠️");
-        }
-    };
-
     const handleNew = () => {
         setText?.('');
         setCurrentNoteId(null);
@@ -66,7 +96,15 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
 
     const handleSmartSave = () => {
         if (!text?.trim()) return notify?.("Note is empty.", "⚠️");
+        
+        // Check if text matches any existing note
         if (currentNoteId && currentNote) {
+            // If text matches the current note exactly, just confirm
+            if (text === currentNote.body) {
+                notify?.("Note is already saved", "💾");
+                return;
+            }
+            // Text has changed, update the note
             const updatedNotes = (savedNotes || []).map(n =>
                 n.id === currentNoteId
                 ? { ...n, body: text, date: new Date().toISOString() }
@@ -75,8 +113,17 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
             setSavedNotes?.(updatedNotes);
             notify?.("Note Updated", "💾");
         } else {
-            setNoteTitle('');
-            setShowSaveModal(true);
+            // Check if text matches any other saved note
+            const matchingNote = (savedNotes || []).find(note => note.body === text);
+            if (matchingNote) {
+                // Text matches an existing note, restore it
+                setCurrentNoteId(matchingNote.id);
+                notify?.(`Restored: ${matchingNote.title}`, "📂");
+            } else {
+                // New note, prompt for title
+                setNoteTitle('');
+                setShowSaveModal(true);
+            }
         }
     };
 
@@ -87,6 +134,9 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
         const newNote = { id: newId, title: noteTitle, body: text, date: new Date().toISOString() };
         setSavedNotes?.([newNote, ...(savedNotes || [])]);
         setCurrentNoteId(newId);
+        try {
+            localStorage.setItem(CURRENT_NOTE_ID_KEY, newId);
+        } catch {}
         setNoteTitle('');
         setShowSaveModal(false);
         notify?.("Note Saved", "💾");
@@ -102,7 +152,12 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
     const deleteNote = (id) => {
         if(confirm('Delete this note?')) {
             setSavedNotes?.((savedNotes || []).filter(n => n.id !== id));
-            if (currentNoteId === id) setCurrentNoteId(null);
+            if (currentNoteId === id) {
+                setCurrentNoteId(null);
+                try {
+                    localStorage.removeItem(CURRENT_NOTE_ID_KEY);
+                } catch {}
+            }
             notify?.("Note Deleted", "🗑");
         }
     };
@@ -112,16 +167,54 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
             <div style={{paddingBottom:8, borderBottom:'1px solid var(--border)', marginBottom:12, display:'flex', flexDirection: 'column', gap:4}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <h3 style={{margin:0}}>Ideas</h3>
-                    <div style={{display:'flex', gap:4}}>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={handleNew}>+ New</button>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={() => setShowLoadModal(true)}>📂 Load</button>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11, borderColor:'var(--primary)', color:'var(--primary)'}} onClick={handleSmartSave}>💾 Save</button>
+                    <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={handleNew}
+                            title="New Note"
+                        >
+                            ➕
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={() => setShowLoadModal(true)}
+                            title="Load Note"
+                        >
+                            📂
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer', color:'var(--primary)'}} 
+                            onClick={handleSmartSave}
+                            title="Save Note"
+                        >
+                            💾
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={handleAiBrainstorm}
+                            disabled={isGenerating}
+                            title="AI Brainstorm"
+                        >
+                            {isGenerating ? '⏳' : '🤖'}
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={handleConvertToTasks}
+                            title="Convert to Tasks"
+                        >
+                            📋
+                        </button>
                     </div>
                 </div>
                 {currentNote && <div style={{fontSize:10, color:'var(--primary)', fontWeight:700}}>Editing: {currentNote.title}</div>}
             </div>
 
-            <div style={{flex: 1, display: 'flex', flexDirection: 'column', marginBottom:16}}>
+            <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                 <textarea
                     className="f-textarea"
                     style={{minHeight: '300px', flexGrow: 1, resize: 'vertical', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, padding:16, border:'1px solid var(--border)', borderRadius:12}}
@@ -129,24 +222,6 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
                     value={text || ''}
                     onChange={e => setText?.(e.target.value)}
                 />
-            </div>
-
-            <div style={{display:'flex', gap:10}}>
-                <button
-                    className="btn-focus"
-                    style={{background: 'linear-gradient(135deg, #a29bfe, #6c5ce7)', flex: 1}}
-                    onClick={handleAiBrainstorm}
-                    disabled={isGenerating}
-                >
-                    {isGenerating ? 'Dreaming...' : '✨ AI Brainstorm'}
-                </button>
-                <button
-                    className="btn-orange"
-                    style={{flex: 1}}
-                    onClick={handleConvertToTasks}
-                >
-                    📋 Convert to Tasks
-                </button>
             </div>
 
             {showSaveModal && (

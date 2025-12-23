@@ -7,7 +7,7 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import PeopleManager from "../managers/PeopleManager";
 
-export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTimer, goals, settings, tasks, updateTask }) {
+export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTimer, goals, settings, tasks, updateTask, onRespin }) {
   const [subtaskInput, setSubtaskInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [timerSeconds, setTimerSeconds] = useState(0);
@@ -45,6 +45,29 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
       window.removeEventListener("locations-updated", loadData);
     };
   }, []);
+
+  const updateLocationsGlobally = (newList) => {
+    const next = Array.isArray(newList) ? newList : [];
+    setAllLocations(next);
+    if (typeof window.setSavedLocationsV1 === "function") {
+      window.setSavedLocationsV1(next);
+    } else {
+      localStorage.setItem("savedLocations_v1", JSON.stringify(next));
+      window.dispatchEvent(new Event("locations-updated"));
+    }
+  };
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!task) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [task, onClose]);
 
   // Lock scroll when modal is open
   useEffect(() => {
@@ -186,7 +209,15 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
     <>
       {createPortal(
         <div 
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            // Only close if clicking the backdrop, not the modal content
+            if (e.target === e.currentTarget) {
+              onClose();
+            }
+          }}
           onClick={(e) => {
+            e.stopPropagation();
             // Only close if clicking the backdrop, not the modal content
             if (e.target === e.currentTarget) {
               onClose();
@@ -195,12 +226,14 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           style={{ 
             position: 'fixed', inset: 0, 
             background: 'rgba(0,0,0,0.7)', 
-            zIndex: 9999, 
+            zIndex: 10000, 
             display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            padding: 20 
+            padding: 20,
+            pointerEvents: 'auto'
           }}
         >
       <div 
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={e => e.stopPropagation()} 
         style={{ 
           background: 'var(--card)', 
@@ -414,7 +447,11 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           </div>
           
           <button 
-            onClick={onClose} 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
             style={{ 
               background: 'none', border: 'none', fontSize: 24, 
               color: 'var(--text)', cursor: 'pointer',
@@ -490,7 +527,17 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
             </div>
             {onFocus && (
               <button
-                onClick={() => { onFocus(task); onClose(); }}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onFocus(task);
+                  onClose();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 style={{
                   background: 'var(--primary)',
                   border: 'none',
@@ -499,14 +546,10 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   borderRadius: 16,
                   fontSize: 11,
                   fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
+                  cursor: 'pointer'
                 }}
               >
-                <span>🧘</span>
-                <span>Focus</span>
+                Focus
               </button>
             )}
           </div>
@@ -720,70 +763,205 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
         <div style={{ 
           padding: '12px 16px', 
           borderTop: '1px solid var(--border)',
-          display: 'flex', gap: 8
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12
         }}>
-          <button 
-            onClick={() => { onEdit(task); onClose(); }}
-            style={{ 
-              flex: 1,
-              background: 'var(--input-bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 12,
-              fontWeight: 700,
-              color: 'var(--text)',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'var(--input-bg)';
-            }}
-          >
-            Edit Details
-          </button>
+          {/* Group 1: View and Edit */}
+          <div style={{
+            display: 'flex',
+            gap: 8
+          }}>
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // View is just keeping the modal open, so do nothing or refresh
+                // This button might not be needed if we're already viewing
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              style={{ 
+                flex: 1,
+                background: 'var(--input-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '10px 16px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'var(--text)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--input-bg)';
+              }}
+            >
+              View
+            </button>
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onEdit) {
+                  // Call onEdit first to replace the modal in the stack
+                  onEdit(task);
+                  // Don't call onClose() - let onEdit handle the modal replacement
+                  // The modal stack will replace viewTask with editTask
+                } else {
+                  console.warn('onEdit not provided to ViewTaskModal');
+                }
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              style={{ 
+                flex: 1,
+                background: 'var(--input-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '10px 16px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'var(--text)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'var(--input-bg)';
+              }}
+            >
+              Edit
+            </button>
+          </div>
 
-          <button 
-            onClick={() => { 
-              if (!isDone && settings?.confetti && typeof window.fireSmartConfetti === 'function') {
-                window.fireSmartConfetti('taskComplete', settings);
-              }
-              onComplete(task.id); 
-              onClose(); 
-            }}
-            style={{ 
-              flex: 1,
-              background: isDone ? 'var(--input-bg)' : 'var(--primary)',
-              border: isDone ? '1px solid var(--border)' : 'none',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#fff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (!isDone) {
-                e.target.style.background = 'var(--primary-hover)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isDone) {
-                e.target.style.background = 'var(--primary)';
-              }
-            }}
-          >
-            <span>✓</span>
-            <span>{isDone ? 'Undo' : 'Complete'}</span>
-          </button>
+          {/* Group 2: Respin, Done, Focus */}
+          <div style={{
+            display: 'flex',
+            gap: 8
+          }}>
+            {onRespin && (
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRespin();
+                  onClose();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                style={{ 
+                  flex: 1,
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '10px 16px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--input-bg)';
+                }}
+              >
+                Respin
+              </button>
+            )}
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isDone && settings?.confetti && typeof window.fireSmartConfetti === 'function') {
+                  window.fireSmartConfetti('taskComplete', settings);
+                }
+                onComplete(task.id); 
+                onClose(); 
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              style={{ 
+                flex: 1,
+                background: isDone ? 'var(--input-bg)' : 'var(--primary)',
+                border: isDone ? '1px solid var(--border)' : 'none',
+                borderRadius: 8,
+                padding: '10px 16px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#fff',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!isDone) {
+                  e.target.style.background = 'var(--primary-hover)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isDone) {
+                  e.target.style.background = 'var(--primary)';
+                }
+              }}
+            >
+              {isDone ? 'Undo' : 'Done'}
+            </button>
+            {onFocus && (
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onFocus(task);
+                  onClose();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                style={{ 
+                  flex: 1,
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '10px 16px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--input-bg)';
+                }}
+              >
+                Focus
+              </button>
+            )}
+          </div>
         </div>
 
       </div>
@@ -817,6 +995,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               if (onEdit) onEdit(t);
             }}
             locations={allLocations}
+            setLocations={updateLocationsGlobally}
+            setTasks={setTasks}
             initialSelectedPersonName={selectedPersonName}
           />
         </div>,

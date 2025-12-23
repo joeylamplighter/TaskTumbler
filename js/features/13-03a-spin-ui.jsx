@@ -6,7 +6,7 @@
 // ===========================================
 
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import ReactDOM from 'react-dom'
 
 (function () {
   const { useState, useEffect, useRef } = React;

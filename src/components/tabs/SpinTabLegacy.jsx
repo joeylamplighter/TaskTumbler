@@ -133,6 +133,7 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
     onView,
     onFocus,
     onAdd,
+    onEdit,
     onComplete,
     settings,
     notify,
@@ -1548,6 +1549,7 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
             onClose={closeWinnerPopup}
             onFocus={(t) => requestFocus(t || winner, "spin")}
             onView={(t) => onView?.(t || winner)}
+            onEdit={(t) => onEdit?.(t || winner)}
             onDone={(t) => onComplete?.((t || winner)?.id)}
             onRespin={() => {
               isRespinRef.current = true; // Mark as respin
