@@ -110,47 +110,46 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
             <div style={{paddingBottom:8, borderBottom:'1px solid var(--border)', marginBottom:12, display:'flex', flexDirection: 'column', gap:4}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <h3 style={{margin:0}}>Ideas</h3>
-                    <div style={{display:'flex', gap:4}}>
+                    <div style={{display:'flex', gap:4, alignItems:'center'}}>
                         <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={handleNew}>+ New</button>
                         <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={() => setShowLoadModal(true)}>📂 Load</button>
                         <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11, borderColor:'var(--primary)', color:'var(--primary)'}} onClick={handleSmartSave}>💾 Save</button>
+                        <div style={{width:1, height:16, background:'var(--border)', margin:'0 4px'}}></div>
+                        <button
+                            onClick={handleAiBrainstorm}
+                            disabled={isGenerating}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--primary)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: isGenerating ? 'wait' : 'pointer',
+                                padding: 0,
+                                textDecoration: 'underline',
+                                opacity: isGenerating ? 0.5 : 1
+                            }}
+                        >
+                            {isGenerating ? 'Dreaming...' : 'Brainstorm'}
+                        </button>
+                        <button
+                            onClick={handleConvertToTasks}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--orange)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                padding: 0,
+                                textDecoration: 'underline'
+                            }}
+                        >
+                            Convert
+                        </button>
                     </div>
                 </div>
                 {currentNote && <div style={{fontSize:10, color:'var(--primary)', fontWeight:700}}>Editing: {currentNote.title}</div>}
-                <div style={{display: 'flex', gap: 16, paddingTop: 4}}>
-                    <button
-                        onClick={handleAiBrainstorm}
-                        disabled={isGenerating}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--primary)',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: isGenerating ? 'wait' : 'pointer',
-                            padding: 0,
-                            textDecoration: 'underline',
-                            opacity: isGenerating ? 0.5 : 1
-                        }}
-                    >
-                        {isGenerating ? '✨ Dreaming...' : '✨ AI Brainstorm'}
-                    </button>
-                    <button
-                        onClick={handleConvertToTasks}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--orange)',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            padding: 0,
-                            textDecoration: 'underline'
-                        }}
-                    >
-                        📋 Convert to Tasks
-                    </button>
-                </div>
             </div>
 
             <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
