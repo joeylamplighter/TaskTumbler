@@ -74,8 +74,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       setFighter1Anim('');
       setFighter2Anim('');
       setWeightChange({ id: null, text: '' });
-      setFighter1Action(null);
-      setFighter2Action(null);
+      setFighter1Emoji(null);
+      setFighter2Emoji(null);
       setWinnerCharacters([]);
       setLoserCharacters([]);
       return;
@@ -96,8 +96,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       setFighter1Anim('');
       setFighter2Anim('');
       setWeightChange({ id: null, text: '' });
-      setFighter1Action(null);
-      setFighter2Action(null);
+      setFighter1Emoji(null);
+      setFighter2Emoji(null);
       setWinnerCharacters([]);
       setLoserCharacters([]);
       return;
@@ -135,8 +135,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
             setFighter1Anim('');
             setFighter2Anim('');
             setWeightChange({ id: null, text: '' });
-            setFighter1Action(null);
-            setFighter2Action(null);
+            setFighter1Emoji(null);
+            setFighter2Emoji(null);
             setWinnerCharacters([]);
             setLoserCharacters([]);
             return;

@@ -684,7 +684,7 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
             ) : isColumnCollapsed ? (
               // Collapsed: Just show letters vertically
               filtered.map(p => {
-                const initials = (p.firstName?.[0] || p.name?.[0] || '?').toUpperCase();
+                const initials = getInitials(p);
                 const isSelected = viewingId === p.id || editId === p.id;
                 return (
                   <div
