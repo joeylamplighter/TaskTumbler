@@ -117,9 +117,43 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
                     </div>
                 </div>
                 {currentNote && <div style={{fontSize:10, color:'var(--primary)', fontWeight:700}}>Editing: {currentNote.title}</div>}
+                <div style={{display: 'flex', gap: 16, paddingTop: 4}}>
+                    <button
+                        onClick={handleAiBrainstorm}
+                        disabled={isGenerating}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: isGenerating ? 'wait' : 'pointer',
+                            padding: 0,
+                            textDecoration: 'underline',
+                            opacity: isGenerating ? 0.5 : 1
+                        }}
+                    >
+                        {isGenerating ? '✨ Dreaming...' : '✨ AI Brainstorm'}
+                    </button>
+                    <button
+                        onClick={handleConvertToTasks}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--orange)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: 0,
+                            textDecoration: 'underline'
+                        }}
+                    >
+                        📋 Convert to Tasks
+                    </button>
+                </div>
             </div>
 
-            <div style={{flex: 1, display: 'flex', flexDirection: 'column', marginBottom:16}}>
+            <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                 <textarea
                     className="f-textarea"
                     style={{minHeight: '300px', flexGrow: 1, resize: 'vertical', fontFamily: 'monospace', fontSize: 14, lineHeight: 1.6, padding:16, border:'1px solid var(--border)', borderRadius:12}}
@@ -127,24 +161,6 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
                     value={text}
                     onChange={e => setText(e.target.value)}
                 />
-            </div>
-
-            <div style={{display:'flex', gap:10}}>
-                <button
-                    className="btn-focus"
-                    style={{background: 'linear-gradient(135deg, #a29bfe, #6c5ce7)', flex: 1}}
-                    onClick={handleAiBrainstorm}
-                    disabled={isGenerating}
-                >
-                    {isGenerating ? 'Dreaming...' : '✨ AI Brainstorm'}
-                </button>
-                <button
-                    className="btn-orange"
-                    style={{flex: 1}}
-                    onClick={handleConvertToTasks}
-                >
-                    📋 Convert to Tasks
-                </button>
             </div>
 
             {showSaveModal && (
