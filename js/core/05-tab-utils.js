@@ -212,8 +212,6 @@
                             if (minutes <= 60) return false;
                             break;
                     }
-                } else {
-                    return false;
                 }
             }
             
