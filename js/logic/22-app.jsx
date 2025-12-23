@@ -2117,27 +2117,51 @@ const removeSubCategory = (parentCat, subName) => {
                       return null;
                     })()}
                   </div>
-                  <button
-                    onClick={() => {
-                      window.recentErrors = [];
-                      try {
-                        localStorage.removeItem('tt_debug_errors');
-                      } catch {}
-                      notify('Error log cleared', '🗑️');
-                    }}
-                    style={{
-                      background: 'rgba(255, 107, 107, 0.2)',
-                      border: '1px solid rgba(255, 107, 107, 0.4)',
-                      color: '#ff6b6b',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontSize: 8,
-                      cursor: 'pointer',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    Clear
-                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      onClick={() => {
+                        const latest = window.recentErrors[window.recentErrors.length - 1];
+                        if (latest) {
+                          const errorText = `[${latest.type}] ${new Date(latest.time).toISOString()}\n${latest.message}\n${latest.stack || ''}`;
+                          navigator.clipboard.writeText(errorText);
+                          notify('Latest error copied', '📋');
+                        }
+                      }}
+                      style={{
+                        background: 'rgba(107, 107, 255, 0.2)',
+                        border: '1px solid rgba(107, 107, 255, 0.4)',
+                        color: '#9999ff',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontSize: 8,
+                        cursor: 'pointer',
+                        fontFamily: 'monospace'
+                      }}
+                    >
+                      Copy Latest
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.recentErrors = [];
+                        try {
+                          localStorage.removeItem('tt_debug_errors');
+                        } catch {}
+                        notify('Error log cleared', '🗑️');
+                      }}
+                      style={{
+                        background: 'rgba(255, 107, 107, 0.2)',
+                        border: '1px solid rgba(255, 107, 107, 0.4)',
+                        color: '#ff6b6b',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontSize: 8,
+                        cursor: 'pointer',
+                        fontFamily: 'monospace'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
                 {window.recentErrors.slice(-5).reverse().map((err, i) => (
                   <div key={i} style={{
@@ -2146,14 +2170,58 @@ const removeSubCategory = (parentCat, subName) => {
                     padding: 4,
                     background: 'rgba(255, 107, 107, 0.1)',
                     borderRadius: 4,
-                    borderLeft: '2px solid #ff6b6b'
+                    borderLeft: '2px solid #ff6b6b',
+                    position: 'relative'
                   }}>
-                    <div style={{ color: '#ff9999', marginBottom: 1 }}>
-                      <strong>[{err.type}]</strong> {new Date(err.time).toLocaleTimeString()}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 1 }}>
+                      <div style={{ color: '#ff9999' }}>
+                        <strong>[{err.type}]</strong> {new Date(err.time).toLocaleTimeString()}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const errorText = `[${err.type}] ${new Date(err.time).toISOString()}\n${err.message}\n${err.stack || ''}`;
+                          navigator.clipboard.writeText(errorText);
+                          notify('Error copied', '📋');
+                        }}
+                        style={{
+                          background: 'rgba(255, 107, 107, 0.3)',
+                          border: '1px solid rgba(255, 107, 107, 0.5)',
+                          color: '#ff9999',
+                          padding: '1px 4px',
+                          borderRadius: 3,
+                          fontSize: 7,
+                          cursor: 'pointer',
+                          fontFamily: 'monospace',
+                          lineHeight: 1
+                        }}
+                      >
+                        Copy
+                      </button>
                     </div>
                     <div style={{ color: '#ffcccc', wordBreak: 'break-word' }}>
                       {err.message || err.toString()}
                     </div>
+                    {err.stack && (
+                      <details style={{ marginTop: 2 }}>
+                        <summary style={{
+                          cursor: 'pointer',
+                          color: '#ff9999',
+                          fontSize: 7,
+                          userSelect: 'none'
+                        }}>
+                          Stack trace
+                        </summary>
+                        <pre style={{
+                          fontSize: 7,
+                          color: '#ffcccc',
+                          marginTop: 2,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all'
+                        }}>
+                          {err.stack}
+                        </pre>
+                      </details>
+                    )}
                   </div>
                 ))}
               </div>
