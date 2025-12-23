@@ -186,28 +186,34 @@
             }
             
             // Duration filter
-            if (duration !== 'Any' && task.estimatedTime) {
-                const est = parseInt(task.estimatedTime, 10) || 0;
-                const unit = task.estimatedTimeUnit || 'min';
-                const minutes = unit === 'hours' || unit === 'h' ? est * 60 : 
-                               unit === 'days' || unit === 'd' ? est * 1440 : est;
-                
-                switch (duration) {
-                    case '< 5m':
-                        if (minutes >= 5) return false;
-                        break;
-                    case '< 15m':
-                        if (minutes >= 15) return false;
-                        break;
-                    case '< 30m':
-                        if (minutes >= 30) return false;
-                        break;
-                    case '< 60m':
-                        if (minutes >= 60) return false;
-                        break;
-                    case '> 1h':
-                        if (minutes <= 60) return false;
-                        break;
+            if (duration !== 'Any') {
+                if (duration === 'None') {
+                    if (task.estimatedTime) return false;
+                } else if (task.estimatedTime) {
+                    const est = parseInt(task.estimatedTime, 10) || 0;
+                    const unit = task.estimatedTimeUnit || 'min';
+                    const minutes = unit === 'hours' || unit === 'h' ? est * 60 :
+                                   unit === 'days' || unit === 'd' ? est * 1440 : est;
+
+                    switch (duration) {
+                        case '< 5m':
+                            if (minutes >= 5) return false;
+                            break;
+                        case '< 15m':
+                            if (minutes >= 15) return false;
+                            break;
+                        case '< 30m':
+                            if (minutes >= 30) return false;
+                            break;
+                        case '< 60m':
+                            if (minutes >= 60) return false;
+                            break;
+                        case '> 1h':
+                            if (minutes <= 60) return false;
+                            break;
+                    }
+                } else {
+                    return false;
                 }
             }
             
