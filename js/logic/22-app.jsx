@@ -796,9 +796,23 @@ const removeSubCategory = (parentCat, subName) => {
     }
   }, [settings?.theme]);
 
-  // Error tracking for debug info
+  // Error tracking for debug info (persisted across crashes)
   React.useEffect(() => {
-    if (!window.recentErrors) window.recentErrors = [];
+    // Load persisted errors from localStorage
+    try {
+      const saved = localStorage.getItem('tt_debug_errors');
+      window.recentErrors = saved ? JSON.parse(saved) : [];
+    } catch {
+      window.recentErrors = [];
+    }
+
+    const persistErrors = () => {
+      try {
+        localStorage.setItem('tt_debug_errors', JSON.stringify(window.recentErrors));
+      } catch (e) {
+        // Silently fail if storage is full
+      }
+    };
 
     const handleError = (event) => {
       window.recentErrors.push({
@@ -807,7 +821,8 @@ const removeSubCategory = (parentCat, subName) => {
         time: new Date().toISOString(),
         type: 'runtime'
       });
-      window.recentErrors = window.recentErrors.slice(-10);
+      window.recentErrors = window.recentErrors.slice(-20);
+      persistErrors();
     };
 
     const handleRejection = (event) => {
@@ -817,7 +832,8 @@ const removeSubCategory = (parentCat, subName) => {
         time: new Date().toISOString(),
         type: 'promise'
       });
-      window.recentErrors = window.recentErrors.slice(-10);
+      window.recentErrors = window.recentErrors.slice(-20);
+      persistErrors();
     };
 
     // Intercept console.error and console.warn for debug tracking
@@ -831,7 +847,8 @@ const removeSubCategory = (parentCat, subName) => {
         time: new Date().toISOString(),
         type: 'console.error'
       });
-      window.recentErrors = window.recentErrors.slice(-10);
+      window.recentErrors = window.recentErrors.slice(-20);
+      persistErrors();
     };
 
     console.warn = (...args) => {
@@ -841,7 +858,8 @@ const removeSubCategory = (parentCat, subName) => {
         time: new Date().toISOString(),
         type: 'console.warn'
       });
-      window.recentErrors = window.recentErrors.slice(-10);
+      window.recentErrors = window.recentErrors.slice(-20);
+      persistErrors();
     };
 
     window.addEventListener('error', handleError);
@@ -2075,10 +2093,36 @@ const removeSubCategory = (parentCat, subName) => {
                   alignItems: 'center',
                   marginBottom: 3
                 }}>
-                  <div style={{ color: "#ff6b6b", fontWeight: 600 }}>RECENT ERRORS ({window.recentErrors.length})</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ color: "#ff6b6b", fontWeight: 600 }}>RECENT ERRORS ({window.recentErrors.length})</div>
+                    {(() => {
+                      const oldestError = window.recentErrors[0];
+                      if (oldestError) {
+                        const errorAge = Date.now() - new Date(oldestError.time).getTime();
+                        if (errorAge > 60000) {
+                          return (
+                            <div style={{
+                              fontSize: 7,
+                              color: '#ff9999',
+                              background: 'rgba(255, 107, 107, 0.2)',
+                              padding: '2px 4px',
+                              borderRadius: 3,
+                              border: '1px solid rgba(255, 107, 107, 0.3)'
+                            }}>
+                              Includes errors from {errorAge > 3600000 ? `${Math.floor(errorAge / 3600000)}h ago` : `${Math.floor(errorAge / 60000)}m ago`}
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
+                  </div>
                   <button
                     onClick={() => {
                       window.recentErrors = [];
+                      try {
+                        localStorage.removeItem('tt_debug_errors');
+                      } catch {}
                       notify('Error log cleared', '🗑️');
                     }}
                     style={{
