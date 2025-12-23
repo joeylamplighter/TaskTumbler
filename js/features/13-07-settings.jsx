@@ -1,5 +1,5 @@
 import React from 'react'
-import SettingsTabComponent from '../../src/components/tabs/SettingsTab.jsx'
+import SettingsTabLegacy from '../../src/components/tabs/SettingsTabLegacy.jsx'
 
-window.SettingsTab = SettingsTabComponent;
+window.SettingsTab = SettingsTabLegacy;
 console.log("✅ 13-07-settings.jsx loaded");
