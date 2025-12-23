@@ -110,35 +110,53 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
             <div style={{paddingBottom:8, borderBottom:'1px solid var(--border)', marginBottom:12, display:'flex', flexDirection: 'column', gap:4}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <h3 style={{margin:0}}>Ideas</h3>
-                    <div style={{display:'flex', gap:4, alignItems:'center'}}>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={handleNew}>+ New</button>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11}} onClick={() => setShowLoadModal(true)}>📂 Load</button>
-                        <button className="btn-white-outline" style={{padding:'6px 8px', fontSize:11, borderColor:'var(--primary)', color:'var(--primary)'}} onClick={handleSmartSave}>💾 Save</button>
-                        <div style={{width:1, height:16, background:'var(--border)', margin:'0 4px'}}></div>
+                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
                         <button
+                            className="btn-white-outline"
+                            style={{padding:'6px 10px', fontSize:16}}
+                            onClick={handleNew}
+                            title="New Idea"
+                        >
+                            ➕
+                        </button>
+                        <button
+                            className="btn-white-outline"
+                            style={{padding:'6px 10px', fontSize:16}}
+                            onClick={() => setShowLoadModal(true)}
+                            title="Load Idea"
+                        >
+                            📂
+                        </button>
+                        <button
+                            className="btn-white-outline"
+                            style={{padding:'6px 10px', fontSize:16}}
+                            onClick={handleSmartSave}
+                            title="Save Idea"
+                        >
+                            💾
+                        </button>
+                        <button
+                            className="btn-white-outline"
                             onClick={handleAiBrainstorm}
                             disabled={isGenerating}
                             title={isGenerating ? 'Dreaming...' : 'AI Brainstorm'}
                             style={{
-                                background: 'none',
-                                border: 'none',
+                                padding:'6px 10px',
                                 fontSize: 16,
                                 cursor: isGenerating ? 'wait' : 'pointer',
-                                padding: 0,
                                 opacity: isGenerating ? 0.5 : 1
                             }}
                         >
-                            ✨
+                            🤖
                         </button>
                         <button
+                            className="btn-white-outline"
                             onClick={handleConvertToTasks}
                             title="Convert to Tasks"
                             style={{
-                                background: 'none',
-                                border: 'none',
+                                padding:'6px 10px',
                                 fontSize: 16,
-                                cursor: 'pointer',
-                                padding: 0
+                                cursor: 'pointer'
                             }}
                         >
                             📋
