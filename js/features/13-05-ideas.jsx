@@ -118,34 +118,30 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
                         <button
                             onClick={handleAiBrainstorm}
                             disabled={isGenerating}
+                            title={isGenerating ? 'Dreaming...' : 'AI Brainstorm'}
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: 'var(--primary)',
-                                fontSize: 11,
-                                fontWeight: 600,
+                                fontSize: 16,
                                 cursor: isGenerating ? 'wait' : 'pointer',
                                 padding: 0,
-                                textDecoration: 'underline',
                                 opacity: isGenerating ? 0.5 : 1
                             }}
                         >
-                            {isGenerating ? 'Dreaming...' : 'Brainstorm'}
+                            ✨
                         </button>
                         <button
                             onClick={handleConvertToTasks}
+                            title="Convert to Tasks"
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: 'var(--orange)',
-                                fontSize: 11,
-                                fontWeight: 600,
+                                fontSize: 16,
                                 cursor: 'pointer',
-                                padding: 0,
-                                textDecoration: 'underline'
+                                padding: 0
                             }}
                         >
-                            Convert
+                            📋
                         </button>
                     </div>
                 </div>
