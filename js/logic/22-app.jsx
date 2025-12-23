@@ -2591,7 +2591,7 @@ const removeSubCategory = (parentCat, subName) => {
 )}
           </div>
 
-          <NavBarComp current={tab} onTabChange={setTab} items={navItems} hidden={!isDockVisible} />
+          <NavBarComp current={tab} set={setTab} items={navItems} hidden={!isDockVisible} />
         </React.Fragment>
       )}
 
