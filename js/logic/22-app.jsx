@@ -37,6 +37,16 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("Crash caught:", error, errorInfo);
 
+    // Track error for debug info
+    if (!window.recentErrors) window.recentErrors = [];
+    window.recentErrors.push({
+      message: error.message || error.toString(),
+      stack: error.stack,
+      time: new Date().toISOString(),
+      info: errorInfo
+    });
+    window.recentErrors = window.recentErrors.slice(-10); // Keep last 10 errors
+
     // Try to restore from backup before clearing (if DataManager is available)
     try {
       if (window.DataManager && window.DataManager.restoreBackup) {
@@ -785,6 +795,65 @@ const removeSubCategory = (parentCat, subName) => {
       metaThemeColor.setAttribute("content", colors[settings?.theme] || "#ff6b35");
     }
   }, [settings?.theme]);
+
+  // Error tracking for debug info
+  React.useEffect(() => {
+    if (!window.recentErrors) window.recentErrors = [];
+
+    const handleError = (event) => {
+      window.recentErrors.push({
+        message: event.error?.message || event.message || "Unknown error",
+        stack: event.error?.stack,
+        time: new Date().toISOString(),
+        type: 'runtime'
+      });
+      window.recentErrors = window.recentErrors.slice(-10);
+    };
+
+    const handleRejection = (event) => {
+      window.recentErrors.push({
+        message: event.reason?.message || event.reason?.toString() || "Unhandled promise rejection",
+        stack: event.reason?.stack,
+        time: new Date().toISOString(),
+        type: 'promise'
+      });
+      window.recentErrors = window.recentErrors.slice(-10);
+    };
+
+    // Intercept console.error and console.warn for debug tracking
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.error = (...args) => {
+      originalError.apply(console, args);
+      window.recentErrors.push({
+        message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '),
+        time: new Date().toISOString(),
+        type: 'console.error'
+      });
+      window.recentErrors = window.recentErrors.slice(-10);
+    };
+
+    console.warn = (...args) => {
+      originalWarn.apply(console, args);
+      window.recentErrors.push({
+        message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '),
+        time: new Date().toISOString(),
+        type: 'console.warn'
+      });
+      window.recentErrors = window.recentErrors.slice(-10);
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+      console.error = originalError;
+      console.warn = originalWarn;
+    };
+  }, []);
 
   // Toasts
   const notify = (msg, icon) => {
@@ -1830,30 +1899,221 @@ const removeSubCategory = (parentCat, subName) => {
       {showDebugInfo && (
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.7)",
-            padding: "10px",
+            background: "rgba(0, 0, 0, 0.85)",
+            padding: "12px",
             borderRadius: 10,
-            backdropFilter: "blur(6px)",
+            backdropFilter: "blur(8px)",
             border: isLightTheme ? "1px solid rgba(0,0,0,0.2)" : "1px solid rgba(255,255,255,0.15)",
             fontFamily: "monospace",
             fontSize: 9,
             color: isLightTheme ? "#1a1a1a" : "#fff",
-            maxHeight: "300px",
+            maxHeight: "500px",
             overflow: "auto",
           }}
         >
-          <div style={{ fontWeight: 700, marginBottom: 6, color: getDevColor("#c9f", "#6600cc") }}>DEBUG INFO</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div><strong>Tab:</strong> {tab}</div>
-            <div><strong>Timer Running:</strong> {timerState.isRunning ? "Yes" : "No"}</div>
-            <div><strong>Sync State:</strong> {syncState}</div>
-            <div><strong>Cloud User:</strong> {cloudUser ? "Signed In" : "Not Signed In"}</div>
-            <div><strong>DM Available:</strong> {DM ? "Yes" : "No"}</div>
-            <div><strong>Firebase:</strong> {window.firebase ? "Yes" : "No"}</div>
-            <div><strong>Initialized:</strong> {isInitialized ? "Yes" : "No"}</div>
-            <div style={{ marginTop: 4, fontSize: 8, color: getDevColor("#999", "#666") }}>
-              <strong>Tasks:</strong> {JSON.stringify(dataStats, null, 2)}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8
+          }}>
+            <div style={{ fontWeight: 700, color: getDevColor("#c9f", "#6600cc"), fontSize: 11 }}>DEBUG INFO</div>
+            <button
+              onClick={() => {
+                const debugData = {
+                  timestamp: new Date().toISOString(),
+                  navigation: {
+                    tab,
+                    subtab: getCurrentSubtab() || "none",
+                    hash: window.location.hash || "none",
+                    dockVisible: isDockVisible
+                  },
+                  dataCounts: {
+                    tasks: { total: tasks.length, active: tasks.filter(t => !t.completed).length, completed: tasks.filter(t => t.completed).length },
+                    goals: goals.length,
+                    categories: categories.length,
+                    people: allPeople.length,
+                    activities: activities.length,
+                    savedNotes: savedNotes.length
+                  },
+                  state: {
+                    timerRunning: timerState.isRunning,
+                    timerActivity: timerState.activityName || "none",
+                    focusMode: focusTask ? focusTask.title : "none",
+                    modalsOpen: modalStack.length,
+                    modalTypes: modalStack.map(m => m.type),
+                    toastsActive: toasts.length,
+                    autoRefresh: autoRefreshEnabled
+                  },
+                  system: {
+                    syncState,
+                    cloudUser: cloudUser ? cloudUser.email || "signed in" : "not signed in",
+                    dmAvailable: !!DM,
+                    firebase: !!window.firebase,
+                    initialized: isInitialized,
+                    theme: settings?.theme || "dark"
+                  },
+                  userStats: {
+                    xp: userStats?.xp || 0,
+                    level: userStats?.level || 1,
+                    streak: userStats?.streak || 0
+                  },
+                  recentErrors: window.recentErrors || []
+                };
+                navigator.clipboard.writeText(JSON.stringify(debugData, null, 2))
+                  .then(() => notify('Debug info copied to clipboard', '📋'))
+                  .catch(() => notify('Failed to copy debug info', '❌'));
+              }}
+              style={{
+                background: 'rgba(150, 100, 255, 0.2)',
+                border: '1px solid rgba(150, 100, 255, 0.4)',
+                color: getDevColor("#c9f", "#6600cc"),
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 8,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+                fontWeight: 600
+              }}
+            >
+              📋 Copy All
+            </button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* Navigation State */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>NAVIGATION</div>
+              <div><strong>Tab:</strong> {tab}</div>
+              <div><strong>Subtab:</strong> {getCurrentSubtab() || "none"}</div>
+              <div><strong>URL Hash:</strong> {window.location.hash || "none"}</div>
+              <div><strong>Dock Visible:</strong> {isDockVisible ? "Yes" : "No"}</div>
             </div>
+
+            {/* Data Counts */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>DATA COUNTS</div>
+              <div><strong>Tasks Total:</strong> {tasks.length} ({tasks.filter(t => !t.completed).length} active, {tasks.filter(t => t.completed).length} completed)</div>
+              <div><strong>Goals:</strong> {goals.length}</div>
+              <div><strong>Categories:</strong> {categories.length}</div>
+              <div><strong>People:</strong> {allPeople.length}</div>
+              <div><strong>Activities:</strong> {activities.length}</div>
+              <div><strong>Saved Notes:</strong> {savedNotes.length}</div>
+            </div>
+
+            {/* State Info */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>STATE</div>
+              <div><strong>Timer Running:</strong> {timerState.isRunning ? "Yes" : "No"} {timerState.isRunning && timerState.activityName ? `(${timerState.activityName})` : ""}</div>
+              <div><strong>Focus Mode:</strong> {focusTask ? `Yes (${focusTask.title})` : "No"}</div>
+              <div><strong>Modals Open:</strong> {modalStack.length} {modalStack.length > 0 ? `(${modalStack.map(m => m.type).join(", ")})` : ""}</div>
+              <div><strong>Toasts Active:</strong> {toasts.length}</div>
+              <div><strong>Auto-Refresh:</strong> {autoRefreshEnabled ? "On" : "Off"} {refreshCountdown ? `(${Math.ceil(refreshCountdown / 1000)}s)` : ""}</div>
+            </div>
+
+            {/* System Info */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>SYSTEM</div>
+              <div><strong>Sync State:</strong> {syncState}</div>
+              <div><strong>Cloud User:</strong> {cloudUser ? `Signed In (${cloudUser.email || "unknown"})` : "Not Signed In"}</div>
+              <div><strong>DM Available:</strong> {DM ? "Yes" : "No"}</div>
+              <div><strong>Firebase:</strong> {window.firebase ? "Yes" : "No"}</div>
+              <div><strong>Initialized:</strong> {isInitialized ? "Yes" : "No"}</div>
+              <div><strong>Theme:</strong> {settings?.theme || "dark"}</div>
+            </div>
+
+            {/* User Stats */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>USER STATS</div>
+              <div><strong>XP:</strong> {userStats?.xp || 0}</div>
+              <div><strong>Level:</strong> {userStats?.level || 1}</div>
+              <div><strong>Streak:</strong> {userStats?.streak || 0}</div>
+            </div>
+
+            {/* Storage Info */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>STORAGE</div>
+              <div><strong>LocalStorage Size:</strong> {(() => {
+                try {
+                  let total = 0;
+                  for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                      total += localStorage[key].length + key.length;
+                    }
+                  }
+                  return `${(total / 1024).toFixed(2)} KB`;
+                } catch {
+                  return "Unknown";
+                }
+              })()}</div>
+              <div><strong>LocalStorage Keys:</strong> {(() => {
+                try {
+                  return Object.keys(localStorage).length;
+                } catch {
+                  return "Unknown";
+                }
+              })()}</div>
+            </div>
+
+            {/* Performance */}
+            <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4, marginBottom: 4 }}>
+              <div style={{ color: getDevColor("#9cf", "#0099cc"), fontWeight: 600, marginBottom: 3 }}>PERFORMANCE</div>
+              <div><strong>Memory:</strong> {window.performance?.memory ? `${(window.performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB` : "N/A"}</div>
+              <div><strong>Uptime:</strong> {(() => {
+                const uptime = performance.now() / 1000;
+                const mins = Math.floor(uptime / 60);
+                const secs = Math.floor(uptime % 60);
+                return `${mins}m ${secs}s`;
+              })()}</div>
+            </div>
+
+            {/* Recent Errors */}
+            {window.recentErrors && window.recentErrors.length > 0 && (
+              <div style={{ paddingBottom: 4 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 3
+                }}>
+                  <div style={{ color: "#ff6b6b", fontWeight: 600 }}>RECENT ERRORS ({window.recentErrors.length})</div>
+                  <button
+                    onClick={() => {
+                      window.recentErrors = [];
+                      notify('Error log cleared', '🗑️');
+                    }}
+                    style={{
+                      background: 'rgba(255, 107, 107, 0.2)',
+                      border: '1px solid rgba(255, 107, 107, 0.4)',
+                      color: '#ff6b6b',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontSize: 8,
+                      cursor: 'pointer',
+                      fontFamily: 'monospace'
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {window.recentErrors.slice(-5).reverse().map((err, i) => (
+                  <div key={i} style={{
+                    fontSize: 8,
+                    marginBottom: 4,
+                    padding: 4,
+                    background: 'rgba(255, 107, 107, 0.1)',
+                    borderRadius: 4,
+                    borderLeft: '2px solid #ff6b6b'
+                  }}>
+                    <div style={{ color: '#ff9999', marginBottom: 1 }}>
+                      <strong>[{err.type}]</strong> {new Date(err.time).toLocaleTimeString()}
+                    </div>
+                    <div style={{ color: '#ffcccc', wordBreak: 'break-word' }}>
+                      {err.message || err.toString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
