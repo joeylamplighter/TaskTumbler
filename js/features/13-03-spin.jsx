@@ -1454,6 +1454,7 @@ import ReactDOM from 'react-dom'
         ) : null}
 
         <div
+          className="tumbler-box"
           style={{
             height: 160,
             background: "var(--card)",
@@ -1480,7 +1481,14 @@ import ReactDOM from 'react-dom'
             }}
           />
 
-          <div ref={stripRef} style={{ transition: `transform ${spinDurationSec}s ${activeCurve}` }}>
+          <div 
+            ref={stripRef} 
+            className={spinning ? (spinDurationSec < 2 ? "tumbler-strip-spinning-fast" : "tumbler-strip-spinning") : ""}
+            style={{ 
+              transition: `transform ${spinDurationSec}s ${activeCurve}`,
+              willChange: spinning ? "transform" : "auto"
+            }}
+          >
             {buildStripItems.length ? (
               buildStripItems.map((t, i) => (
                 <div

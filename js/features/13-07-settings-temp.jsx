@@ -248,6 +248,186 @@ import React from 'react'
       }
     }, [settings?.geminiApiKey, safeNotify]);
 
+    // AI Theme Creation
+    const [themeDescription, setThemeDescription] = useState("");
+    const [isCreatingTheme, setIsCreatingTheme] = useState(false);
+    const [themeCreationResult, setThemeCreationResult] = useState(null);
+    const [editingThemeName, setEditingThemeName] = useState(null);
+
+    const handleCreateTheme = useCallback(async () => {
+      if (!settings?.geminiApiKey || !themeDescription) return;
+      setIsCreatingTheme(true);
+      try {
+        const customThemes = settings?.customThemes || {};
+        const existingTheme = editingThemeName ? customThemes[editingThemeName] : null;
+        
+        let prompt;
+        if (editingThemeName && existingTheme) {
+          // Modify existing theme
+          prompt = `Modify this existing theme based on the new description.
+
+Current Theme: ${existingTheme.displayName || editingThemeName}
+Current CSS Variables: ${JSON.stringify(existingTheme.cssVariables, null, 2)}
+
+New Description: "${themeDescription}"
+
+Return a JSON object with:
+- themeName: keep the same theme name (use: "${editingThemeName}")
+- cssVariables: an updated object with CSS custom properties for:
+  --primary, --primary-hover, --bg, --card, --input-bg, --text, --text-light, --border, --border-light
+- message: a brief description of the updated theme
+
+Example format:
+{
+  "themeName": "${editingThemeName}",
+  "cssVariables": {
+    "--primary": "#0ea5e9",
+    "--primary-hover": "#0284c7",
+    "--bg": "#0f172a",
+    "--card": "#1e293b",
+    "--input-bg": "#334155",
+    "--text": "#f8fafc",
+    "--text-light": "#94a3b8",
+    "--border": "#475569",
+    "--border-light": "#64748b"
+  },
+  "message": "Updated theme description"
+}`;
+        } else {
+          // Create new theme
+          prompt = `Create a CSS theme based on this description: "${themeDescription}"
+
+Return a JSON object with:
+- themeName: a short name for the theme
+- cssVariables: an object with CSS custom properties for:
+  --primary, --primary-hover, --bg, --card, --input-bg, --text, --text-light, --border, --border-light
+- message: a brief description of the theme
+
+Example format:
+{
+  "themeName": "Ocean",
+  "cssVariables": {
+    "--primary": "#0ea5e9",
+    "--primary-hover": "#0284c7",
+    "--bg": "#0f172a",
+    "--card": "#1e293b",
+    "--input-bg": "#334155",
+    "--text": "#f8fafc",
+    "--text-light": "#94a3b8",
+    "--border": "#475569",
+    "--border-light": "#64748b"
+  },
+  "message": "A deep blue ocean theme with sky blue accents"
+}`;
+        }
+
+        const res = await window.callGemini(prompt, settings.geminiApiKey);
+        if (res?.text) {
+          const jsonMatch = res.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const themeData = JSON.parse(jsonMatch[0]);
+            setThemeCreationResult(themeData);
+            safeNotify(editingThemeName ? "Theme updated!" : "Theme generated!", "✨");
+          } else {
+            throw new Error("Could not parse theme data");
+          }
+        } else {
+          throw new Error("No response from AI");
+        }
+      } catch (e) {
+        safeNotify("Theme creation failed: " + (e?.message || "Unknown error"), "❌");
+      } finally {
+        setIsCreatingTheme(false);
+      }
+    }, [settings?.geminiApiKey, settings?.customThemes, themeDescription, editingThemeName, safeNotify]);
+
+    const handleApplyTheme = useCallback((themeName, existingThemeName = null) => {
+      if (!themeCreationResult) return;
+      // If editing, use the existing theme name, otherwise sanitize the new name
+      const finalThemeName = existingThemeName || themeName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+      
+      // Store custom theme in settings
+      const customThemes = settings?.customThemes || {};
+      const existingTheme = existingThemeName ? customThemes[existingThemeName] : null;
+      
+      customThemes[finalThemeName] = {
+        cssVariables: themeCreationResult.cssVariables,
+        createdAt: existingTheme?.createdAt || new Date().toISOString(),
+        updatedAt: existingThemeName ? new Date().toISOString() : undefined,
+        displayName: themeName, // Keep original name for display
+        message: themeCreationResult.message
+      };
+      handleChange('customThemes', customThemes);
+      handleChange('theme', finalThemeName);
+      safeNotify(existingThemeName ? `Theme "${themeName}" updated and applied!` : `Theme "${themeName}" applied!`, "✅");
+      setThemeCreationResult(null);
+      setThemeDescription("");
+      setEditingThemeName(null);
+    }, [themeCreationResult, settings?.customThemes, handleChange, safeNotify]);
+
+    // AI Settings Optimizer
+    const [usageDescription, setUsageDescription] = useState("");
+    const [isOptimizingSettings, setIsOptimizingSettings] = useState(false);
+    const [settingsOptimizationResult, setSettingsOptimizationResult] = useState(null);
+
+    const handleOptimizeSettings = useCallback(async () => {
+      if (!settings?.geminiApiKey || !usageDescription) return;
+      setIsOptimizingSettings(true);
+      try {
+        const currentSettings = JSON.stringify(settings, null, 2);
+        const prompt = `Analyze this user's usage description and current settings, then provide optimized settings recommendations.
+
+User Description: "${usageDescription}"
+
+Current Settings:
+${currentSettings}
+
+Return a JSON object with:
+- recommendations: array of strings describing what to change and why
+- settings: an object with the recommended setting changes (only include keys that should change)
+
+Example format:
+{
+  "recommendations": [
+    "Enable auto-start timer for faster workflow",
+    "Reduce spin duration to 2 seconds for quicker decisions",
+    "Disable confetti to reduce distractions"
+  ],
+  "settings": {
+    "autoStartTimer": true,
+    "duration": 2,
+    "confetti": false
+  }
+}`;
+
+        const res = await window.callGemini(prompt, settings.geminiApiKey);
+        if (res?.text) {
+          const jsonMatch = res.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const optimization = JSON.parse(jsonMatch[0]);
+            setSettingsOptimizationResult(optimization);
+            safeNotify("Settings analysis complete!", "🤖");
+          } else {
+            throw new Error("Could not parse optimization data");
+          }
+        } else {
+          throw new Error("No response from AI");
+        }
+      } catch (e) {
+        safeNotify("Settings optimization failed: " + (e?.message || "Unknown error"), "❌");
+      } finally {
+        setIsOptimizingSettings(false);
+      }
+    }, [settings, usageDescription, safeNotify]);
+
+    const handleApplySettingsOptimization = useCallback((optimizedSettings) => {
+      if (!optimizedSettings) return;
+      setSettings(prev => ({ ...prev, ...optimizedSettings }));
+      safeNotify("Settings optimized and applied!", "✅");
+      setSettingsOptimizationResult(null);
+      setUsageDescription("");
+    }, [setSettings, safeNotify]);
+
     // ===========================================
     // CATEGORIES: state
     // ===========================================
@@ -1282,7 +1462,51 @@ function Fold({ title, right, open, onToggle, children }) {
                 <option value="forest">🌲 Deep Forest</option>
                 <option value="synthwave">👾 Synthwave</option>
                 <option value="coffee">☕ Warm Coffee</option>
+                {/* Custom themes */}
+                {settings?.customThemes && Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                  <option key={themeName} value={themeName}>✨ {themeData.displayName || themeName} (Custom)</option>
+                ))}
               </select>
+              
+              {/* Show custom themes management */}
+              {settings?.customThemes && Object.keys(settings.customThemes).length > 0 && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: 'var(--text-light)' }}>Custom Themes</div>
+                  {Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                    <div key={themeName} style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      padding: '6px 0',
+                      fontSize: 12
+                    }}>
+                      <span>✨ {themeData.displayName || themeName}</span>
+                      <button
+                        onClick={() => {
+                          const newCustomThemes = { ...settings.customThemes };
+                          delete newCustomThemes[themeName];
+                          handleChange('customThemes', newCustomThemes);
+                          if (settings.theme === themeName) {
+                            handleChange('theme', 'dark');
+                          }
+                          safeNotify(`Theme "${themeName}" deleted`, "🗑️");
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          padding: '4px 8px',
+                          fontSize: 10,
+                          color: 'var(--text-light)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span>Show Task Times</span>
@@ -1862,6 +2086,68 @@ function Fold({ title, right, open, onToggle, children }) {
                 </div>
               )}
             </div>
+
+            {/* TASK VIEW CUSTOMIZATION SECTION */}
+            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16, marginTop: 24 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12 }}>👁️ Task View Customization</h4>
+              <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 12 }}>
+                Control which fields are displayed in task list views.
+              </p>
+              {[
+                { key: 'showCategory', label: 'Category', default: true },
+                { key: 'showPriority', label: 'Priority', default: true },
+                { key: 'showDueDate', label: 'Due Date', default: true },
+                { key: 'showEstimatedTime', label: 'Estimated Time', default: true },
+                { key: 'showTags', label: 'Tags', default: true },
+                { key: 'showProgress', label: 'Progress Bar', default: true },
+                { key: 'showSubtaskCount', label: 'Subtask Count', default: true },
+                { key: 'showPeople', label: 'People', default: true },
+                { key: 'showLocations', label: 'Locations', default: true }
+              ].map(field => (
+                <label key={field.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, cursor: "pointer" }}>
+                  <span style={{ fontWeight: 500 }}>{field.label}</span>
+                  <input 
+                    type="checkbox" 
+                    checked={settings?.taskViewFields?.[field.key] !== false && (settings?.taskViewFields?.[field.key] !== undefined || field.default)}
+                    onChange={() => {
+                      const current = settings?.taskViewFields || {};
+                      handleChange('taskViewFields', { ...current, [field.key]: !(current[field.key] !== false && (current[field.key] !== undefined || field.default)) });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {/* TASK MODAL CUSTOMIZATION SECTION */}
+            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12 }}>📋 Task Modal Customization</h4>
+              <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 12 }}>
+                Control which sections are displayed in task detail modals.
+              </p>
+              {[
+                { key: 'showDescription', label: 'Description', default: true },
+                { key: 'showSubtasks', label: 'Subtasks', default: true },
+                { key: 'showTimer', label: 'Timer', default: true },
+                { key: 'showNotes', label: 'Notes', default: true },
+                { key: 'showPeople', label: 'People', default: true },
+                { key: 'showLocations', label: 'Locations', default: true },
+                { key: 'showReminders', label: 'Reminders', default: true },
+                { key: 'showActivityLog', label: 'Activity Log', default: true },
+                { key: 'showRelatedTasks', label: 'Related Tasks', default: false }
+              ].map(section => (
+                <label key={section.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, cursor: "pointer" }}>
+                  <span style={{ fontWeight: 500 }}>{section.label}</span>
+                  <input 
+                    type="checkbox" 
+                    checked={settings?.taskModalSections?.[section.key] !== false && (settings?.taskModalSections?.[section.key] !== undefined || section.default)}
+                    onChange={() => {
+                      const current = settings?.taskModalSections || {};
+                      handleChange('taskModalSections', { ...current, [section.key]: !(current[section.key] !== false && (current[section.key] !== undefined || section.default)) });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
@@ -2164,7 +2450,144 @@ function Fold({ title, right, open, onToggle, children }) {
                   step="0.1"
                 />
               </div>
+
+            {/* AI THEME CREATION SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #9b59b6", marginTop: 16 }}>
+              <h3 style={{ marginBottom: 12, fontFamily: 'Fredoka', fontSize: 16 }}>🎨 AI Theme Creator</h3>
+              
+              {/* Edit Existing Theme Option */}
+              {settings?.customThemes && Object.keys(settings.customThemes).length > 0 && (
+                <div style={{ marginBottom: 12, padding: 10, background: 'var(--input-bg)', borderRadius: 8 }}>
+                  <label className="f-label" style={{ marginBottom: 6 }}>Edit Existing Theme (Optional)</label>
+                  <select 
+                    className="f-select" 
+                    style={{ width: '100%', marginBottom: 8 }}
+                    value={editingThemeName || ""}
+                    onChange={(e) => {
+                      setEditingThemeName(e.target.value);
+                      if (e.target.value) {
+                        const theme = settings.customThemes[e.target.value];
+                        setThemeDescription(`Modify this theme: ${theme.displayName || e.target.value}. Current description: ${theme.message || 'No description'}`);
+                      } else {
+                        setThemeDescription("");
+                      }
+                    }}
+                  >
+                    <option value="">Create New Theme</option>
+                    {Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                      <option key={themeName} value={themeName}>
+                        {themeData.displayName || themeName}
+                      </option>
+                    ))}
+                  </select>
+                  {editingThemeName && (
+                    <button
+                      className="btn-white-outline"
+                      onClick={() => {
+                        setEditingThemeName(null);
+                        setThemeDescription("");
+                      }}
+                      style={{ width: '100%', fontSize: 11 }}
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label">Describe Your Theme</label>
+                <textarea 
+                  className="f-input" 
+                  style={{ minHeight: 80, marginBottom: 8 }} 
+                  placeholder={editingThemeName ? "Describe how you want to modify this theme..." : "e.g., 'A dark theme with purple accents and neon glow effects' or 'A warm, cozy theme with brown and cream colors'"}
+                  value={themeDescription || ""}
+                  onChange={(e) => setThemeDescription(e.target.value)}
+                />
+                <button 
+                  className="btn-orange" 
+                  onClick={handleCreateTheme}
+                  disabled={!settings?.geminiApiKey || isCreatingTheme || !themeDescription}
+                  style={{ width: '100%' }}
+                >
+                  {isCreatingTheme ? "🎨 Creating Theme..." : editingThemeName ? "🔄 Update Theme" : "✨ Generate Theme"}
+                </button>
+                {themeCreationResult && (
+                  <div style={{ marginTop: 12, padding: 12, background: 'var(--input-bg)', borderRadius: 8, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Theme {editingThemeName ? 'Updated' : 'Generated'}!</div>
+                    <div style={{ marginBottom: 8, opacity: 0.8 }}>{themeCreationResult.message}</div>
+                    <button 
+                      className="btn-white-outline" 
+                      onClick={() => handleApplyTheme(themeCreationResult.themeName, editingThemeName)}
+                      style={{ marginRight: 8 }}
+                    >
+                      {editingThemeName ? 'Update & Apply' : 'Apply Theme'}
+                    </button>
+                    <button 
+                      className="btn-white-outline" 
+                      onClick={() => {
+                        setThemeCreationResult(null);
+                        if (editingThemeName) {
+                          setEditingThemeName(null);
+                          setThemeDescription("");
+                        }
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* AI SETTINGS OPTIMIZER SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #3498db", marginTop: 16 }}>
+              <h3 style={{ marginBottom: 12, fontFamily: 'Fredoka', fontSize: 16 }}>⚙️ AI Settings Optimizer</h3>
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label">Describe Your Usage</label>
+                <textarea 
+                  className="f-input" 
+                  style={{ minHeight: 60, marginBottom: 8 }} 
+                  placeholder="e.g., 'I work on many tasks daily, prefer quick spins, and want minimal distractions' or 'I focus on deep work sessions and need detailed tracking'"
+                  value={usageDescription || ""}
+                  onChange={(e) => setUsageDescription(e.target.value)}
+                />
+                <button 
+                  className="btn-orange" 
+                  onClick={handleOptimizeSettings}
+                  disabled={!settings?.geminiApiKey || isOptimizingSettings || !usageDescription}
+                  style={{ width: '100%' }}
+                >
+                  {isOptimizingSettings ? "🤖 Analyzing..." : "🎯 Optimize Settings"}
+                </button>
+                {settingsOptimizationResult && (
+                  <div style={{ marginTop: 12, padding: 12, background: 'var(--input-bg)', borderRadius: 8, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Settings Recommendations</div>
+                    <div style={{ marginBottom: 12, opacity: 0.8, maxHeight: 200, overflowY: 'auto' }}>
+                      {settingsOptimizationResult.recommendations?.map((rec, i) => (
+                        <div key={i} style={{ marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--primary)' }}>
+                          {rec}
+                        </div>
+                      ))}
+                    </div>
+                    <button 
+                      className="btn-orange" 
+                      onClick={() => handleApplySettingsOptimization(settingsOptimizationResult.settings)}
+                      style={{ marginRight: 8 }}
+                    >
+                      Apply Recommendations
+                    </button>
+                    <button 
+                      className="btn-white-outline" 
+                      onClick={() => setSettingsOptimizationResult(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         )}
 

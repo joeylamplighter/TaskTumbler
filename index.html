@@ -21,6 +21,20 @@
   <link rel="stylesheet" href="/css/03-components.css" />
   <link rel="stylesheet" href="/css/04-modals.css" />
   <link rel="stylesheet" href="/css/05-sprites.css" />
+  
+  <!-- SVG Filters for Motion Blur -->
+  <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
+    <defs>
+      <!-- Vertical motion blur filter (blurs in Y direction) -->
+      <filter id="motion-blur-vertical" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="0,3"/>
+      </filter>
+      <!-- Stronger motion blur for fast spinning -->
+      <filter id="motion-blur-vertical-strong" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="0,6"/>
+      </filter>
+    </defs>
+  </svg>
 </head>
 <body>
   <div id="root"></div>

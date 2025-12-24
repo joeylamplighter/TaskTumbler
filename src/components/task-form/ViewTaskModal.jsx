@@ -94,6 +94,12 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
   const goalName = task.goalId ? goals?.find(g => g.id === task.goalId)?.title : null;
   const isDone = task.completed;
 
+  // Helper to check if a modal section should be shown
+  const shouldShowSection = (sectionKey) => {
+    const sections = settings?.taskModalSections || {};
+    return sections[sectionKey] !== false && (sections[sectionKey] !== undefined || true); // default to true
+  };
+
   // Format time display for timer (MM:SS)
   const formatTimerTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -542,6 +548,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           
 
           {/* TIMER & FOCUS MODE BAR */}
+          {shouldShowSection('showTimer') && (
           <div style={{
             background: 'rgba(108, 92, 231, 0.15)',
             border: '1px solid rgba(108, 92, 231, 0.25)',
@@ -631,8 +638,10 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               </button>
             )}
           </div>
+          )}
 
           {/* QUICK LOG & NOTES SECTION */}
+          {shouldShowSection('showActivityLog') && (
           <div style={{ marginBottom: 16 }}>
             <div style={{
               fontSize: 9,
@@ -746,8 +755,10 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               </button>
             </div>
           </div>
+          )}
 
           {/* SUBTASKS SECTION - MOVED TO LAST */}
+          {shouldShowSection('showSubtasks') && (
           <div style={{ marginBottom: 16 }}>
             <div style={{
               fontSize: 9,
@@ -858,6 +869,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               }}
             />
           </div>
+          )}
 
         </div>
 

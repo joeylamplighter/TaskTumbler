@@ -1111,7 +1111,35 @@ const removeSubCategory = (parentCat, subName) => {
 
   // Theme
   React.useEffect(() => {
-    document.documentElement.setAttribute("data-theme", settings?.theme || "dark");
+    const theme = settings?.theme || "dark";
+    document.documentElement.setAttribute("data-theme", theme);
+    
+    // Apply custom theme if it exists
+    const customThemes = settings?.customThemes || {};
+    if (customThemes[theme]) {
+      // Remove any existing custom theme style
+      const existingStyle = document.getElementById('custom-theme-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      
+      // Inject custom theme CSS
+      const style = document.createElement('style');
+      style.id = 'custom-theme-style';
+      const cssVars = customThemes[theme].cssVariables || {};
+      const cssText = Object.entries(cssVars)
+        .map(([key, value]) => `  ${key}: ${value};`)
+        .join('\n');
+      style.textContent = `[data-theme="${theme}"] {\n${cssText}\n}`;
+      document.head.appendChild(style);
+    } else {
+      // Remove custom theme style if switching to a built-in theme
+      const existingStyle = document.getElementById('custom-theme-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    }
+    
     const metaThemeColor = document.querySelector("meta[name=theme-color]");
     if (metaThemeColor) {
       const colors = {
@@ -1122,9 +1150,12 @@ const removeSubCategory = (parentCat, subName) => {
         synthwave: "#d946ef",
         coffee: "#d4a373",
       };
-      metaThemeColor.setAttribute("content", colors[settings?.theme] || "#ff6b35");
+      // Use custom theme primary color if available
+      const customTheme = customThemes[theme];
+      const primaryColor = customTheme?.cssVariables?.['--primary'] || colors[theme] || "#ff6b35";
+      metaThemeColor.setAttribute("content", primaryColor);
     }
-  }, [settings?.theme]);
+  }, [settings?.theme, settings?.customThemes]);
 
   // Error tracking for debug info (persisted across crashes)
   React.useEffect(() => {

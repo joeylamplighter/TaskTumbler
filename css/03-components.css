@@ -225,16 +225,129 @@
 @keyframes slideDownDrawer { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
 /* --- TUMBLER & SPIN --- */
+/* Motion blur applied to scrolling strip - vertical directional blur */
+.tumbler-strip-spinning {
+    filter: url(#motion-blur-vertical);
+    will-change: transform, filter;
+    transition: filter 0.3s ease-out;
+}
+.tumbler-strip-spinning-fast {
+    filter: url(#motion-blur-vertical-strong);
+}
 .tumbler-box { 
     position: relative; height: 200px; overflow: hidden; margin-bottom: 20px; 
     background: var(--tumbler-bg); border-radius: 12px; border: 1px solid var(--border); 
 }
+/* Top and bottom blur masks for tumbler */
+.tumbler-box::before,
+.tumbler-box::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 55px;
+    pointer-events: none;
+    z-index: 5;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tumbler-box::before {
+    top: 0;
+    background: linear-gradient(to bottom, 
+        var(--card) 0%, 
+        color-mix(in srgb, var(--card) 95%, transparent) 40%,
+        color-mix(in srgb, var(--card) 80%, transparent) 70%,
+        transparent 100%
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    mask: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.7) 60%, transparent 100%);
+    -webkit-mask: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.7) 60%, transparent 100%);
+    border-radius: 12px 12px 0 0;
+}
+.tumbler-box::after {
+    bottom: 0;
+    background: linear-gradient(to top, 
+        var(--card) 0%, 
+        color-mix(in srgb, var(--card) 95%, transparent) 40%,
+        color-mix(in srgb, var(--card) 80%, transparent) 70%,
+        transparent 100%
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    mask: linear-gradient(to top, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.7) 60%, transparent 100%);
+    -webkit-mask: linear-gradient(to top, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.7) 60%, transparent 100%);
+    border-radius: 0 0 12px 12px;
+}
+/* Fallback for browsers that don't support color-mix */
+@supports not (color-mix(in srgb, var(--card) 85%, transparent)) {
+    .tumbler-box::before {
+        background: linear-gradient(to bottom, 
+            var(--card) 0%, 
+            rgba(30, 30, 30, 0.95) 40%,
+            rgba(30, 30, 30, 0.8) 70%,
+            rgba(30, 30, 30, 0.4) 85%,
+            transparent 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    .tumbler-box::after {
+        background: linear-gradient(to top, 
+            var(--card) 0%, 
+            rgba(30, 30, 30, 0.95) 40%,
+            rgba(30, 30, 30, 0.8) 70%,
+            rgba(30, 30, 30, 0.4) 85%,
+            transparent 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    [data-theme="light"] .tumbler-box::before {
+        background: linear-gradient(to bottom, 
+            var(--card) 0%, 
+            rgba(255, 255, 255, 0.95) 40%,
+            rgba(255, 255, 255, 0.8) 70%,
+            rgba(255, 255, 255, 0.4) 85%,
+            transparent 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    [data-theme="light"] .tumbler-box::after {
+        background: linear-gradient(to top, 
+            var(--card) 0%, 
+            rgba(255, 255, 255, 0.95) 40%,
+            rgba(255, 255, 255, 0.8) 70%,
+            rgba(255, 255, 255, 0.4) 85%,
+            transparent 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+}
+
 .tumbler-highlight { 
     position: absolute; top: 50%; left: 0; right: 0; height: 50px; 
     transform: translateY(-50%); border-top: 2px solid var(--tumbler-highlight); 
     border-bottom: 2px solid var(--tumbler-highlight); pointer-events: none; z-index: 10; 
     background: rgba(255,255,255,0.05);
-    box-shadow: 0 0 15px rgba(255, 107, 53, 0.2), 0 0 0 999px rgba(18,18,18,0.85);
+    /* Softer overlay - no blur, just subtle darkening */
+    box-shadow: 
+        0 0 20px rgba(255, 107, 53, 0.15),
+        0 0 0 999px rgba(18, 18, 18, 0.3);
+    transition: box-shadow 0.3s ease;
+    /* Ensure no blur filters on the highlight itself */
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+/* Ensure items in the highlight zone are never blurred */
+.tumbler-box .tumbler-strip-spinning > div,
+.tumbler-box .tumbler-strip-spinning-fast > div,
+.tumbler-box > div > div {
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 .tumbler-highlight::before { content: '▶'; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); color: var(--tumbler-highlight); font-size: 20px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
 .tumbler-highlight::after { content: '◀'; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--tumbler-highlight); font-size: 20px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
