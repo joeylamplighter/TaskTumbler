@@ -616,6 +616,55 @@ function AppHeader({
                       <span>Reset All Data</span>
                     </button>
                   )}
+
+                  {/* Stats Section - Always visible at bottom */}
+                  {userStats && (
+                    <div
+                      style={{
+                        borderTop: '1px solid var(--border)',
+                        paddingTop: '12px',
+                        marginTop: '8px',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px',
+                        padding: '0 12px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                      }}>
+                        <span style={{ color: 'var(--text)', opacity: 0.7 }}>Level {userStats.level || 1}</span>
+                        <span style={{ color: 'var(--primary)' }}>{userStats.xp || 0} XP</span>
+                      </div>
+                      {/* Progress Bar */}
+                      <div style={{
+                        width: 'calc(100% - 24px)',
+                        margin: '0 12px',
+                        height: '6px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '3px',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          background: 'linear-gradient(90deg, var(--primary), var(--primary-light))',
+                          borderRadius: '3px',
+                          width: `${(() => {
+                            const level = userStats.level || 1;
+                            const xp = userStats.xp || 0;
+                            const xpForLevel = level * 100;
+                            const xpForNextLevel = (level + 1) * 100;
+                            const currentLevelXp = xp - xpForLevel;
+                            const xpNeeded = xpForNextLevel - xpForLevel;
+                            return Math.min(100, Math.max(0, (currentLevelXp / xpNeeded) * 100));
+                          })()}%`,
+                          transition: 'width 0.3s ease',
+                        }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
