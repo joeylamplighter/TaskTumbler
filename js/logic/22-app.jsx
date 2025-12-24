@@ -502,6 +502,17 @@ function App() {
       timerState: { get: () => ({ isRunning: false, startTime: null, storedTime: 0, activityName: "Tracked Session" }), set: () => {} },
       people: { getAll: () => [], setAll: () => {} },
     };
+
+  // Helper to check if we're on a stats subtab
+  const getCurrentSubtab = () => {
+    const hash = window.location.hash;
+    if (hash.includes('subView=people')) return 'people';
+    if (hash.includes('subView=charts')) return 'charts';
+    if (hash.includes('subView=history')) return 'history';
+    if (hash.includes('subView=places')) return 'places';
+    return null;
+  };
+
 // --- 1. STATE INITIALIZATION ---
 const [categoryMultipliers, setCategoryMultipliers] = React.useState(() => {
   try { return JSON.parse(localStorage.getItem('categoryMultipliers') || '{}'); } catch { return {}; }
