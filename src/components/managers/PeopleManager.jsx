@@ -35,6 +35,48 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     } catch {}
   };
 
+  // Hamburger menu state
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showMenu]);
+
+  // Load sample data function
+  const handleLoadSampleData = () => {
+    if (window.AppActions?.createDataActions) {
+      const DM = window.DM;
+      const actions = window.AppActions.createDataActions({
+        DM,
+        setCategories: () => {},
+        setTasks: () => {},
+        setGoals: () => {},
+        setActivitiesInternal: () => {},
+        setSavedNotes: () => {},
+        notify: notify || ((msg, icon) => console.log(icon, msg))
+      });
+
+      if (actions.handleLoadSamples) {
+        setShowMenu(false);
+        actions.handleLoadSamples();
+      } else {
+        notify?.('Load Samples feature not available', '⚠️');
+      }
+    } else {
+      notify?.('Load Samples feature not available', '⚠️');
+    }
+  };
+
   // Refs for form fields to enable Enter key navigation
   const fieldRefs = {
     firstName: useRef(null),
@@ -829,6 +871,78 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
             </div>
 
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {/* Hamburger Menu */}
+              <div style={{ position: 'relative' }} ref={menuRef}>
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  title="Menu"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 20,
+                    padding: 0,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--input-bg)';
+                    e.target.style.borderColor = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.borderColor = 'var(--border)';
+                  }}
+                >
+                  ☰
+                </button>
+
+                {showMenu && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 8,
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    minWidth: 200,
+                    zIndex: 1000,
+                    overflow: 'hidden'
+                  }}>
+                    <button
+                      onClick={handleLoadSampleData}
+                      style={{
+                        width: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        fontSize: 14,
+                        color: 'var(--text)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
+                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    >
+                      <span style={{ fontSize: 16 }}>🎲</span>
+                      <span>Load Sample Data</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* View Mode Buttons */}
               <div style={{ display: 'flex', gap: 4, background: 'var(--input-bg)', padding: 4, borderRadius: 8, border: '1px solid var(--border)' }}>
                 <button
