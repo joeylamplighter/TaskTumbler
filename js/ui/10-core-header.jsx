@@ -250,12 +250,259 @@ function AppHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
 
+  // Render hamburger menu button (always shown)
+  const renderHamburgerMenu = () => {
+    return (
+      <div ref={dropdownRef} style={{ position: 'relative' }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDropdownOpen(!dropdownOpen);
+          }}
+          style={{
+            background: dropdownOpen ? 'var(--primary-light)' : 'transparent',
+            border: '1px solid var(--border)',
+            padding: '8px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            opacity: dropdownOpen ? 1 : 0.8,
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '36px',
+            minHeight: '36px',
+            color: 'var(--text)',
+          }}
+          title="All navigation - Click to see all tabs"
+          aria-label="Show all navigation"
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px',
+            width: '18px'
+          }}>
+            <div style={{
+              width: '100%',
+              height: '2px',
+              background: 'currentColor',
+              borderRadius: '1px'
+            }}></div>
+            <div style={{
+              width: '100%',
+              height: '2px',
+              background: 'currentColor',
+              borderRadius: '1px'
+            }}></div>
+            <div style={{
+              width: '100%',
+              height: '2px',
+              background: 'currentColor',
+              borderRadius: '1px'
+            }}></div>
+          </div>
+        </button>
+
+        {dropdownOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '8px',
+              width: '280px',
+              maxHeight: '500px',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              zIndex: 1000,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Search input */}
+            <div style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
+              <input
+                type="text"
+                placeholder="Search tabs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--text)',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Navigation items */}
+            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {sortedNavItems.length > 0 ? (
+                (() => {
+                  let lastGroup = null;
+                  return sortedNavItems.map((item, index) => {
+                    const isActive = item.key.includes(':')
+                      ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
+                      || (item.key.startsWith('settings:') && currentTab === 'settings')
+                      : item.key === currentTab;
+
+                    const showGroupHeader = item.groupLabel && item.groupLabel !== lastGroup;
+                    if (item.groupLabel) lastGroup = item.groupLabel;
+
+                    return (
+                      <React.Fragment key={item.key}>
+                        {showGroupHeader && (
+                          <div style={{
+                            padding: '8px 12px 4px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: 'var(--text-light)',
+                            opacity: 0.7,
+                            letterSpacing: 0.8,
+                            marginTop: index > 0 ? '8px' : 0
+                          }}>
+                            {item.groupLabel}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleNavClick(item)}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            paddingLeft: item.groupLabel ? '20px' : '12px',
+                            background: isActive ? 'var(--primary-light)' : 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            color: 'var(--text)',
+                            transition: 'background 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'var(--input-bg)';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'transparent';
+                          }}
+                          title={item.label}
+                        >
+                          <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                          <span>{item.displayLabel || item.label}</span>
+                        </button>
+                      </React.Fragment>
+                    );
+                  });
+                })()
+              ) : (
+                <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
+                  No items found
+                </div>
+              )}
+            </div>
+
+            {/* Actions section - Dev Mode, Reset, etc. */}
+            {(onToggleDevTools || onReset) && (
+              <>
+                <div style={{
+                  height: '1px',
+                  background: 'var(--border)',
+                  margin: '8px 0'
+                }} />
+                <div style={{ padding: '4px 0' }}>
+                  {onToggleDevTools && (
+                    <button
+                      onClick={() => {
+                        onToggleDevTools();
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: showDevTools ? 'var(--primary-light)' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        color: 'var(--text)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!showDevTools) e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!showDevTools) e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>🛠️</span>
+                      <span>Dev Mode</span>
+                      {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
+                    </button>
+                  )}
+                  {onReset && (
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                          onReset();
+                          setDropdownOpen(false);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        color: 'var(--text-danger, #ff4444)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>🗑️</span>
+                      <span>Reset All Data</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render right side based on mode
   const renderRightSide = () => {
     if (headerRightMode === 'none') {
-      return null;
+      return renderHamburgerMenu();
     }
-    
+
     if (headerRightMode === 'quickNav') {
       return (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }}>
@@ -291,230 +538,9 @@ function AppHeader({
               </button>
             );
           })}
-          
-          {/* 4th option: Dropdown with all settings - ALWAYS SHOW */}
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDropdownOpen(!dropdownOpen);
-              }}
-              style={{
-                background: dropdownOpen ? 'var(--primary-light)' : 'transparent',
-                border: '1px solid var(--border)',
-                padding: '6px 8px',
-                borderRadius: '8px',
-                fontSize: '18px',
-                lineHeight: '1',
-                cursor: 'pointer',
-                opacity: dropdownOpen ? 1 : 0.8,
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '32px',
-                minHeight: '32px',
-                color: 'var(--text)',
-              }}
-              title="All navigation (alphabetical) - Click to see all tabs"
-              aria-label="Show all navigation"
-            >
-              ⋯
-            </button>
-              
-              {dropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '8px',
-                    background: 'var(--card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    minWidth: '200px',
-                    maxWidth: '300px',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    zIndex: 1000,
-                    padding: '4px 0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  {/* Search box */}
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-                    <input
-                      type="text"
-                      placeholder="Search navigation..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        color: 'var(--text)',
-                        outline: 'none',
-                      }}
-                      autoFocus
-                    />
-                  </div>
-                  
-                  {/* Navigation items */}
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {sortedNavItems.length > 0 ? (
-                      (() => {
-                        let lastGroup = null;
-                        return sortedNavItems.map((item, index) => {
-                          const isActive = item.key.includes(':')
-                            ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
-                            || (item.key.startsWith('settings:') && currentTab === 'settings')
-                            : item.key === currentTab;
 
-                          const showGroupHeader = item.groupLabel && item.groupLabel !== lastGroup;
-                          if (item.groupLabel) lastGroup = item.groupLabel;
-
-                          return (
-                            <React.Fragment key={item.key}>
-                              {showGroupHeader && (
-                                <div style={{
-                                  padding: '8px 12px 4px',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  textTransform: 'uppercase',
-                                  color: 'var(--text-light)',
-                                  opacity: 0.7,
-                                  letterSpacing: 0.8,
-                                  marginTop: index > 0 ? '8px' : 0
-                                }}>
-                                  {item.groupLabel}
-                                </div>
-                              )}
-                              <button
-                                onClick={() => handleNavClick(item)}
-                                style={{
-                                  width: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  padding: '8px 12px',
-                                  paddingLeft: item.groupLabel ? '20px' : '12px',
-                                  background: isActive ? 'var(--primary-light)' : 'transparent',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '14px',
-                                  textAlign: 'left',
-                                  color: 'var(--text)',
-                                  transition: 'background 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (!isActive) e.currentTarget.style.background = 'var(--input-bg)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isActive) e.currentTarget.style.background = 'transparent';
-                                }}
-                                title={item.label}
-                              >
-                                <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                                <span>{item.displayLabel || item.label}</span>
-                              </button>
-                            </React.Fragment>
-                          );
-                        });
-                      })()
-                    ) : (
-                      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
-                        No items found
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Actions section - Dev Mode, Reset, etc. */}
-                  {(onToggleDevTools || onReset) && (
-                    <>
-                      <div style={{ 
-                        height: '1px', 
-                        background: 'var(--border)', 
-                        margin: '8px 0' 
-                      }} />
-                      <div style={{ padding: '4px 0' }}>
-                        {onToggleDevTools && (
-                          <button
-                            onClick={() => {
-                              onToggleDevTools();
-                              setDropdownOpen(false);
-                            }}
-                            style={{
-                              width: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 12px',
-                              background: showDevTools ? 'var(--primary-light)' : 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              textAlign: 'left',
-                              color: 'var(--text)',
-                              transition: 'background 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!showDevTools) e.currentTarget.style.background = 'var(--input-bg)';
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!showDevTools) e.currentTarget.style.background = 'transparent';
-                            }}
-                          >
-                            <span style={{ fontSize: '16px' }}>🛠️</span>
-                            <span>Dev Mode</span>
-                            {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
-                          </button>
-                        )}
-                        {onReset && (
-                          <button
-                            onClick={() => {
-                              if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-                                onReset();
-                                setDropdownOpen(false);
-                              }
-                            }}
-                            style={{
-                              width: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 12px',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              textAlign: 'left',
-                              color: 'var(--text-danger, #ff4444)',
-                              transition: 'background 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'var(--input-bg)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                            }}
-                          >
-                            <span style={{ fontSize: '16px' }}>🗑️</span>
-                            <span>Reset All Data</span>
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Hamburger menu */}
+          {renderHamburgerMenu()}
         </div>
       );
     }
@@ -523,10 +549,10 @@ function AppHeader({
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600 }}>
           {headerXpShowProgress && (
-            <div style={{ 
-              width: '60px', 
-              height: '4px', 
-              background: 'var(--input-bg)', 
+            <div style={{
+              width: '60px',
+              height: '4px',
+              background: 'var(--input-bg)',
               borderRadius: '2px',
               overflow: 'hidden'
             }}>
@@ -546,15 +572,14 @@ function AppHeader({
               {xpDisplay.xp.toLocaleString()} XP
             </span>
           )}
+          {renderHamburgerMenu()}
         </div>
       );
     }
-    
+
     if (headerRightMode === 'status') {
-      if (statusData.length === 0) return null;
-      
       return (
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {statusData.slice(0, 3).map((status) => (
             <div
               key={status.id}
@@ -583,6 +608,7 @@ function AppHeader({
               {status.label && <span style={{ fontSize: '10px', color: 'var(--text-light)' }}>{status.label}</span>}
             </div>
           ))}
+          {renderHamburgerMenu()}
         </div>
       );
     }
