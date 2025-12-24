@@ -1237,66 +1237,6 @@ function Fold({ title, right, open, onToggle, children }) {
 
         `}</style>
 
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            onClick={toggleSubTabsCollapsed}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              flexShrink: 0
-            }}
-            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-          />
-          {subTabsCollapsed ? (
-            <div
-              onClick={toggleSubTabsCollapsed}
-              style={{
-                flex: 1,
-                height: 2,
-                backgroundColor: 'var(--border)',
-                cursor: 'pointer',
-                borderRadius: 1
-              }}
-              title="Expand subtabs"
-            />
-          ) : (
-            <div className="segmented-control tt-seg" style={{ flex: 1 }}>
-              <button className={`sc-btn ${settingsView === "view" ? "active" : ""}`} onClick={() => setSettingsView("view")}>
-                🎨 View
-              </button>
-              <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
-                ⚙️ Logic
-              </button>
-              <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
-                ⚔️ Game
-              </button>
-              <button className={`sc-btn ${settingsView === "cats" ? "active" : ""}`} onClick={() => setSettingsView("cats")}>
-                📁 Cats
-              </button>
-              <button className={`sc-btn ${settingsView === "data" ? "active" : ""}`} onClick={() => setSettingsView("data")}>
-                💾 Data
-              </button>
-            </div>
-          )}
-          <div
-            onClick={toggleSubTabsCollapsed}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              flexShrink: 0
-            }}
-            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-          />
-        </div>
-
         {/* VIEW TAB */}
         {settingsView === "view" && (
           <div className="fade-in-up">

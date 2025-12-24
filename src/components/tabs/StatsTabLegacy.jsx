@@ -2274,55 +2274,6 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                     onClose={() => setSelectedHistoryItem(null)} 
                 />
             )}
-            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                    onClick={toggleSubTabsCollapsed}
-                    style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                        flexShrink: 0
-                    }}
-                    title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-                />
-                {subTabsCollapsed ? (
-                    <div
-                        onClick={toggleSubTabsCollapsed}
-                        style={{
-                            flex: 1,
-                            height: 2,
-                            backgroundColor: 'var(--border)',
-                            cursor: 'pointer',
-                            borderRadius: 1
-                        }}
-                        title="Expand subtabs"
-                    />
-                ) : (
-                    <div className="segmented-control" style={{flex: 1}}>
-                        <button className={`sc-btn ${subView==='overview'?'active':''}`} onClick={()=>updateSubView('overview')}>Overview</button>
-                        <button className={`sc-btn ${subView==='charts'?'active':''}`} onClick={()=>updateSubView('charts')}>Charts</button>
-                        <button className={`sc-btn ${subView==='history'?'active':''}`} onClick={()=>updateSubView('history')}>History</button>
-                        <button className={`sc-btn ${subView==='people'?'active':''}`} onClick={()=>updateSubView('people')}>👥 People</button>
-                        <button className={`sc-btn ${subView==='places'?'active':''}`} onClick={()=>updateSubView('places')}>📍 Places</button>
-                    </div>
-                )}
-                <div
-                    onClick={toggleSubTabsCollapsed}
-                    style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                        flexShrink: 0
-                    }}
-                    title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-                />
-            </div>
 
             {subView === 'overview' && (
                 <div className="fade-in">
