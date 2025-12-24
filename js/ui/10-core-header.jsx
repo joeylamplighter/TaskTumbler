@@ -439,7 +439,7 @@ function AppHeader({
             </div>
 
             {/* Actions section */}
-            {(onToggleDevTools || onLoadSamples || onReset || onExport || onImport || onClearCompleted || onSearchClick || onSyncClick) && (
+            {(onToggleDevTools || onLoadSamples || onReset || onExport || onImport || onClearCompleted) && (
               <>
                 <div style={{
                   height: '1px',
@@ -447,75 +447,10 @@ function AppHeader({
                   margin: '8px 0'
                 }} />
                 <div style={{ padding: '4px 0' }}>
-                  {/* Quick Actions */}
-                  {onSearchClick && (
-                    <button
-                      onClick={() => {
-                        onSearchClick();
-                        setDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        textAlign: 'left',
-                        color: 'var(--text)',
-                        transition: 'background 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--input-bg)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>🔍</span>
-                      <span>Search</span>
-                      <span style={{ marginLeft: 'auto', fontSize: '11px', opacity: 0.6 }}>⌘K</span>
-                    </button>
-                  )}
-                  {onSyncClick && (
-                    <button
-                      onClick={() => {
-                        onSyncClick();
-                        setDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        textAlign: 'left',
-                        color: 'var(--text)',
-                        transition: 'background 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--input-bg)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>☁️</span>
-                      <span>Cloud Sync</span>
-                    </button>
-                  )}
-                  
-                  {/* Data Management */}
-                  {(onExport || onImport || onClearCompleted) && (
+                  {/* Data Management - Only show when searched */}
+                  {(onExport || onImport || onClearCompleted) && searchQuery.trim() && (
                     <>
-                      {onExport && (
+                      {onExport && 'export'.includes(searchQuery.toLowerCase()) && (
                         <button
                           onClick={() => {
                             onExport();
@@ -546,7 +481,7 @@ function AppHeader({
                           <span>Export Data</span>
                         </button>
                       )}
-                      {onImport && (
+                      {onImport && 'import'.includes(searchQuery.toLowerCase()) && (
                         <label
                           style={{
                             width: '100%',
@@ -585,7 +520,7 @@ function AppHeader({
                           />
                         </label>
                       )}
-                      {onClearCompleted && (
+                      {onClearCompleted && ('clear'.includes(searchQuery.toLowerCase()) || 'completed'.includes(searchQuery.toLowerCase())) && (
                         <button
                           onClick={() => {
                             onClearCompleted();
