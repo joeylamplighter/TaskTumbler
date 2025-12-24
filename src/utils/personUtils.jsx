@@ -22,12 +22,22 @@ export const getDisplayName = (person) => {
  */
 export const getInitials = (person) => {
   if (!person) return '?';
-  if (person.firstName?.[0]) {
-    return person.firstName[0].toUpperCase();
+
+  if (person.firstName || person.lastName) {
+    const first = person.firstName?.[0]?.toUpperCase() || '';
+    const last = person.lastName?.[0]?.toUpperCase() || '';
+    const initials = first + last;
+    if (initials) return initials;
   }
-  if (person.name?.[0]) {
+
+  if (person.name) {
+    const parts = person.name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
     return person.name[0].toUpperCase();
   }
+
   return '?';
 };
 
