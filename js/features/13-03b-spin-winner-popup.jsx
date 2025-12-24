@@ -376,14 +376,16 @@ import React from 'react'
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Open PeopleManager with the first person selected
-                    if (firstPersonName && window.setShowPeopleManager) {
-                      window.setShowPeopleManager(true);
-                      // Store the person name to be used by PeopleManager
-                      window.__pendingPeopleManagerSelection = firstPersonName;
-                    } else if (onView) {
-                      // Fallback: open task view
-                      onView(task);
+                    // Navigate to person page using hash routing with person ID
+                    if (firstPerson && firstPerson.id) {
+                      // Use person ID instead of name-based slug
+                      window.location.hash = `#person/${firstPerson.id}`;
+                      // Switch to people tab if not already there
+                      if (window.setTab) {
+                        window.setTab('people');
+                      }
+                      // Close the winner popup
+                      onClose?.();
                     }
                   }}
                   style={{

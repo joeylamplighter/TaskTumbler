@@ -26,6 +26,7 @@ function AppHeader({
   timerState = { isRunning: false, storedTime: 0 },
   focusModeActive = false,
   remindersArmed = false,
+  people = [], // People/contacts for search
   // Actions
   onTabChange,
   onSearchClick,
@@ -181,6 +182,27 @@ function AppHeader({
     };
   }, [userStats]);
 
+  // Get filtered contacts based on search query
+  const filteredContacts = React.useMemo(() => {
+    if (!Array.isArray(people) || people.length === 0) return [];
+    if (!searchQuery.trim()) return [];
+
+    const query = searchQuery.toLowerCase();
+    return people.filter(person => {
+      const name = (person.name || [person.firstName, person.lastName].filter(Boolean).join(' ') || '').toLowerCase();
+      const email = (person.email || '').toLowerCase();
+      const phone = (person.phone || '').toLowerCase();
+      const company = (person.company || '').toLowerCase();
+      const tags = Array.isArray(person.tags) ? person.tags.join(' ').toLowerCase() : '';
+      
+      return name.includes(query) || 
+             email.includes(query) || 
+             phone.includes(query) || 
+             company.includes(query) ||
+             tags.includes(query);
+    }).slice(0, 10); // Limit to 10 results
+  }, [people, searchQuery]);
+
   // Get all nav items sorted alphabetically for dropdown, filtered by search
   // All items are now independent tabs (no parent/child relationships)
   const sortedNavItems = React.useMemo(() => {
@@ -246,6 +268,15 @@ function AppHeader({
     } else {
       onTabChange?.(item.key);
     }
+  };
+
+  // Handle contact click - open contact modal
+  const handleContactClick = (person) => {
+    setDropdownOpen(false);
+    setSearchQuery('');
+    
+    // Dispatch event to open contact modal (app component will handle it)
+    window.dispatchEvent(new CustomEvent('open-contact', { detail: { person } }));
   };
 
   // Close dropdown when clicking outside
@@ -326,7 +357,7 @@ function AppHeader({
               maxHeight: '500px',
               background: 'var(--card)',
               border: '1px solid var(--border)',
-              borderRadius: '12px',
+              borderRadius: 'var(--border-radius-md, 12px)',
               boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               zIndex: 1000,
               overflow: 'hidden',
@@ -339,7 +370,7 @@ function AppHeader({
             <div style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
               <input
                 type="text"
-                placeholder="Search tabs..."
+                placeholder="Search tabs and contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -348,13 +379,76 @@ function AppHeader({
                   padding: '8px 12px',
                   background: 'var(--input-bg)',
                   border: '1px solid var(--border)',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--border-radius-sm, 8px)',
                   color: 'var(--text)',
                   fontSize: '14px',
                   outline: 'none',
                 }}
               />
             </div>
+
+            {/* Contact results (shown first if search query exists) */}
+            {searchQuery.trim() && filteredContacts.length > 0 && (
+              <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                <div style={{
+                  padding: '8px 12px 4px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--text-light)',
+                  opacity: 0.7,
+                  letterSpacing: 0.8,
+                }}>
+                  Contacts
+                </div>
+                {filteredContacts.map((person) => {
+                  const personName = person.name || [person.firstName, person.lastName].filter(Boolean).join(' ') || 'Unnamed';
+                  const personEmail = person.email || '';
+                  const personPhone = person.phone || '';
+                  
+                  return (
+                    <button
+                      key={person.id || personName}
+                      onClick={() => handleContactClick(person)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '2px',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        textAlign: 'left',
+                        color: 'var(--text)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                      title={`View ${personName}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                        <span style={{ fontSize: '16px' }}>👤</span>
+                        <span style={{ fontWeight: 600, flex: 1 }}>{personName}</span>
+                      </div>
+                      {(personEmail || personPhone) && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-light)', paddingLeft: '24px', opacity: 0.8 }}>
+                          {personEmail && <span>{personEmail}</span>}
+                          {personEmail && personPhone && <span> • </span>}
+                          {personPhone && <span>{personPhone}</span>}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Navigation items */}
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>

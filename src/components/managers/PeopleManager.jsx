@@ -10,7 +10,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { getDisplayName, getInitials } from "../../utils/personUtils";
 
-export default function PeopleManager({ people, setPeople, onClose, tasks, onViewTask, history = [], locations = [], setLocations, setTasks, initialSelectedPersonName = null, notify }) {
+export default function PeopleManager({ people, setPeople, onClose, tasks, onViewTask, history = [], locations = [], setLocations, setTasks, initialSelectedPersonId = null, notify }) {
   const safePeople = Array.isArray(people) ? people : [];
   const safeHistory = Array.isArray(history) ? history : [];
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,9 +21,9 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   // View mode state - 'cards', 'list', 'table', 'compact'
   const [viewMode, setViewMode] = useState(() => {
     try {
-      return localStorage.getItem('peopleViewMode') || 'cards';
+      return localStorage.getItem('peopleViewMode') || 'list'; // Default to list instead of cards
     } catch {
-      return 'cards';
+      return 'list';
     }
   });
 
@@ -154,6 +154,12 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     setViewingId(p.id);
     setIsEditing(false);
     setEditId(null);
+
+    // Navigate to hash route for this person using ID
+    if (p.id) {
+      // Update hash to #person/id
+      window.location.hash = `#person/${p.id}`;
+    }
   };
 
   const startEdit = (p) => {
@@ -756,19 +762,41 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   });
 
 
-  // Auto-select person if initialSelectedPersonName is provided
+  // Auto-select person if initialSelectedPersonId is provided
   useEffect(() => {
-    if (initialSelectedPersonName && safePeople.length > 0 && !viewingId && !isEditing) {
-      const person = safePeople.find(p => {
-        const displayName = getDisplayName(p);
-        return String(displayName || "").trim().toLowerCase() === String(initialSelectedPersonName || "").trim().toLowerCase();
-      });
+    if (initialSelectedPersonId && safePeople.length > 0) {
+      // Try to find by ID first
+      let person = safePeople.find(p => p.id === initialSelectedPersonId);
+      
+      // If not found by ID, try to find by name (for permalinks using encoded names)
+      if (!person) {
+        try {
+          const decodedName = decodeURIComponent(initialSelectedPersonId);
+          person = safePeople.find(p => {
+            const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+            return personName === decodedName || 
+                   p.id === decodedName ||
+                   (p.firstName && p.lastName && `${p.firstName} ${p.lastName}` === decodedName);
+          });
+        } catch (e) {
+          // If decode fails, try direct match
+          person = safePeople.find(p => {
+            const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+            return personName === initialSelectedPersonId || p.id === initialSelectedPersonId;
+          });
+        }
+      }
+      
+      // Always update if person is found and it's different from current view
       if (person) {
-        startView(person);
+        const currentPersonId = viewingId || (viewingId && safePeople.find(p => p.id === viewingId)?.id);
+        if (!currentPersonId || currentPersonId !== person.id) {
+          startView(person);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSelectedPersonName, safePeople.length]);
+  }, [initialSelectedPersonId, safePeople.length]);
 
   // Helper function to get stats for a person
   const getPersonStats = (person) => {
@@ -1219,7 +1247,13 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                     background: 'rgba(0,0,0,0.3)',
                     zIndex: 999
                   }}
-                  onClick={() => setViewingId(null)}
+                  onClick={() => {
+                    setViewingId(null);
+                    // Clear hash when closing person view
+                    if (window.location.hash.includes('#person/') || window.location.hash.includes('#people/')) {
+                      window.location.hash = '#people';
+                    }
+                  }}
                 />
                 {/* Side panel */}
                 <div style={{
@@ -1236,7 +1270,13 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   padding: '20px'
                 }}>
                   <button
-                    onClick={() => setViewingId(null)}
+                    onClick={() => {
+                      setViewingId(null);
+                      // Clear hash when closing person view
+                      if (window.location.hash.includes('#person/') || window.location.hash.includes('#people/')) {
+                        window.location.hash = '#people';
+                      }
+                    }}
                     style={{
                       position: 'absolute',
                       top: 16,

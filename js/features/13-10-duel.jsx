@@ -282,8 +282,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
     const newWinnerWeight = Math.min(weightMax, winnerBase + winBoost);
     const newLoserWeight = Math.max(1, loserBase - lossPenalty);
 
-    // Fast snappy timing for rapid-fire duels
-    const animDelay = 100; // Reduced from 200ms for faster response
+    // Timing adjusted for new dynamic animations
+    const animDelay = 300; // Matches attacking/defending animation duration
 
     setTimeout(() => {
       onUpdate(winner.id, { weight: newWinnerWeight });
@@ -335,9 +335,15 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
         }
       }
 
+      // Randomly select animation variant (1-5 for each)
+      const winnerAnimVariant = Math.floor(Math.random() * 5) + 1;
+      const loserAnimVariant = Math.floor(Math.random() * 5) + 1;
+      const winnerAnim = winnerAnimVariant === 1 ? 'win' : `win${winnerAnimVariant}`;
+      const loserAnim = loserAnimVariant === 1 ? 'lose' : `lose${loserAnimVariant}`;
+
       if (winnerIndex === 0) {
-        setFighter1Anim('win');
-        setFighter2Anim('lose');
+        setFighter1Anim(winnerAnim);
+        setFighter2Anim(loserAnim);
         setFighter1Emoji(randomEmoji);
         setFighter2Emoji(null);
         
@@ -345,8 +351,8 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
         setWinnerCharacters([]);
         setLoserCharacters([]);
       } else {
-        setFighter1Anim('lose');
-        setFighter2Anim('win');
+        setFighter1Anim(loserAnim);
+        setFighter2Anim(winnerAnim);
         setFighter1Emoji(null);
         setFighter2Emoji(randomEmoji);
         
@@ -368,7 +374,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
     }, animDelay);
 
 
-    // Ultra-fast finish for rapid-fire duels (reduced from 1500ms)
+    // Finish timeout adjusted for new longer animations
     const finishTimeout = window.setTimeout(() => {
       // No toast notifications - keeping it clean like a video game
       setWeightChange({ id: null, text: '' });
@@ -377,7 +383,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       setFighter2Emoji(null);
 
       if (settings?.duelAutoAdvance !== false) { // Default to true
-          // Immediately advance for speed running
+          // Advance after animations complete
           setAnimState(null);
           setFighter1Anim('');
           setFighter2Anim('');
@@ -385,7 +391,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
       } else {
           setAnimState('complete');
       }
-    }, 400); // Reduced from 1500ms for much faster response
+    }, 900); // 300ms attack/defend + 500ms win/lose + 100ms buffer
   };
 
   // Particle animation effect - MUST be before any early returns
@@ -483,7 +489,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         <div className={`pixel-fighter pixel-fighter-${getFighterColor(pair[0]?.priority)} ${fighter1Anim}`}>
           <div className="pixel-fighter-sprite"></div>
-          {fighter1Emoji && fighter1Anim === 'win' && (
+          {fighter1Emoji && fighter1Anim.startsWith('win') && (
             <div className="duel-emoji-fx">
               {fighter1Emoji}
             </div>
@@ -540,6 +546,22 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
             >
               {pair[0].priority}
             </span>
+            {pair[0].tags && Array.isArray(pair[0].tags) && pair[0].tags.length > 0 && pair[0].tags.map((tag, idx) => (
+              <span
+                key={idx}
+                style={{
+                  fontSize: 9,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  fontWeight: 700,
+                  background: 'rgba(255, 107, 53, 0.1)',
+                  color: 'var(--primary)',
+                  border: '1px solid rgba(255, 107, 53, 0.3)'
+                }}
+              >
+                #{tag} {tag}
+              </span>
+            ))}
           </div>
           <div
             style={{
@@ -607,7 +629,7 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         <div className={`pixel-fighter pixel-fighter-${getFighterColor(pair[1]?.priority)} ${fighter2Anim}`}>
           <div className="pixel-fighter-sprite"></div>
-          {fighter2Emoji && fighter2Anim === 'win' && (
+          {fighter2Emoji && fighter2Anim.startsWith('win') && (
             <div className="duel-emoji-fx">
               {fighter2Emoji}
             </div>
@@ -664,6 +686,22 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
             >
               {pair[1].priority}
             </span>
+            {pair[1].tags && Array.isArray(pair[1].tags) && pair[1].tags.length > 0 && pair[1].tags.map((tag, idx) => (
+              <span
+                key={idx}
+                style={{
+                  fontSize: 9,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  fontWeight: 700,
+                  background: 'rgba(255, 107, 53, 0.1)',
+                  color: 'var(--primary)',
+                  border: '1px solid rgba(255, 107, 53, 0.3)'
+                }}
+              >
+                #{tag} {tag}
+              </span>
+            ))}
           </div>
           <div
             style={{

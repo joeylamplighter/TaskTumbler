@@ -3,7 +3,18 @@
 // DEDICATED PEOPLE TAB
 // ===========================================
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+
+// Helper to get person ID from hash
+const getPersonIdFromHash = () => {
+  const hash = window.location.hash;
+  // Support both #person/id and #people/id formats
+  const match = hash.match(/#(?:person|people)\/([^?]+)/);
+  if (match) {
+    return decodeURIComponent(match[1]);
+  }
+  return null;
+};
 
 export default function PeopleTab({
   people = [],
@@ -18,6 +29,34 @@ export default function PeopleTab({
   setTasks = () => {},
   onViewTask
 }) {
+  const [selectedPersonId, setSelectedPersonId] = useState(() => getPersonIdFromHash());
+
+  // Listen for hash changes and update selectedPersonId
+  useEffect(() => {
+    const handleHashChange = () => {
+      const personId = getPersonIdFromHash();
+      setSelectedPersonId(personId);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Check initial hash
+    const initialPersonId = getPersonIdFromHash();
+    if (initialPersonId) {
+      setSelectedPersonId(initialPersonId);
+    }
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Also watch for hash changes when tab becomes active (in case hash was set programmatically)
+  useEffect(() => {
+    const personId = getPersonIdFromHash();
+    if (personId && personId !== selectedPersonId) {
+      setSelectedPersonId(personId);
+    }
+  }, [selectedPersonId]);
+
   // Get PeopleManager from window (exported from src/components/managers/PeopleManager.jsx)
   const PeopleManager = window.PeopleManager;
 
@@ -41,7 +80,7 @@ export default function PeopleTab({
         locations={locations}
         setLocations={setLocations}
         setTasks={setTasks}
-        initialSelectedPersonName={null}
+        initialSelectedPersonId={selectedPersonId}
         onViewTask={onViewTask}
       />
     </div>

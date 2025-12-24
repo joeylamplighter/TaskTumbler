@@ -283,6 +283,125 @@ export default function SettingsTabLegacy(props) {
     }, [settings?.geminiApiKey, safeNotify]);
 
     // ===========================================
+    // AI Theme Creation
+    // ===========================================
+    const [themeDescription, setThemeDescription] = useState("");
+    const [isCreatingTheme, setIsCreatingTheme] = useState(false);
+    const [themeCreationResult, setThemeCreationResult] = useState(null);
+    const [editingThemeName, setEditingThemeName] = useState(null);
+
+    const handleCreateTheme = useCallback(async () => {
+      if (!settings?.geminiApiKey || !themeDescription) return;
+      setIsCreatingTheme(true);
+      try {
+        const customThemes = settings?.customThemes || {};
+        const existingTheme = editingThemeName ? customThemes[editingThemeName] : null;
+        
+        let prompt;
+        if (editingThemeName && existingTheme) {
+          // Modify existing theme
+          prompt = `Modify this existing theme based on the new description.
+
+Current Theme: ${existingTheme.displayName || editingThemeName}
+Current CSS Variables: ${JSON.stringify(existingTheme.cssVariables, null, 2)}
+
+New Description: "${themeDescription}"
+
+Return a JSON object with:
+- themeName: keep the same theme name (use: "${editingThemeName}")
+- cssVariables: an updated object with CSS custom properties for:
+  --primary, --primary-hover, --bg, --card, --input-bg, --text, --text-light, --border, --border-light
+- message: a brief description of the updated theme
+
+Example format:
+{
+  "themeName": "${editingThemeName}",
+  "cssVariables": {
+    "--primary": "#0ea5e9",
+    "--primary-hover": "#0284c7",
+    "--bg": "#0f172a",
+    "--card": "#1e293b",
+    "--input-bg": "#334155",
+    "--text": "#f8fafc",
+    "--text-light": "#94a3b8",
+    "--border": "#475569",
+    "--border-light": "#64748b"
+  },
+  "message": "Updated theme description"
+}`;
+        } else {
+          // Create new theme
+          prompt = `Create a CSS theme based on this description: "${themeDescription}"
+
+Return a JSON object with:
+- themeName: a short name for the theme
+- cssVariables: an object with CSS custom properties for:
+  --primary, --primary-hover, --bg, --card, --input-bg, --text, --text-light, --border, --border-light
+- message: a brief description of the theme
+
+Example format:
+{
+  "themeName": "Ocean",
+  "cssVariables": {
+    "--primary": "#0ea5e9",
+    "--primary-hover": "#0284c7",
+    "--bg": "#0f172a",
+    "--card": "#1e293b",
+    "--input-bg": "#334155",
+    "--text": "#f8fafc",
+    "--text-light": "#94a3b8",
+    "--border": "#475569",
+    "--border-light": "#64748b"
+  },
+  "message": "A deep blue ocean theme with sky blue accents"
+}`;
+        }
+
+        const res = await window.callGemini(prompt, settings.geminiApiKey);
+        if (res?.text) {
+          const jsonMatch = res.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const themeData = JSON.parse(jsonMatch[0]);
+            setThemeCreationResult(themeData);
+            safeNotify(editingThemeName ? "Theme updated!" : "Theme generated!", "✨");
+          } else {
+            throw new Error("Could not parse theme data");
+          }
+        } else {
+          throw new Error("No response from AI");
+        }
+      } catch (e) {
+        safeNotify("Theme creation failed: " + (e?.message || "Unknown error"), "❌");
+      } finally {
+        setIsCreatingTheme(false);
+      }
+    }, [settings?.geminiApiKey, settings?.customThemes, themeDescription, editingThemeName, safeNotify]);
+
+    const handleApplyTheme = useCallback((themeName, existingThemeName = null) => {
+      if (!themeCreationResult) return;
+      // If editing, use the existing theme name, otherwise sanitize the new name
+      const finalThemeName = existingThemeName || themeName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+      
+      // Store custom theme in settings
+      const customThemes = settings?.customThemes || {};
+      const existingTheme = existingThemeName ? customThemes[existingThemeName] : null;
+      
+      customThemes[finalThemeName] = {
+        cssVariables: themeCreationResult.cssVariables,
+        createdAt: existingTheme?.createdAt || new Date().toISOString(),
+        updatedAt: existingThemeName ? new Date().toISOString() : undefined,
+        displayName: themeName, // Keep original name for display
+        message: themeCreationResult.message
+      };
+      handleChange('customThemes', customThemes);
+      handleChange('theme', finalThemeName);
+      safeNotify(existingThemeName ? `Theme "${themeName}" updated and applied!` : `Theme "${themeName}" applied!`, "✅");
+      setThemeCreationResult(null);
+      setThemeDescription("");
+      setEditingThemeName(null);
+    }, [themeCreationResult, settings?.customThemes, handleChange, safeNotify]);
+
+    // ===========================================
     // CATEGORIES: state
     // ===========================================
     const [newCat, setNewCat] = useState("");
@@ -1275,12 +1394,157 @@ function Fold({ title, right, open, onToggle, children }) {
                 <option value="forest">🌲 Deep Forest</option>
                 <option value="synthwave">👾 Synthwave</option>
                 <option value="coffee">☕ Warm Coffee</option>
+                {/* Custom themes */}
+                {settings?.customThemes && Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                  <option key={themeName} value={themeName}>✨ {themeData.displayName || themeName} (Custom)</option>
+                ))}
               </select>
+              
+              {/* Show custom themes management */}
+              {settings?.customThemes && Object.keys(settings.customThemes).length > 0 && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: 'var(--text-light)' }}>Custom Themes</div>
+                  {Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                    <div key={themeName} style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      padding: '6px 0',
+                      fontSize: 12
+                    }}>
+                      <span>✨ {themeData.displayName || themeName}</span>
+                      <button
+                        onClick={() => {
+                          const newCustomThemes = { ...settings.customThemes };
+                          delete newCustomThemes[themeName];
+                          handleChange('customThemes', newCustomThemes);
+                          if (settings.theme === themeName) {
+                            handleChange('theme', 'dark');
+                          }
+                          safeNotify(`Theme "${themeName}" deleted`, "🗑️");
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          padding: '4px 8px',
+                          fontSize: 10,
+                          color: 'var(--text-light)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginTop: 12 }}>
                 <span>Show Task Times</span>
                 <input type="checkbox" checked={!!settings?.showTaskTimes} onChange={() => handleToggle("showTaskTimes")} />
               </label>
+
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginTop: 12 }}>
+                <span>🔲 Sharp Edges</span>
+                <input type="checkbox" checked={!!settings?.sharpEdges} onChange={() => handleToggle("sharpEdges")} />
+              </label>
+              <p style={{ fontSize: 11, color: "var(--text-light)", marginTop: 4, marginBottom: 0 }}>
+                Remove rounded corners from buttons, cards, and other UI elements
+              </p>
+            </div>
+
+            {/* AI Theme Creator */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #9b59b6" }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, fontWeight: 600 }}>🎨 AI Theme Creator</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Use AI to generate custom themes based on your description. Requires a Gemini API key (set in AI Settings).
+              </p>
+              
+              {/* Edit Existing Theme Option */}
+              {settings?.customThemes && Object.keys(settings.customThemes).length > 0 && (
+                <div style={{ marginBottom: 12, padding: 10, background: 'var(--input-bg)', borderRadius: 8 }}>
+                  <label className="f-label" style={{ marginBottom: 6, fontSize: 12, fontWeight: 600 }}>Edit Existing Theme (Optional)</label>
+                  <select 
+                    className="f-select" 
+                    style={{ width: '100%', marginBottom: 8 }}
+                    value={editingThemeName || ""}
+                    onChange={(e) => {
+                      setEditingThemeName(e.target.value);
+                      if (e.target.value) {
+                        const theme = settings.customThemes[e.target.value];
+                        setThemeDescription(`Modify this theme: ${theme.displayName || e.target.value}. Current description: ${theme.message || 'No description'}`);
+                      } else {
+                        setThemeDescription("");
+                      }
+                    }}
+                  >
+                    <option value="">Create New Theme</option>
+                    {Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                      <option key={themeName} value={themeName}>
+                        {themeData.displayName || themeName}
+                      </option>
+                    ))}
+                  </select>
+                  {editingThemeName && (
+                    <button
+                      className="btn-white-outline"
+                      onClick={() => {
+                        setEditingThemeName(null);
+                        setThemeDescription("");
+                      }}
+                      style={{ width: '100%', fontSize: 11, padding: '6px 12px' }}
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label" style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Describe Your Theme</label>
+                <textarea 
+                  className="f-input" 
+                  style={{ minHeight: 80, marginBottom: 8, width: '100%' }} 
+                  placeholder={editingThemeName ? "Describe how you want to modify this theme..." : "e.g., 'A dark theme with purple accents and neon glow effects' or 'A warm, cozy theme with brown and cream colors'"}
+                  value={themeDescription || ""}
+                  onChange={(e) => setThemeDescription(e.target.value)}
+                />
+                <button 
+                  className="btn-orange" 
+                  onClick={handleCreateTheme}
+                  disabled={!settings?.geminiApiKey || isCreatingTheme || !themeDescription}
+                  style={{ width: '100%' }}
+                >
+                  {isCreatingTheme ? "🎨 Creating Theme..." : editingThemeName ? "🔄 Update Theme" : "✨ Generate Theme"}
+                </button>
+                {themeCreationResult && (
+                  <div style={{ marginTop: 12, padding: 12, background: 'var(--input-bg)', borderRadius: 8, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Theme {editingThemeName ? 'Updated' : 'Generated'}!</div>
+                    <div style={{ marginBottom: 8, opacity: 0.8 }}>{themeCreationResult.message}</div>
+                    <button 
+                      className="btn-white-outline" 
+                      onClick={() => handleApplyTheme(themeCreationResult.themeName, editingThemeName)}
+                      style={{ marginRight: 8, padding: '6px 12px', fontSize: 11 }}
+                    >
+                      {editingThemeName ? 'Update & Apply' : 'Apply Theme'}
+                    </button>
+                    <button 
+                      className="btn-white-outline" 
+                      onClick={() => {
+                        setThemeCreationResult(null);
+                        if (editingThemeName) {
+                          setEditingThemeName(null);
+                          setThemeDescription("");
+                        }
+                      }}
+                      style={{ padding: '6px 12px', fontSize: 11 }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Navigation Bar Configuration */}

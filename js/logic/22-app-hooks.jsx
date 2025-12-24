@@ -111,6 +111,13 @@
     useEffect(() => {
       const theme = settings.theme || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
+      
+      // Apply sharp edges setting
+      if (settings.sharpEdges) {
+        document.documentElement.setAttribute('data-sharp-edges', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-sharp-edges');
+      }
 
       // Apply custom theme if it exists
       const customThemes = settings.customThemes || {};
@@ -153,7 +160,7 @@
         const primaryColor = customTheme?.cssVariables?.['--primary'] || colors[theme] || '#ff6b35';
         metaThemeColor.setAttribute("content", primaryColor);
       }
-    }, [settings.theme, settings.customThemes]);
+    }, [settings.theme, settings.customThemes, settings.sharpEdges]);
 
     return {
       tasks, setTasks,

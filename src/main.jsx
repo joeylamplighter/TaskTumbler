@@ -17,6 +17,8 @@ import './components/task-form/TaskFormModal'
 // Import managers to ensure they're available on window
 import './components/managers/LocationsManager'
 import './components/managers/PeopleManager'
+// Import contact modal
+import '../js/features/contact/13-11-view-contact-modal.jsx'
 // Import tab components to ensure they're available on window
 import './components/tabs/PeopleTab'
 import './components/tabs/PlacesTab'

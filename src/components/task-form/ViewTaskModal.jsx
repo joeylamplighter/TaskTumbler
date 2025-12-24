@@ -16,6 +16,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
   const [allLocations, setAllLocations] = useState([]);
   const [showPeopleManager, setShowPeopleManager] = useState(false);
   const [selectedPersonName, setSelectedPersonName] = useState(null);
+  const [expandedCallInfo, setExpandedCallInfo] = useState(false);
 
   // Load people and locations data
   useEffect(() => {
@@ -546,6 +547,268 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
         {/* CONTENT */}
         <div style={{ padding: '0 16px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           
+          {/* TAG-BASED INFORMATION SECTION */}
+          {(() => {
+            const tags = Array.isArray(task.tags) ? task.tags.map(t => String(t).toLowerCase().trim()).filter(Boolean) : [];
+            const hasCallTag = tags.some(t => t === 'call' || t.startsWith('#call'));
+            
+            if (hasCallTag && task.people && task.people.length > 0) {
+              const peopleWithInfo = task.people.map(personName => {
+                const personRecord = getPersonRecordByName(personName);
+                if (!personRecord) return null;
+                
+                const displayName = getDisplayName(personRecord);
+                const phone = personRecord.phone;
+                const compassLink = personRecord.compassCrmLink || personRecord.externalId;
+                
+                return { displayName, phone, compassLink, personRecord };
+              }).filter(Boolean);
+              
+              if (peopleWithInfo.length > 0) {
+                // If only one person, show expanded by default. If multiple, use expandable pill
+                const isExpanded = peopleWithInfo.length === 1 ? true : expandedCallInfo;
+                const showExpandable = peopleWithInfo.length > 1;
+                
+                return (
+                  <div style={{
+                    background: 'rgba(255, 107, 53, 0.1)',
+                    border: '1px solid rgba(255, 107, 53, 0.3)',
+                    borderRadius: 10,
+                    padding: 12,
+                    marginBottom: 16
+                  }}>
+                    {showExpandable ? (
+                      <>
+                        <button
+                          onClick={() => setExpandedCallInfo(!expandedCallInfo)}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                            textAlign: 'left'
+                          }}
+                        >
+                          <div style={{
+                            fontSize: 10,
+                            fontWeight: 800,
+                            letterSpacing: 0.5,
+                            textTransform: 'uppercase',
+                            color: 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}>
+                            <span>📞</span>
+                            <span>Call Information ({peopleWithInfo.length} {peopleWithInfo.length === 1 ? 'person' : 'people'})</span>
+                            <span style={{ fontSize: 12, marginLeft: 4 }}>
+                              {expandedCallInfo ? '▼' : '▶'}
+                            </span>
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div style={{ 
+                            marginTop: 12, 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: 10,
+                            animation: 'fadeIn 0.2s ease-in'
+                          }}>
+                            {peopleWithInfo.map((person, idx) => (
+                              <div key={idx} style={{
+                                padding: 10,
+                                background: 'var(--input-bg)',
+                                borderRadius: 8,
+                                border: '1px solid var(--border)'
+                              }}>
+                                <div style={{
+                                  fontWeight: 600,
+                                  fontSize: 13,
+                                  color: 'var(--text)',
+                                  marginBottom: 6
+                                }}>
+                                  {person.displayName}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {person.phone && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontSize: 12, color: 'var(--text-light)' }}>Phone:</span>
+                                      <a
+                                        href={`tel:${person.phone.replace(/\D/g, '')}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          color: 'var(--primary)',
+                                          textDecoration: 'none',
+                                          fontSize: 13,
+                                          fontWeight: 600,
+                                          borderBottom: '1px dotted var(--primary)',
+                                          cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.borderBottom = '1px solid var(--primary)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.borderBottom = '1px dotted var(--primary)';
+                                        }}
+                                        title="Click to call"
+                                      >
+                                        {person.phone}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {person.compassLink && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontSize: 12, color: 'var(--text-light)' }}>Compass:</span>
+                                      <a
+                                        href={person.compassLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          // Also try to use window.openCompass if available
+                                          if (window.openCompass && person.personRecord) {
+                                            e.preventDefault();
+                                            window.openCompass(person.personRecord, 'profile', person.displayName);
+                                          }
+                                        }}
+                                        style={{
+                                          color: 'var(--primary)',
+                                          textDecoration: 'none',
+                                          fontSize: 13,
+                                          fontWeight: 600,
+                                          borderBottom: '1px dotted var(--primary)',
+                                          cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.borderBottom = '1px solid var(--primary)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.borderBottom = '1px dotted var(--primary)';
+                                        }}
+                                        title="Open in Compass CRM"
+                                      >
+                                        View Profile 🧭
+                                      </a>
+                                    </div>
+                                  )}
+                                  {!person.phone && !person.compassLink && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-light)', fontStyle: 'italic' }}>
+                                      No phone or Compass link available
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Single person - show expanded by default
+                      <>
+                        <div style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: 0.5,
+                          textTransform: 'uppercase',
+                          color: 'var(--primary)',
+                          marginBottom: 10
+                        }}>
+                          📞 Call Information
+                        </div>
+                        <div style={{
+                          padding: 10,
+                          background: 'var(--input-bg)',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)'
+                        }}>
+                          <div style={{
+                            fontWeight: 600,
+                            fontSize: 13,
+                            color: 'var(--text)',
+                            marginBottom: 6
+                          }}>
+                            {peopleWithInfo[0].displayName}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {peopleWithInfo[0].phone && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-light)' }}>Phone:</span>
+                                <a
+                                  href={`tel:${peopleWithInfo[0].phone.replace(/\D/g, '')}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    color: 'var(--primary)',
+                                    textDecoration: 'none',
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    borderBottom: '1px dotted var(--primary)',
+                                    cursor: 'pointer'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderBottom = '1px solid var(--primary)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderBottom = '1px dotted var(--primary)';
+                                  }}
+                                  title="Click to call"
+                                >
+                                  {peopleWithInfo[0].phone}
+                                </a>
+                              </div>
+                            )}
+                            {peopleWithInfo[0].compassLink && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-light)' }}>Compass:</span>
+                                <a
+                                  href={peopleWithInfo[0].compassLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.openCompass && peopleWithInfo[0].personRecord) {
+                                      e.preventDefault();
+                                      window.openCompass(peopleWithInfo[0].personRecord, 'profile', peopleWithInfo[0].displayName);
+                                    }
+                                  }}
+                                  style={{
+                                    color: 'var(--primary)',
+                                    textDecoration: 'none',
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    borderBottom: '1px dotted var(--primary)',
+                                    cursor: 'pointer'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderBottom = '1px solid var(--primary)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderBottom = '1px dotted var(--primary)';
+                                  }}
+                                  title="Open in Compass CRM"
+                                >
+                                  View Profile 🧭
+                                </a>
+                              </div>
+                            )}
+                            {!peopleWithInfo[0].phone && !peopleWithInfo[0].compassLink && (
+                              <div style={{ fontSize: 11, color: 'var(--text-light)', fontStyle: 'italic' }}>
+                                No phone or Compass link available
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
 
           {/* TIMER & FOCUS MODE BAR */}
           {shouldShowSection('showTimer') && (

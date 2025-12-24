@@ -386,6 +386,16 @@ const clearInitFlag = () => {
 const initialTab = () => {
   const primaryHash = window.location.hash.slice(1).split("?")[0].toLowerCase();
   const validTabs = ["tasks", "spin", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings"];
+  
+  // Handle person routes: #person/name or #people/name -> don't switch tab, just open modal
+  // (The modal will be opened by the useEffect that watches for contact permalinks)
+  // We return the current tab or default to avoid switching tabs unnecessarily
+  if (primaryHash.startsWith("person/") || primaryHash.startsWith("people/")) {
+    // Return current tab or default, don't force switch to people tab
+    const currentTab = window.location.hash.split('/')[0].replace('#', '');
+    return validTabs.includes(currentTab) ? currentTab : "spin";
+  }
+  
   return validTabs.includes(primaryHash) ? primaryHash : "spin";
 };
 
@@ -640,6 +650,10 @@ const removeSubCategory = (parentCat, subName) => {
   // --- Global Components (loaded in other files) ---
   const TaskFormModal = window.TaskFormModal;
   const ViewTaskModal = window.ViewTaskModal;
+  const ViewContactModal = window.ViewContactModal;
+  if (!ViewContactModal) {
+    console.warn('ViewContactModal not found on window. Check if 13-11-view-contact-modal.jsx is loaded.');
+  }
   const SyncModal = window.SyncModal;
   const PeopleManager = window.PeopleManager;
 
@@ -1002,6 +1016,14 @@ const removeSubCategory = (parentCat, subName) => {
     }
   }, [pushModal]);
   
+  // Export to window for use by spin winner popup and other components
+  React.useEffect(() => {
+    window.setShowPeopleManager = setShowPeopleManager;
+    return () => {
+      delete window.setShowPeopleManager;
+    };
+  }, [setShowPeopleManager]);
+  
   const [focusTask, setFocusTask] = React.useState(null);
   const [toasts, setToasts] = React.useState([]);
   const [cloudUser, setCloudUser] = React.useState(null);
@@ -1108,6 +1130,58 @@ const removeSubCategory = (parentCat, subName) => {
     window.addEventListener("people-updated", refreshPeople);
     return () => window.removeEventListener("people-updated", refreshPeople);
   }, [DM]);
+
+  // Listen for open-contact event to show contact modal
+  React.useEffect(() => {
+    const handleOpenContact = (e) => {
+      const person = e.detail?.person;
+      if (person) {
+        pushModal({ type: 'viewContact', data: person });
+      }
+    };
+    window.addEventListener('open-contact', handleOpenContact);
+    return () => window.removeEventListener('open-contact', handleOpenContact);
+  }, [pushModal]);
+
+  // Handle contact permalinks (#people/{id} or #person/{id}) - open contact modal
+  React.useEffect(() => {
+    // Skip if we're in the middle of closing a modal (prevent reopening loop)
+    if (window.__closingContactModal) {
+      return;
+    }
+    
+    const checkContactPermalink = () => {
+      // Skip if we're closing a modal
+      if (window.__closingContactModal) {
+        return;
+      }
+      
+      const hash = window.location.hash;
+      const match = hash.match(/#(?:people|person)\/([^?]+)/);
+      if (match) {
+        const personId = decodeURIComponent(match[1]);
+        // Find the person by ID or name
+        const person = allPeople.find(p => {
+          if (p.id === personId) return true;
+          const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+          return personName === personId || 
+                 (p.firstName && p.lastName && `${p.firstName} ${p.lastName}` === personId);
+        });
+        if (person) {
+          // Only open if not already open
+          const isAlreadyOpen = modalStack.some(m => m.type === 'viewContact' && m.data?.id === person.id);
+          if (!isAlreadyOpen) {
+            pushModal({ type: 'viewContact', data: person });
+          }
+        }
+      }
+    };
+    
+    // Check on mount and hash changes
+    checkContactPermalink();
+    window.addEventListener('hashchange', checkContactPermalink);
+    return () => window.removeEventListener('hashchange', checkContactPermalink);
+  }, [allPeople, pushModal, modalStack]);
 
   // Theme
   React.useEffect(() => {
@@ -2468,6 +2542,7 @@ const removeSubCategory = (parentCat, subName) => {
             timerState={timerState}
             focusModeActive={!!focusTask}
             remindersArmed={settings?.enableNotifications || false}
+            people={allPeople}
             onTabChange={setTab}
             onSearchClick={() => {
               // TODO: Implement search modal/keyboard shortcut
@@ -2780,6 +2855,69 @@ const removeSubCategory = (parentCat, subName) => {
                 updateTask={updateTask}
                 tasks={tasks}
                 settings={settings}
+              />
+            </div>
+          );
+        }
+        
+        if (modal.type === 'viewContact') {
+          if (!ViewContactModal) {
+            console.error('ViewContactModal is not available. Check if 13-11-view-contact-modal.jsx loaded correctly.');
+            return null;
+          }
+          const person = modal.data;
+          if (!person) {
+            console.warn('ViewContactModal: modal.data is missing person');
+            return null;
+          }
+          return (
+            <div 
+              key={`viewContact-${index}`} 
+              style={{ 
+                position: 'fixed', 
+                inset: 0, 
+                zIndex,
+                pointerEvents: isTopModal ? 'auto' : 'none'
+              }}
+            >
+              <ViewContactModal
+                person={person}
+                onClose={() => {
+                  // Set flag to prevent reopening loop
+                  window.__closingContactModal = true;
+                  
+                  // Remove modal from stack
+                  setModalStack(prev => prev.filter((_, i) => i !== index));
+                  
+                  // Clear contact permalink from hash if present
+                  const hash = window.location.hash;
+                  if (hash.match(/#(?:people|person)\//)) {
+                    // Get current tab (without contact permalink)
+                    const currentTab = initialTab();
+                    // Clear the hash or go back to the tab
+                    if (currentTab === 'spin') {
+                      window.location.hash = '';
+                    } else {
+                      window.location.hash = `#${currentTab}`;
+                    }
+                  }
+                  
+                  // Clear flag after a short delay to allow hash change to complete
+                  setTimeout(() => {
+                    window.__closingContactModal = false;
+                  }, 100);
+                }}
+                onEdit={(p) => {
+                  // Open PeopleManager in edit mode for this person
+                  pushModal({ type: 'peopleManager', data: { editPerson: p } });
+                }}
+                tasks={tasks}
+                history={activities}
+                locations={DM?.locations?.getAll?.() || []}
+                people={allPeople}
+                setPeople={setPeople}
+                onViewTask={setViewTask}
+                onComplete={completeTask}
               />
             </div>
           );
