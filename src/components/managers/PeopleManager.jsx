@@ -10,8 +10,9 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { getDisplayName, getInitials } from "../../utils/personUtils";
 
-export default function PeopleManager({ people, setPeople, onClose, tasks, onViewTask, locations = [], setLocations, setTasks, initialSelectedPersonName = null }) {
+export default function PeopleManager({ people, setPeople, onClose, tasks, onViewTask, history = [], locations = [], setLocations, setTasks, initialSelectedPersonName = null, notify }) {
   const safePeople = Array.isArray(people) ? people : [];
+  const safeHistory = Array.isArray(history) ? history : [];
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [viewingId, setViewingId] = useState(null);
@@ -52,7 +53,20 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     weight: 1,
     compassCrmLink: '',
     links: '',
-    locationIds: []
+    locationIds: [],
+    // New contact fields
+    company: '',
+    jobTitle: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    website: '',
+    linkedin: '',
+    twitter: '',
+    profilePicture: '', // Can be URL, base64, emoji, or 'ai'
+    profilePictureType: 'initials' // 'initials', 'emoji', 'upload', 'ai'
   });
 
   // Helper to split name - handles both old format (name) and new format (firstName/lastName)
@@ -96,7 +110,19 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       weight: 1,
       compassCrmLink: '',
       links: '',
-      locationIds: []
+      locationIds: [],
+      company: '',
+      jobTitle: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: '',
+      website: '',
+      linkedin: '',
+      twitter: '',
+      profilePicture: '',
+      profilePictureType: 'initials'
     });
   };
 
@@ -136,7 +162,19 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       weight: p.weight || 1,
       compassCrmLink: p.compassCrmLink || p.compassLink || p.crmLink || '',
       links: linksStr,
-      locationIds: Array.isArray(p.locationIds) ? p.locationIds : []
+      locationIds: Array.isArray(p.locationIds) ? p.locationIds : [],
+      company: p.company || '',
+      jobTitle: p.jobTitle || '',
+      address: p.address || '',
+      city: p.city || '',
+      state: p.state || '',
+      zipCode: p.zipCode || '',
+      country: p.country || '',
+      website: p.website || '',
+      linkedin: p.linkedin || '',
+      twitter: p.twitter || '',
+      profilePicture: p.profilePicture || '',
+      profilePictureType: p.profilePictureType || (p.profilePicture ? (p.profilePicture.startsWith('data:') ? 'upload' : (p.profilePicture.match(/^[\u{1F300}-\u{1F9FF}]$/u) ? 'emoji' : 'upload')) : 'initials')
     });
   };
 
@@ -202,6 +240,19 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       compassCrmLink: String(formData.compassCrmLink || '').trim(),
       links: parseLinks(formData.links),
       locationIds: Array.isArray(formData.locationIds) ? formData.locationIds.filter(Boolean) : [],
+      // New contact fields
+      company: String(formData.company || '').trim(),
+      jobTitle: String(formData.jobTitle || '').trim(),
+      address: String(formData.address || '').trim(),
+      city: String(formData.city || '').trim(),
+      state: String(formData.state || '').trim(),
+      zipCode: String(formData.zipCode || '').trim(),
+      country: String(formData.country || '').trim(),
+      website: String(formData.website || '').trim(),
+      linkedin: String(formData.linkedin || '').trim(),
+      twitter: String(formData.twitter || '').trim(),
+      profilePicture: String(formData.profilePicture || '').trim(),
+      profilePictureType: formData.profilePictureType || 'initials',
       id: editId || (window.generateId ? window.generateId('p') : ('p_' + Date.now())),
       updatedAt: new Date().toISOString()
     };
@@ -229,6 +280,88 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     const nextList = safePeople.filter(p => p.id !== id);
     setPeople?.(nextList);
     if (editId === id) resetForm();
+  };
+
+  // Profile picture handlers
+  const handleProfilePictureUpload = (file, personId) => {
+    if (!file || !personId) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      const updatedPeople = safePeople.map(p => 
+        p.id === personId 
+          ? { ...p, profilePicture: base64String, profilePictureType: 'upload', updatedAt: new Date().toISOString() }
+          : p
+      );
+      setPeople?.(updatedPeople);
+      notify?.('Profile picture uploaded!', '✅');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateAIPicture = async (personId, displayName) => {
+    if (!personId || !displayName) return;
+    
+    try {
+      notify?.('Generating AI profile picture...', '⏳');
+      const person = safePeople.find(p => p.id === personId);
+      if (!person) return;
+      
+      // Use DiceBear API for AI-generated avatars
+      const initials = getInitials(person);
+      const seed = displayName.toLowerCase().replace(/\s+/g, '-');
+      const style = 'avataaars'; // Options: avataaars, personas, identicon, bottts, etc.
+      const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+      
+      // Convert SVG URL to base64 by fetching it
+      try {
+        const response = await fetch(avatarUrl);
+        const svgText = await response.text();
+        const base64Svg = `data:image/svg+xml;base64,${btoa(svgText)}`;
+        
+        const updatedPeople = safePeople.map(p => 
+          p.id === personId 
+            ? { ...p, profilePicture: base64Svg, profilePictureType: 'ai', updatedAt: new Date().toISOString() }
+            : p
+        );
+        setPeople?.(updatedPeople);
+        notify?.('AI profile picture generated!', '✨');
+        
+        // Refresh if viewing this person
+        if (viewingId === personId) {
+          const updatedPerson = updatedPeople.find(p => p.id === personId);
+          if (updatedPerson) {
+            // Trigger re-render by updating state
+            setTimeout(() => {
+              startView(updatedPerson);
+            }, 100);
+          }
+        }
+      } catch (fetchError) {
+        // Fallback to URL if fetch fails
+        const updatedPeople = safePeople.map(p => 
+          p.id === personId 
+            ? { ...p, profilePicture: avatarUrl, profilePictureType: 'ai', updatedAt: new Date().toISOString() }
+            : p
+        );
+        setPeople?.(updatedPeople);
+        notify?.('AI profile picture generated!', '✨');
+      }
+    } catch (error) {
+      console.error('Error generating AI photo:', error);
+      notify?.('Failed to generate AI photo. Please try again.', '❌');
+    }
+  };
+
+  const handleSetEmoji = (personId, emoji) => {
+    if (!personId || !emoji) return;
+    const updatedPeople = safePeople.map(p => 
+      p.id === personId 
+        ? { ...p, profilePicture: emoji, profilePictureType: 'emoji', updatedAt: new Date().toISOString() }
+        : p
+    );
+    setPeople?.(updatedPeople);
+    notify?.('Emoji profile picture set!', '✅');
   };
 
   const toggleColumnCollapse = () => {
@@ -846,7 +979,14 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   if (person) startEdit(person);
                 }}
                 tasks={tasks || []}
+                history={safeHistory}
                 onViewTask={onViewTask}
+                setPeople={setPeople}
+                safePeople={safePeople}
+                notify={notify}
+                onProfilePictureUpload={handleProfilePictureUpload}
+                onGenerateAIPicture={handleGenerateAIPicture}
+                onSetEmoji={handleSetEmoji}
               />
             ) : isEditing ? (
               <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
@@ -948,6 +1088,114 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                       placeholder="https://..."
                     />
                   </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Company</label>
+                    <input
+                      className="f-input"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      placeholder="Company name"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Job Title</label>
+                    <input
+                      className="f-input"
+                      value={formData.jobTitle}
+                      onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+                      placeholder="Job title"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="f-label">Address</label>
+                  <input
+                    className="f-input"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Street address"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label className="f-label">City</label>
+                    <input
+                      className="f-input"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="City"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 150px' }}>
+                    <label className="f-label">State</label>
+                    <input
+                      className="f-input"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="State"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 120px' }}>
+                    <label className="f-label">Zip Code</label>
+                    <input
+                      className="f-input"
+                      value={formData.zipCode}
+                      onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                      placeholder="Zip"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 150px' }}>
+                    <label className="f-label">Country</label>
+                    <input
+                      className="f-input"
+                      value={formData.country}
+                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                      placeholder="Country"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Website</label>
+                    <input
+                      className="f-input"
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">LinkedIn</label>
+                    <input
+                      className="f-input"
+                      type="url"
+                      value={formData.linkedin}
+                      onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                      placeholder="https://linkedin.com/in/..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="f-label">Twitter/X</label>
+                  <input
+                    className="f-input"
+                    value={formData.twitter}
+                    onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                    placeholder="@username or URL"
+                  />
                 </div>
 
                 <div>
@@ -1081,13 +1329,37 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
 }
 
 // Person View Component
-function PersonView({ person, onEdit, tasks, onViewTask }) {
+function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople, safePeople, notify, onProfilePictureUpload, onGenerateAIPicture, onSetEmoji }) {
   if (!person) return null;
 
   const displayName = getDisplayName(person);
   const initials = getInitials(person);
   const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const safeHistory = Array.isArray(history) ? history : [];
+  const fileInputRef = React.useRef(null);
+  const profilePicMenuRef = React.useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
+  const [showProfilePicMenu, setShowProfilePicMenu] = React.useState(false);
   
+  // Close profile pic menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profilePicMenuRef.current && !profilePicMenuRef.current.contains(event.target)) {
+        setShowProfilePicMenu(false);
+      }
+    };
+    if (showProfilePicMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProfilePicMenu]);
+  
+  // Helper to normalize people names in history items
+  const normalizePeopleInItem = (item) => {
+    const arr = Array.isArray(item?.people) ? item.people : [];
+    return arr.map(p => String(p || '').trim()).filter(Boolean);
+  };
+
   // Find tasks associated with this person
   const associatedTasks = safeTasks.filter(task => {
     const taskPeople = Array.isArray(task.people) ? task.people : [];
@@ -1096,6 +1368,102 @@ function PersonView({ person, onEdit, tasks, onViewTask }) {
       String(p || '').toLowerCase() === String(personName || '').toLowerCase()
     );
   });
+
+  // Find history items associated with this person
+  const associatedHistory = React.useMemo(() => {
+    if (!displayName) return [];
+    const key = displayName.toLowerCase();
+    return safeHistory
+      .filter(h => normalizePeopleInItem(h).some(n => n.toLowerCase() === key))
+      .slice()
+      .sort((a, b) => {
+        const ta = new Date(a?.createdAt || a?.completedAt || a?.ts || 0).getTime();
+        const tb = new Date(b?.createdAt || b?.completedAt || b?.ts || 0).getTime();
+        return tb - ta;
+      });
+  }, [safeHistory, displayName]);
+
+  // Get profile picture display
+  const getProfilePictureDisplay = () => {
+    const picType = person.profilePictureType || 'initials';
+    const pic = person.profilePicture;
+    
+    if (picType === 'emoji' && pic) {
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 48
+        }}>
+          {pic}
+        </div>
+      );
+    } else if (picType === 'upload' && pic) {
+      return (
+        <img 
+          src={pic} 
+          alt={displayName}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: 'inherit'
+          }}
+        />
+      );
+    } else if (picType === 'ai' && pic) {
+      return (
+        <img 
+          src={pic} 
+          alt={displayName}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: 'inherit'
+          }}
+        />
+      );
+    } else {
+      // Default to initials
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 900,
+          fontSize: 28
+        }}>
+          {initials}
+        </div>
+      );
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file && onProfilePictureUpload) {
+      onProfilePictureUpload(file, person.id);
+    }
+  };
+
+  const handleHistoryClick = (historyItem) => {
+    // If history item has a taskId, try to find and view the task
+    if (historyItem.taskId && onViewTask) {
+      const task = safeTasks.find(t => t.id === historyItem.taskId);
+      if (task) {
+        onViewTask(task);
+        return;
+      }
+    }
+    // Otherwise, could navigate to history view or show details
+    notify?.('History item clicked', 'ℹ️');
+  };
 
   // Parse links
   const links = Array.isArray(person.links) 
@@ -1109,33 +1477,194 @@ function PersonView({ person, onEdit, tasks, onViewTask }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 18,
-            border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--input-bg)', fontWeight: 900, fontSize: 24
-          }}>
-            {initials}
+      {/* Header with Profile Picture and Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flex: 1 }}>
+          {/* Profile Picture with Options */}
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              width: 80, height: 80, borderRadius: 20,
+              border: '2px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--input-bg)',
+              overflow: 'hidden',
+              position: 'relative',
+              cursor: 'pointer'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowProfilePicMenu(!showProfilePicMenu);
+            }}
+            data-profile-pic>
+              {getProfilePictureDisplay()}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+            {/* Profile Picture Menu */}
+            {showProfilePicMenu && (
+              <div 
+                ref={profilePicMenuRef}
+                style={{
+                  position: 'absolute',
+                  top: 88,
+                  left: 0,
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  zIndex: 10000,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  minWidth: 180
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowProfilePicMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    borderRadius: 4,
+                    fontSize: 13
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  📷 Upload Photo
+                </button>
+                <button
+                  onClick={() => {
+                    onGenerateAIPicture?.(person.id, displayName);
+                    setShowProfilePicMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    borderRadius: 4,
+                    fontSize: 13
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  🎨 Generate AI Photo
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEmojiPicker(true);
+                    setShowProfilePicMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    borderRadius: 4,
+                    fontSize: 13
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  😀 Use Emoji
+                </button>
+                <button
+                  onClick={() => {
+                    const updated = safePeople.map(p => 
+                      p.id === person.id 
+                        ? { ...p, profilePicture: '', profilePictureType: 'initials', updatedAt: new Date().toISOString() }
+                        : p
+                    );
+                    setPeople?.(updated);
+                    setShowProfilePicMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    borderRadius: 4,
+                    fontSize: 13
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  🔤 Use Initials
+                </button>
+              </div>
+            )}
+            {/* Profile Picture Edit Indicator */}
+            <div style={{
+              position: 'absolute',
+              bottom: -4,
+              right: -4,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'var(--primary)',
+              border: '2px solid var(--card)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 14
+            }}
+            title="Change profile picture"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowProfilePicMenu(!showProfilePicMenu);
+            }}>
+              ✏️
+            </div>
           </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>
+
+          {/* Name and Info */}
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
               {displayName}
             </h2>
-            <div style={{ fontSize: 13, color: 'var(--text-light)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ 
-                padding: '2px 8px', 
+                padding: '4px 10px', 
                 borderRadius: 6, 
                 background: 'rgba(255,107,53,0.15)',
                 fontWeight: 600
               }}>
                 {(person.type || 'client').toUpperCase()}
               </span>
+              {person.jobTitle && (
+                <span style={{ fontSize: 13 }}>{person.jobTitle}</span>
+              )}
+              {person.company && (
+                <span style={{ fontSize: 13 }}>at {person.company}</span>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               {associatedTasks.length > 0 && (
-                <span style={{ fontSize: 12 }}>
-                  {associatedTasks.length} {associatedTasks.length === 1 ? 'task' : 'tasks'}
-                </span>
+                <span>📋 {associatedTasks.length} {associatedTasks.length === 1 ? 'task' : 'tasks'}</span>
+              )}
+              {associatedHistory.length > 0 && (
+                <span>📜 {associatedHistory.length} {associatedHistory.length === 1 ? 'activity' : 'activities'}</span>
               )}
             </div>
           </div>
@@ -1143,69 +1672,222 @@ function PersonView({ person, onEdit, tasks, onViewTask }) {
         <button
           onClick={onEdit}
           className="btn-white-outline"
-          style={{ padding: '8px 16px', fontSize: 13 }}
+          style={{ padding: '10px 18px', fontSize: 13, fontWeight: 600 }}
         >
-          Edit
+          ✏️ Edit
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {/* Contact Information Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-          {person.email && (
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                EMAIL
-              </div>
-              <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                <a href={`mailto:${person.email}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
-                  {person.email}
-                </a>
-              </div>
-            </div>
-          )}
-
-          {person.phone && (
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                PHONE
-              </div>
-              <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                <a href={`tel:${person.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
-                  {person.phone}
-                </a>
-              </div>
-            </div>
-          )}
-
-          {person.compassCrmLink || person.compassLink || person.crmLink ? (
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                CRM LINK
-              </div>
-              <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                <a 
-                  href={person.compassCrmLink || person.compassLink || person.crmLink} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{ color: 'var(--primary)', textDecoration: 'none' }}
+      {/* Emoji Picker Modal */}
+      {showEmojiPicker && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+          onClick={() => setShowEmojiPicker(false)}
+        >
+          <div 
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: 16,
+              padding: 20,
+              maxWidth: 400,
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Choose an Emoji</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 8 }}>
+              {['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😶‍🌫️', '😵', '😵‍💫', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '👤', '👥', '👶', '🧒', '👦', '👧', '🧑', '👨', '👩', '🧓', '👴', '👵', '🙍', '🙎', '🙅', '🙆', '💁', '🙋', '🧏', '🙇', '🤦', '🤷', '👮', '🕵️', '💂', '🥷', '👷', '🤴', '👸', '👳', '👲', '🧕', '🤵', '👰', '🤰', '🤱', '👼', '🎅', '🤶', '🦸', '🦹', '🧙', '🧚', '🧛', '🧜', '🧝', '🧞', '🧟', '💆', '💇', '🚶', '🧍', '🧎', '🏃', '💃', '🕺', '🕴️', '👯', '🧘', '🧗', '🤺', '🏇', '⛷️', '🏂', '🏌️', '🏄', '🚣', '🏊', '⛹️', '🏋️', '🚴', '🚵', '🤸', '🤽', '🤾', '🤹', '🧗‍♀️', '🧗‍♂️', '🤼', '🤹‍♀️', '🤹‍♂️'].map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => {
+                    onSetEmoji?.(person.id, emoji);
+                    setShowEmojiPicker(false);
+                  }}
+                  style={{
+                    fontSize: 32,
+                    padding: 8,
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--input-bg)';
+                    e.target.style.transform = 'scale(1.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.transform = 'scale(1)';
+                  }}
                 >
-                  View in CRM →
-                </a>
-              </div>
+                  {emoji}
+                </button>
+              ))}
             </div>
-          ) : null}
+            <button
+              onClick={() => setShowEmojiPicker(false)}
+              className="btn-white-outline"
+              style={{ marginTop: 16, width: '100%' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
-          {person.createdAt && (
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                ADDED
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Contact Information Section */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-light)', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            Contact Information
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            {person.email && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  📧 EMAIL
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a href={`mailto:${person.email}`} style={{ color: 'var(--primary)', textDecoration: 'none', wordBreak: 'break-word' }}>
+                    {person.email}
+                  </a>
+                </div>
               </div>
-              <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                {new Date(person.createdAt).toLocaleDateString()}
+            )}
+
+            {person.phone && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  📞 PHONE
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a href={`tel:${person.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                    {person.phone}
+                  </a>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {person.company && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🏢 COMPANY
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
+                  {person.company}
+                </div>
+              </div>
+            )}
+
+            {person.website && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🌐 WEBSITE
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a 
+                    href={person.website.startsWith('http') ? person.website : `https://${person.website}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none', wordBreak: 'break-word' }}
+                  >
+                    {person.website} →
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {person.linkedin && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  💼 LINKEDIN
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a 
+                    href={person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none', wordBreak: 'break-word' }}
+                  >
+                    View Profile →
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {person.twitter && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🐦 TWITTER
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a 
+                    href={person.twitter.startsWith('http') ? person.twitter : `https://twitter.com/${person.twitter.replace('@', '')}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                  >
+                    @{person.twitter.replace('@', '').replace('https://twitter.com/', '')} →
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {person.compassCrmLink || person.compassLink || person.crmLink ? (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🧭 CRM LINK
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  <a 
+                    href={person.compassCrmLink || person.compassLink || person.crmLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                  >
+                    View in CRM →
+                  </a>
+                </div>
+              </div>
+            ) : null}
+
+            {(person.address || person.city || person.state || person.zipCode || person.country) && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  📍 ADDRESS
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6 }}>
+                  {[person.address, person.city, person.state, person.zipCode, person.country].filter(Boolean).join(', ')}
+                </div>
+              </div>
+            )}
+
+            {person.createdAt && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  📅 ADDED
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                  {new Date(person.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Name Breakdown */}
@@ -1318,52 +2000,53 @@ function PersonView({ person, onEdit, tasks, onViewTask }) {
         {/* Associated Tasks */}
         {associatedTasks.length > 0 && (
           <div>
-            <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 10, fontWeight: 700, letterSpacing: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>ASSOCIATED TASKS ({associatedTasks.length})</span>
-              <span style={{ fontSize: 11, fontWeight: 400 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-light)', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>📋 ASSOCIATED TASKS ({associatedTasks.length})</span>
+              <span style={{ fontSize: 11, fontWeight: 400, textTransform: 'none' }}>
                 {associatedTasks.filter(t => t.completed).length} completed
               </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto' }}>
               {associatedTasks.map((task) => (
                 <div
                   key={task.id}
                   onClick={() => onViewTask?.(task)}
                   style={{
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     background: task.completed ? 'rgba(0,184,148,0.1)' : 'rgba(255,255,255,0.05)',
-                    borderRadius: 10,
+                    borderRadius: 12,
                     cursor: 'pointer',
                     border: task.completed ? '1px solid rgba(0,184,148,0.3)' : '1px solid rgba(255,255,255,0.1)',
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = task.completed ? 'rgba(0,184,148,0.15)' : 'rgba(255,255,255,0.08)';
-                    e.target.style.transform = 'translateX(4px)';
+                    e.currentTarget.style.background = task.completed ? 'rgba(0,184,148,0.15)' : 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = task.completed ? 'rgba(0,184,148,0.1)' : 'rgba(255,255,255,0.05)';
-                    e.target.style.transform = 'translateX(0)';
+                    e.currentTarget.style.background = task.completed ? 'rgba(0,184,148,0.1)' : 'rgba(255,255,255,0.05)';
+                    e.currentTarget.style.transform = 'translateX(0)';
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <span style={{ fontSize: 16, marginTop: 2 }}>{task.completed ? '✅' : '⭕'}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <span style={{ fontSize: 18, marginTop: 2 }}>{task.completed ? '✅' : '⭕'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ 
-                        fontSize: 14, 
+                        fontSize: 15, 
                         fontWeight: 600, 
                         textDecoration: task.completed ? 'line-through' : 'none', 
                         opacity: task.completed ? 0.7 : 1,
-                        marginBottom: 4
+                        marginBottom: 6,
+                        color: 'var(--text)'
                       }}>
                         {task.title}
                       </div>
                       {task.description && (
-                        <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 6, lineHeight: 1.4 }}>
-                          {task.description.substring(0, 80)}{task.description.length > 80 ? '...' : ''}
+                        <div style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 8, lineHeight: 1.5 }}>
+                          {task.description.substring(0, 100)}{task.description.length > 100 ? '...' : ''}
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-light)', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-light)', flexWrap: 'wrap' }}>
                         {task.category && <span>📁 {task.category}</span>}
                         {task.priority && <span>⚡ {task.priority}</span>}
                         {task.dueDate && (
@@ -1386,10 +2069,83 @@ function PersonView({ person, onEdit, tasks, onViewTask }) {
           </div>
         )}
 
+        {/* History Section */}
+        {associatedHistory.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-light)', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              📜 ACTIVITY HISTORY ({associatedHistory.length})
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto' }}>
+              {associatedHistory.map((historyItem, idx) => {
+                const historyDate = historyItem.createdAt || historyItem.completedAt || historyItem.ts;
+                const historyTitle = historyItem.title || historyItem.text || 'Activity';
+                const historyType = historyItem.type || 'activity';
+                const getHistoryIcon = () => {
+                  if (historyType.includes('complete') || historyType.includes('done')) return '✅';
+                  if (historyType.includes('focus') || historyType.includes('timer')) return '🎯';
+                  if (historyType.includes('spin')) return '🎰';
+                  if (historyType.includes('create')) return '➕';
+                  if (historyType.includes('edit')) return '✏️';
+                  return '📝';
+                };
+                
+                return (
+                  <div
+                    key={historyItem.id || idx}
+                    onClick={() => handleHistoryClick(historyItem)}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.03)',
+                      borderRadius: 12,
+                      cursor: 'pointer',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <span style={{ fontSize: 18, marginTop: 2 }}>{getHistoryIcon()}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontSize: 14, 
+                          fontWeight: 600,
+                          marginBottom: 4,
+                          color: 'var(--text)'
+                        }}>
+                          {historyTitle}
+                        </div>
+                        {historyDate && (
+                          <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
+                            {new Date(historyDate).toLocaleString()}
+                          </div>
+                        )}
+                        {historyItem.category && (
+                          <div style={{ fontSize: 12, color: 'var(--text-light)', marginTop: 4 }}>
+                            📁 {historyItem.category}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Empty State */}
-        {!person.email && !person.phone && !person.notes && !person.firstName && !person.lastName && !person.name && links.length === 0 && tags.length === 0 && associatedTasks.length === 0 && (
-          <div style={{ color: 'var(--text-light)', opacity: 0.6, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
-            No additional details available.
+        {!person.email && !person.phone && !person.notes && !person.firstName && !person.lastName && !person.name && !person.company && !person.address && links.length === 0 && tags.length === 0 && associatedTasks.length === 0 && associatedHistory.length === 0 && (
+          <div style={{ color: 'var(--text-light)', opacity: 0.6, fontStyle: 'italic', padding: 40, textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px dashed var(--border)' }}>
+            No additional details available. Click Edit to add information.
           </div>
         )}
       </div>

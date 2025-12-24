@@ -19,6 +19,8 @@ function AppHeader({
   headerXpShowProgress = false,
   headerStatusItems = [],
   headerStatusClickable = false,
+  headerShowAllNavDropdown = true, // New: Show 4th dropdown option
+  allNavItems = [], // All navigation items for dropdown
   // Data props
   currentTab = 'spin',
   timerState = { isRunning: false, storedTime: 0 },
@@ -28,15 +30,17 @@ function AppHeader({
   onTabChange,
   onSearchClick,
   onStatusClick,
+  // Dev/Reset actions
+  showDevTools = false,
+  onToggleDevTools,
+  onReset,
 }) {
-  const [isRotated, setIsRotated] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   const handleBrandClick = (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
-    
-    // Trigger rotation animation
-    setIsRotated(r => !r);
     
     if (typeof onBrandClick === 'function') onBrandClick();
   };
@@ -172,6 +176,88 @@ function AppHeader({
     };
   }, [userStats]);
 
+  // Get all nav items sorted alphabetically for dropdown, filtered by search
+  // Exclude parent tabs that have subtabs (like "Settings" and "Data/Stats")
+  // Only show: main tabs with no subtabs + all subtabs (but not their parent tabs)
+  const sortedNavItems = React.useMemo(() => {
+    if (!Array.isArray(allNavItems) || allNavItems.length === 0) {
+      console.warn('AppHeader: allNavItems is empty or not an array', allNavItems);
+      return [];
+    }
+    
+    // Find parent tabs that have subtabs
+    const parentTabsWithSubtabs = new Set();
+    allNavItems.forEach(item => {
+      if (item.isSubtab && item.parentTab) {
+        parentTabsWithSubtabs.add(item.parentTab);
+      }
+    });
+    
+    // Filter: exclude parent tabs that have subtabs, but include all subtabs and main tabs without subtabs
+    let items = allNavItems.filter(item => {
+      // If it's a subtab, include it
+      if (item.isSubtab) return true;
+      // If it's a main tab but has subtabs, exclude it
+      if (parentTabsWithSubtabs.has(item.key)) return false;
+      // Otherwise include it (main tab with no subtabs)
+      return true;
+    });
+    
+    // Filter by search query if present
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      items = items.filter(item => {
+        const label = (item.displayLabel || item.label || '').toLowerCase();
+        const key = item.key.toLowerCase();
+        return label.includes(query) || key.includes(query);
+      });
+    }
+    
+    // Sort alphabetically
+    return items.sort((a, b) => {
+      const labelA = (a.displayLabel || a.label || '').toLowerCase();
+      const labelB = (b.displayLabel || b.label || '').toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+  }, [allNavItems, searchQuery]);
+
+  // Handle navigation from dropdown
+  const handleNavClick = (item) => {
+    setDropdownOpen(false);
+    setSearchQuery(''); // Clear search when navigating
+    if (item.key.includes(':')) {
+      const [parentTab, subtab] = item.key.split(':');
+      if (parentTab === 'stats') {
+        onTabChange?.('stats');
+        window.location.hash = `#stats?subView=${subtab}`;
+        window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
+      } else if (parentTab === 'settings') {
+        onTabChange?.('settings');
+        window.location.hash = `#settings?view=${subtab}`;
+        window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+      }
+    } else if (item.key === 'people') {
+      onTabChange?.('stats');
+      window.location.hash = '#stats?subView=people';
+      window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
+    } else {
+      onTabChange?.(item.key);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  const dropdownRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
   // Render right side based on mode
   const renderRightSide = () => {
     if (headerRightMode === 'none') {
@@ -180,7 +266,7 @@ function AppHeader({
     
     if (headerRightMode === 'quickNav') {
       return (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }}>
           {headerQuickNavItems.slice(0, 3).map((item) => {
             // Special handling for people - it's a subtab of stats
             const isPeople = item === 'people';
@@ -222,6 +308,209 @@ function AppHeader({
               </button>
             );
           })}
+          
+          {/* 4th option: Dropdown with all settings - ALWAYS SHOW */}
+          <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDropdownOpen(!dropdownOpen);
+              }}
+              style={{
+                background: dropdownOpen ? 'var(--primary-light)' : 'transparent',
+                border: '1px solid var(--border)',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                fontSize: '18px',
+                lineHeight: '1',
+                cursor: 'pointer',
+                opacity: dropdownOpen ? 1 : 0.8,
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '32px',
+                minHeight: '32px',
+                color: 'var(--text)',
+              }}
+              title="All navigation (alphabetical) - Click to see all tabs"
+              aria-label="Show all navigation"
+            >
+              ⋯
+            </button>
+              
+              {dropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    minWidth: '200px',
+                    maxWidth: '300px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    zIndex: 1000,
+                    padding: '4px 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {/* Search box */}
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+                    <input
+                      type="text"
+                      placeholder="Search navigation..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        color: 'var(--text)',
+                        outline: 'none',
+                      }}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {/* Navigation items */}
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {sortedNavItems.length > 0 ? (
+                      sortedNavItems.map((item) => {
+                        const isActive = item.key.includes(':')
+                          ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
+                          || (item.key.startsWith('settings:') && currentTab === 'settings')
+                          : item.key === currentTab || (item.key === 'people' && currentTab === 'stats' && getCurrentSubtab() === 'people');
+                        
+                        return (
+                          <button
+                            key={item.key}
+                            onClick={() => handleNavClick(item)}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 12px',
+                              background: isActive ? 'var(--primary-light)' : 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              color: 'var(--text)',
+                              transition: 'background 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isActive) e.currentTarget.style.background = 'var(--input-bg)';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isActive) e.currentTarget.style.background = 'transparent';
+                            }}
+                            title={item.label}
+                          >
+                            <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                            <span>{item.displayLabel || item.label}</span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
+                        No items found
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Actions section - Dev Mode, Reset, etc. */}
+                  {(onToggleDevTools || onReset) && (
+                    <>
+                      <div style={{ 
+                        height: '1px', 
+                        background: 'var(--border)', 
+                        margin: '8px 0' 
+                      }} />
+                      <div style={{ padding: '4px 0' }}>
+                        {onToggleDevTools && (
+                          <button
+                            onClick={() => {
+                              onToggleDevTools();
+                              setDropdownOpen(false);
+                            }}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 12px',
+                              background: showDevTools ? 'var(--primary-light)' : 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              color: 'var(--text)',
+                              transition: 'background 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!showDevTools) e.currentTarget.style.background = 'var(--input-bg)';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!showDevTools) e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>🛠️</span>
+                            <span>Dev Mode</span>
+                            {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
+                          </button>
+                        )}
+                        {onReset && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                                onReset();
+                                setDropdownOpen(false);
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              color: 'var(--text-danger, #ff4444)',
+                              transition: 'background 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'var(--input-bg)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>🗑️</span>
+                            <span>Reset All Data</span>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
@@ -332,7 +621,7 @@ function AppHeader({
             lineHeight: 1,
             display: 'inline-block',
             transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transform: isRotated ? 'rotate(90deg)' : 'rotate(0deg)'
+            transform: dockVisible ? 'rotate(0deg)' : 'rotate(90deg)'
           }}
         >
           🎰

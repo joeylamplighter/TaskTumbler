@@ -21,6 +21,27 @@ export default function SettingsTabLegacy(props) {
     const [foldScore, setFoldScore] = useState(false);
     const [foldSubs, setFoldSubs] = useState(true); // usually the only one you need open
     
+    // Subtabs collapse state (persisted in localStorage)
+    const [subTabsCollapsed, setSubTabsCollapsed] = useState(() => {
+      try {
+        const saved = localStorage.getItem('settings_subTabsCollapsed');
+        return saved === 'true';
+      } catch {
+        return false;
+      }
+    });
+    
+    // Persist collapse state to localStorage
+    const toggleSubTabsCollapsed = useCallback(() => {
+      setSubTabsCollapsed(prev => {
+        const newValue = !prev;
+        try {
+          localStorage.setItem('settings_subTabsCollapsed', String(newValue));
+        } catch {}
+        return newValue;
+      });
+    }, []);
+    
     // Game Settings section collapse states
     const [gameSections, setGameSections] = useState({
       xp: true,
@@ -253,6 +274,10 @@ export default function SettingsTabLegacy(props) {
 
     // rename input (MUST be top-level hook)
     const [renameDraft, setRenameDraft] = useState("");
+    
+    // Drag and drop state for nav bar ordering
+    const [draggedIndex, setDraggedIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
 	
 
     // Canonical category list from props; defensive clean mirror
@@ -1212,22 +1237,64 @@ function Fold({ title, right, open, onToggle, children }) {
 
         `}</style>
 
-        <div className="segmented-control tt-seg">
-          <button className={`sc-btn ${settingsView === "view" ? "active" : ""}`} onClick={() => setSettingsView("view")}>
-            🎨 View
-          </button>
-          <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
-            ⚙️ Logic
-          </button>
-          <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
-            ⚔️ Game
-          </button>
-          <button className={`sc-btn ${settingsView === "cats" ? "active" : ""}`} onClick={() => setSettingsView("cats")}>
-            📁 Cats
-          </button>
-          <button className={`sc-btn ${settingsView === "data" ? "active" : ""}`} onClick={() => setSettingsView("data")}>
-            💾 Data
-          </button>
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            onClick={toggleSubTabsCollapsed}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              flexShrink: 0
+            }}
+            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
+          />
+          {subTabsCollapsed ? (
+            <div
+              onClick={toggleSubTabsCollapsed}
+              style={{
+                flex: 1,
+                height: 2,
+                backgroundColor: 'var(--border)',
+                cursor: 'pointer',
+                borderRadius: 1
+              }}
+              title="Expand subtabs"
+            />
+          ) : (
+            <div className="segmented-control tt-seg" style={{ flex: 1 }}>
+              <button className={`sc-btn ${settingsView === "view" ? "active" : ""}`} onClick={() => setSettingsView("view")}>
+                🎨 View
+              </button>
+              <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
+                ⚙️ Logic
+              </button>
+              <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
+                ⚔️ Game
+              </button>
+              <button className={`sc-btn ${settingsView === "cats" ? "active" : ""}`} onClick={() => setSettingsView("cats")}>
+                📁 Cats
+              </button>
+              <button className={`sc-btn ${settingsView === "data" ? "active" : ""}`} onClick={() => setSettingsView("data")}>
+                💾 Data
+              </button>
+            </div>
+          )}
+          <div
+            onClick={toggleSubTabsCollapsed}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              flexShrink: 0
+            }}
+            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
+          />
         </div>
 
         {/* VIEW TAB */}
@@ -1250,21 +1317,218 @@ function Fold({ title, right, open, onToggle, children }) {
               </label>
             </div>
 
-            <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12 }}>Visible Tabs</h4>
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
-              {[
-                { id: "tasks", label: "📋 Tasks" },
-                { id: "timer", label: "⏱ Track" },
-                { id: "lists", label: "💡 Ideas" },
-                { id: "goals", label: "🎯 Goals" },
-                { id: "stats", label: "📊 Data" },
-                { id: "duel", label: "⚔️ Duel" },
-              ].map((tab) => (
-                <label key={tab.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, cursor: "pointer" }}>
-                  <span style={{ fontWeight: 500 }}>{tab.label}</span>
-                  <input type="checkbox" checked={settings?.visibleTabs?.[tab.id] !== false} onChange={() => handleTabToggle(tab.id)} />
-                </label>
-              ))}
+            {/* Navigation Bar Configuration */}
+            <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, marginTop: 24 }}>Navigation Bar</h4>
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+                Choose which items appear in the main navigation bar and their order
+              </p>
+              
+              {/* Nav Bar Visibility */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "var(--text-light)" }}>Visible Items</div>
+                <div style={{ background: "var(--card)", padding: 12, borderRadius: 8 }}>
+                  {(() => {
+                    const allNavItems = [
+                      { key: "spin", icon: "🎰", label: "Spin", displayLabel: "Spin" },
+                      { key: "tasks", icon: "📋", label: "Tasks", displayLabel: "Tasks" },
+                      { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
+                      { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
+                      { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
+                      { key: "stats", icon: "📊", label: "Data", displayLabel: "Data" },
+                      { key: "stats:overview", icon: "📊", label: "Data: Overview", displayLabel: "Overview", isSubtab: true },
+                      { key: "stats:charts", icon: "📈", label: "Data: Charts", displayLabel: "Charts", isSubtab: true },
+                      { key: "stats:history", icon: "📜", label: "Data: History", displayLabel: "History", isSubtab: true },
+                      { key: "stats:people", icon: "👥", label: "Data: People", displayLabel: "People", isSubtab: true },
+                      { key: "stats:places", icon: "📍", label: "Data: Places", displayLabel: "Places", isSubtab: true },
+                      { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel" },
+                      { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings" },
+                      { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true },
+                      { key: "settings:logic", icon: "🧠", label: "Settings: Logic", displayLabel: "Logic", isSubtab: true },
+                      { key: "settings:game", icon: "🎮", label: "Settings: Game", displayLabel: "Game", isSubtab: true },
+                      { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", displayLabel: "Categories", isSubtab: true },
+                      { key: "settings:data", icon: "💾", label: "Settings: Data", displayLabel: "Data", isSubtab: true },
+                    ];
+                    
+                    // Get current order
+                    const currentOrder = settings?.navItemsOrder || allNavItems.map(item => item.key);
+                    const orderedItems = [...allNavItems].sort((a, b) => {
+                      const aIndex = currentOrder.indexOf(a.key);
+                      const bIndex = currentOrder.indexOf(b.key);
+                      if (aIndex === -1 && bIndex === -1) return 0;
+                      if (aIndex === -1) return 1;
+                      if (bIndex === -1) return -1;
+                      return aIndex - bIndex;
+                    });
+                    
+                    const defaults = window.DEFAULT_SETTINGS || {};
+                    const defaultNavBarVisibleItems = defaults.navBarVisibleItems || {};
+                    return orderedItems.map((item) => {
+                      const isVisible = settings?.navBarVisibleItems?.[item.key] ?? defaultNavBarVisibleItems[item.key] ?? false;
+                      
+                      return (
+                        <label
+                          key={item.key}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                            cursor: "pointer",
+                            paddingLeft: item.isSubtab ? 16 : 0,
+                          }}
+                          title={item.label}
+                        >
+                          <span style={{ fontWeight: item.isSubtab ? 400 : 500, color: item.isSubtab ? "var(--text-light)" : "var(--text)", fontSize: item.isSubtab ? 13 : 14 }}>
+                            {item.icon} {item.displayLabel || item.label}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={isVisible}
+                            onChange={() => {
+                              setSettings((p) => {
+                                const current = p?.navBarVisibleItems || {};
+                                return {
+                                  ...p,
+                                  navBarVisibleItems: {
+                                    ...current,
+                                    [item.key]: !isVisible,
+                                  },
+                                };
+                              });
+                            }}
+                          />
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+              
+              {/* Nav Bar Order */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "var(--text-light)" }}>Item Order</div>
+                <div style={{ background: "var(--input-bg)", padding: 12, borderRadius: 8 }}>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
+                    Drag items to reorder. Only visible items are shown.
+                  </p>
+                  {(() => {
+                    const allNavItems = [
+                      { key: "spin", icon: "🎰", label: "Spin", displayLabel: "Spin", isSubtab: false },
+                      { key: "tasks", icon: "📋", label: "Tasks", displayLabel: "Tasks", isSubtab: false },
+                      { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track", isSubtab: false },
+                      { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas", isSubtab: false },
+                      { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals", isSubtab: false },
+                      { key: "stats", icon: "📊", label: "Data", displayLabel: "Data", isSubtab: false },
+                      { key: "stats:overview", icon: "📊", label: "Data: Overview", displayLabel: "Overview", isSubtab: true },
+                      { key: "stats:charts", icon: "📈", label: "Data: Charts", displayLabel: "Charts", isSubtab: true },
+                      { key: "stats:history", icon: "📜", label: "Data: History", displayLabel: "History", isSubtab: true },
+                      { key: "stats:people", icon: "👥", label: "Data: People", displayLabel: "People", isSubtab: true },
+                      { key: "stats:places", icon: "📍", label: "Data: Places", displayLabel: "Places", isSubtab: true },
+                      { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel", isSubtab: false },
+                      { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", isSubtab: false },
+                      { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true },
+                      { key: "settings:logic", icon: "🧠", label: "Settings: Logic", displayLabel: "Logic", isSubtab: true },
+                      { key: "settings:game", icon: "🎮", label: "Settings: Game", displayLabel: "Game", isSubtab: true },
+                      { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", displayLabel: "Categories", isSubtab: true },
+                      { key: "settings:data", icon: "💾", label: "Settings: Data", displayLabel: "Data", isSubtab: true },
+                    ];
+                    
+                    const currentOrder = settings?.navItemsOrder || allNavItems.map(item => item.key);
+                    // Filter to only show visible items
+                    const visibleItems = allNavItems.filter((item) => {
+                      return settings?.navBarVisibleItems?.[item.key] === true;
+                    });
+                    const orderedItems = [...visibleItems].sort((a, b) => {
+                      const aIndex = currentOrder.indexOf(a.key);
+                      const bIndex = currentOrder.indexOf(b.key);
+                      if (aIndex === -1 && bIndex === -1) return 0;
+                      if (aIndex === -1) return 1;
+                      if (bIndex === -1) return -1;
+                      return aIndex - bIndex;
+                    });
+                    
+                    const handleDragStart = (e, index) => {
+                      setDraggedIndex(index);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/html', e.target);
+                      e.target.style.opacity = '0.5';
+                    };
+                    
+                    const handleDragEnd = (e) => {
+                      e.target.style.opacity = '1';
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    };
+                    
+                    const handleDragOver = (e, index) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverIndex(index);
+                    };
+                    
+                    const handleDrop = (e, dropIndex) => {
+                      e.preventDefault();
+                      if (draggedIndex === null || draggedIndex === dropIndex) {
+                        setDraggedIndex(null);
+                        setDragOverIndex(null);
+                        return;
+                      }
+                      
+                      const newOrder = [...currentOrder];
+                      const draggedKey = orderedItems[draggedIndex].key;
+                      const dropKey = orderedItems[dropIndex].key;
+                      
+                      const draggedOrderIndex = newOrder.indexOf(draggedKey);
+                      const dropOrderIndex = newOrder.indexOf(dropKey);
+                      
+                      // Remove dragged item
+                      newOrder.splice(draggedOrderIndex, 1);
+                      // Insert at new position
+                      newOrder.splice(dropOrderIndex, 0, draggedKey);
+                      
+                      setSettings((p) => ({ ...p, navItemsOrder: newOrder }));
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    };
+                    
+                    return orderedItems.map((item, index) => {
+                      const isDragging = draggedIndex === index;
+                      const isDragOver = dragOverIndex === index;
+                      
+                      return (
+                        <div
+                          key={item.key}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDrop={(e) => handleDrop(e, index)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px",
+                            marginBottom: 4,
+                            background: isDragOver ? "var(--primary-light)" : "var(--card)",
+                            borderRadius: 6,
+                            cursor: "grab",
+                            opacity: isDragging ? 0.5 : 1,
+                            border: isDragOver ? "2px dashed var(--primary)" : "1px solid transparent",
+                            transition: "all 0.2s",
+                          }}
+                          title={item.label}
+                        >
+                          <span style={{ fontSize: 16, color: "var(--text-muted)", cursor: "grab" }}>⋮⋮</span>
+                          <span style={{ flex: 1, fontSize: 14, fontWeight: item.isSubtab ? 400 : 500, paddingLeft: item.isSubtab ? 16 : 0, color: item.isSubtab ? "var(--text-light)" : "var(--text)" }}>
+                            {item.icon} {item.displayLabel || item.label}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             </div>
             
             {/* Header Right Mode Configuration */}
@@ -1301,43 +1565,57 @@ function Fold({ title, right, open, onToggle, children }) {
                     Quick Nav Items (up to 3)
                   </label>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {["spin", "tasks", "timer", "stats", "settings", "search"].map((item) => {
-                      const isSelected = (settings?.headerQuickNavItems || []).includes(item);
-                      const currentItems = settings?.headerQuickNavItems || [];
-                      const canAdd = isSelected || currentItems.length < 3;
+                    {(() => {
+                      const quickNavOptions = [
+                        { key: "spin", icon: "🎰", label: "Spin" },
+                        { key: "tasks", icon: "📋", label: "Tasks" },
+                        { key: "timer", icon: "⏱️", label: "Track" },
+                        { key: "lists", icon: "💡", label: "Ideas" },
+                        { key: "goals", icon: "🎯", label: "Goals" },
+                        { key: "stats", icon: "📊", label: "Data" },
+                        { key: "duel", icon: "⚔️", label: "Duel" },
+                        { key: "settings", icon: "⚙️", label: "Settings" },
+                        { key: "search", icon: "🔍", label: "Search (Cmd/Ctrl+K)" },
+                      ];
                       
-                      return (
-                        <label
-                          key={item}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            cursor: canAdd ? "pointer" : "not-allowed",
-                            opacity: canAdd ? 1 : 0.5,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            disabled={!canAdd && !isSelected}
-                            onChange={(e) => {
-                              setSettings((p) => {
-                                const current = p?.headerQuickNavItems || [];
-                                const newItems = e.target.checked
-                                  ? [...current, item].slice(0, 3)
-                                  : current.filter((i) => i !== item);
-                                return { ...p, headerQuickNavItems: newItems };
-                              });
+                      return quickNavOptions.map((option) => {
+                        const isSelected = (settings?.headerQuickNavItems || []).includes(option.key);
+                        const currentItems = settings?.headerQuickNavItems || [];
+                        const canAdd = isSelected || currentItems.length < 3;
+                        
+                        return (
+                          <label
+                            key={option.key}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              cursor: canAdd ? "pointer" : "not-allowed",
+                              opacity: canAdd ? 1 : 0.5,
                             }}
-                            style={{ cursor: canAdd ? "pointer" : "not-allowed" }}
-                          />
-                          <span style={{ fontSize: 14, textTransform: "capitalize" }}>
-                            {item === "search" ? "🔍 Search (Cmd/Ctrl+K)" : `🎯 ${item}`}
-                          </span>
-                        </label>
-                      );
-                    })}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={!canAdd && !isSelected}
+                              onChange={(e) => {
+                                setSettings((p) => {
+                                  const current = p?.headerQuickNavItems || [];
+                                  const newItems = e.target.checked
+                                    ? [...current, option.key].slice(0, 3)
+                                    : current.filter((i) => i !== option.key);
+                                  return { ...p, headerQuickNavItems: newItems };
+                                });
+                              }}
+                              style={{ cursor: canAdd ? "pointer" : "not-allowed" }}
+                            />
+                            <span style={{ fontSize: 14 }}>
+                              {option.icon} {option.label}
+                            </span>
+                          </label>
+                        );
+                      });
+                    })()}
                   </div>
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
                     Selected: {((settings?.headerQuickNavItems || []).length || 0)} / 3

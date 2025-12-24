@@ -890,7 +890,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
     }, []);
 
     const [subView, setSubView] = React.useState(() => {
-        // First check URL hash
+        // Only check URL hash - no localStorage persistence to allow permalinks
         const hash = window.location.hash;
         if (hash.includes('subView=charts')) return 'charts';
         if (hash.includes('subView=history')) return 'history';
@@ -898,28 +898,17 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
         if (hash.includes('subView=places')) return 'places';
         if (hash.includes('subView=overview')) return 'overview';
         
-        // Then check localStorage
-        try {
-            const saved = localStorage.getItem('stats_subView');
-            if (saved && ['overview', 'charts', 'history', 'people', 'places'].includes(saved)) {
-                return saved;
-            }
-        } catch {}
-        
         return 'overview';
     });
 
     // Subtabs collapse state
     const [subTabsCollapsed, setSubTabsCollapsed] = React.useState(false);
 
-    // Persist subView changes to localStorage and URL
+    // Update subView and URL hash only (no localStorage persistence for permalinks)
     const updateSubView = (newSubView) => {
         setSubView(newSubView);
-        try {
-            localStorage.setItem('stats_subView', newSubView);
-        } catch {}
         
-        // Update URL hash
+        // Update URL hash only - no localStorage to allow permalinks
         const currentHash = window.location.hash;
         const baseHash = currentHash.split('?')[0];
         const params = new URLSearchParams(currentHash.split('?')[1] || '');

@@ -426,7 +426,11 @@ const removeSubCategory = (parentCat, subName) => {
   const [isDockVisible, setDockVisible] = React.useState(true);
   const [tab, setTab] = React.useState(initialTab());
   const [settingsView] = React.useState(initialSettingsView);
-  const handleBrandClick = React.useCallback(() => setDockVisible((v) => !v), []);
+  
+  // Handle brand click - toggle dock visibility
+  const handleBrandClick = React.useCallback(() => {
+    setDockVisible((v) => !v);
+  }, []);
 
   // Expose setTab globally for navigation from other components
   React.useEffect(() => {
@@ -463,9 +467,148 @@ const removeSubCategory = (parentCat, subName) => {
     return unsubscribe;
   }, [DM]);
 
+  // ✅ SYNC SETTINGS FROM DATAMANAGER and ensure defaults are always present
+  React.useEffect(() => {
+    if (!DM?.settings) return;
+    
+    // Get current settings from DataManager
+    const currentSettings = DM.settings.get();
+    const defaults = window.DEFAULT_SETTINGS || {};
+    
+    // Ensure defaults are merged, especially for navigation settings
+    // Treat empty objects as if no settings exist
+    if (currentSettings && typeof currentSettings === 'object' && Object.keys(currentSettings).length > 0) {
+      const merged = { ...defaults, ...currentSettings };
+      
+      // Deep merge navBarVisibleItems - defaults take precedence to override old saved values
+      if (defaults.navBarVisibleItems) {
+        merged.navBarVisibleItems = { ...(merged.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+      }
+      
+      // Ensure headerQuickNavItems defaults are always present
+      if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(merged.headerQuickNavItems) || merged.headerQuickNavItems.length === 0)) {
+        merged.headerQuickNavItems = [...defaults.headerQuickNavItems];
+      }
+      
+      // Ensure navItemsOrder defaults are always present
+      if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(merged.navItemsOrder) || merged.navItemsOrder.length === 0)) {
+        merged.navItemsOrder = [...defaults.navItemsOrder];
+      }
+      
+      // Ensure headerRightMode defaults are always present
+      if (!merged.headerRightMode && defaults.headerRightMode) {
+        merged.headerRightMode = defaults.headerRightMode;
+      }
+      
+      // Ensure headerShowAllNavDropdown defaults are always present
+      if (merged.headerShowAllNavDropdown === undefined && defaults.headerShowAllNavDropdown !== undefined) {
+        merged.headerShowAllNavDropdown = defaults.headerShowAllNavDropdown;
+      }
+      
+      // Update state if different
+      setSettingsInternal(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(merged)) {
+          return merged;
+        }
+        return prev;
+      });
+      
+      // Persist merged settings back to DataManager
+      if (JSON.stringify(currentSettings) !== JSON.stringify(merged)) {
+        DM.settings.set(merged);
+      }
+    } else {
+      // If no settings or empty object, use defaults
+      setSettingsInternal(defaults);
+      DM.settings.set(defaults);
+    }
+    
+    // Subscribe to future changes
+    if (DM.settings.subscribe) {
+      const unsubscribe = DM.settings.subscribe((newSettings) => {
+        const defaults = window.DEFAULT_SETTINGS || {};
+        // Treat empty objects as if no settings exist
+        if (newSettings && typeof newSettings === 'object' && Object.keys(newSettings).length > 0) {
+          const merged = { ...defaults, ...newSettings };
+          // Deep merge navBarVisibleItems - only fill in missing keys from defaults, don't override user changes
+          if (defaults.navBarVisibleItems && merged.navBarVisibleItems) {
+            // Only add defaults for keys that don't exist in user settings
+            Object.keys(defaults.navBarVisibleItems).forEach(key => {
+              if (!(key in merged.navBarVisibleItems)) {
+                merged.navBarVisibleItems[key] = defaults.navBarVisibleItems[key];
+              }
+            });
+          } else if (defaults.navBarVisibleItems) {
+            merged.navBarVisibleItems = { ...defaults.navBarVisibleItems };
+          }
+          // Ensure headerQuickNavItems defaults are always present
+          if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(merged.headerQuickNavItems) || merged.headerQuickNavItems.length === 0)) {
+            merged.headerQuickNavItems = [...defaults.headerQuickNavItems];
+          }
+          // Ensure navItemsOrder defaults are always present
+          if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(merged.navItemsOrder) || merged.navItemsOrder.length === 0)) {
+            merged.navItemsOrder = [...defaults.navItemsOrder];
+          }
+          // Ensure headerRightMode defaults are always present
+          if (!merged.headerRightMode && defaults.headerRightMode) {
+            merged.headerRightMode = defaults.headerRightMode;
+          }
+          // Ensure headerShowAllNavDropdown defaults are always present
+          if (merged.headerShowAllNavDropdown === undefined && defaults.headerShowAllNavDropdown !== undefined) {
+            merged.headerShowAllNavDropdown = defaults.headerShowAllNavDropdown;
+          }
+          setSettingsInternal(merged);
+        } else {
+          setSettingsInternal(defaults);
+        }
+      });
+      return unsubscribe;
+    }
+  }, [DM]);
+
   const [scratchpad, setScratchpadInternal] = React.useState(() => (seeded ? DM?.scratchpad?.get?.() || "" : ""));
   const [savedNotes, setSavedNotesInternal] = React.useState(() => (seeded ? DM?.savedNotes?.getAll?.() || [] : []));
-  const [settings, setSettingsInternal] = React.useState(() => DM?.settings?.get?.() || window.DEFAULT_SETTINGS || { theme: "dark", visibleTabs: {} });
+  const [settings, setSettingsInternal] = React.useState(() => {
+    // Always start with defaults to ensure navigation items are available on first render
+    const defaults = window.DEFAULT_SETTINGS || {};
+    const loaded = DM?.settings?.get?.();
+    
+    // If no loaded settings, invalid, or empty object, return defaults immediately
+    // This ensures navigation items are always available on first render
+    if (!loaded || typeof loaded !== 'object' || Object.keys(loaded).length === 0) {
+      return defaults;
+    }
+    
+    // Deep merge critical navigation settings - always ensure defaults are present
+    const merged = { ...defaults, ...loaded };
+    
+    // Deep merge navBarVisibleItems - defaults take precedence to override old saved values
+    if (defaults.navBarVisibleItems) {
+      merged.navBarVisibleItems = { ...(merged.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+    }
+    
+    // Ensure headerQuickNavItems defaults are always present
+    if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(merged.headerQuickNavItems) || merged.headerQuickNavItems.length === 0)) {
+      merged.headerQuickNavItems = [...defaults.headerQuickNavItems];
+    }
+    
+    // Ensure navItemsOrder defaults are always present
+    if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(merged.navItemsOrder) || merged.navItemsOrder.length === 0)) {
+      merged.navItemsOrder = [...defaults.navItemsOrder];
+    }
+    
+    // Ensure headerRightMode defaults are always present
+    if (!merged.headerRightMode && defaults.headerRightMode) {
+      merged.headerRightMode = defaults.headerRightMode;
+    }
+    
+    // Ensure headerShowAllNavDropdown defaults are always present
+    if (merged.headerShowAllNavDropdown === undefined && defaults.headerShowAllNavDropdown !== undefined) {
+      merged.headerShowAllNavDropdown = defaults.headerShowAllNavDropdown;
+    }
+    
+    return merged;
+  });
   const [userStats, setUserStatsInternal] = React.useState(() => (seeded ? DM?.userStats?.get?.() || { xp: 0, level: 1 } : { xp: 0, level: 1 }));
 
   // ✅ TIMER STATE (persistent + merge updates safely)
@@ -1557,6 +1700,12 @@ const removeSubCategory = (parentCat, subName) => {
         tags: ['marketing', 'campaign', 'urgent', 'strategy', 'launch', 'q1'],
         actualTime: 180,
         percentComplete: 65,
+        description: 'Develop and execute a comprehensive Q1 marketing campaign including strategy development, content creation, and launch planning. Coordinate with team members and stakeholders to ensure successful campaign rollout.',
+        images: [
+          'https://picsum.photos/seed/marketing1/800/600',
+          'https://picsum.photos/seed/marketing2/800/600',
+          'https://picsum.photos/seed/marketing3/800/600'
+        ],
         subtasks: [
           { id: generateId('sub'), title: 'Research target audience demographics', completed: true },
           { id: generateId('sub'), title: 'Create campaign messaging framework', completed: true },
@@ -1597,6 +1746,13 @@ const removeSubCategory = (parentCat, subName) => {
         tags: ['renovation', 'kitchen', 'home', 'contractor', 'design', 'selection'],
         actualTime: 90,
         percentComplete: 75,
+        description: 'Complete the kitchen renovation project by finalizing design choices, selecting materials, and choosing the right contractor. Review quotes, compare portfolios, and make final decisions on cabinets, countertops, and appliances.',
+        images: [
+          'https://picsum.photos/seed/kitchen1/800/600',
+          'https://picsum.photos/seed/kitchen2/800/600',
+          'https://picsum.photos/seed/kitchen3/800/600',
+          'https://picsum.photos/seed/kitchen4/800/600'
+        ],
         subtasks: [
           { id: generateId('sub'), title: 'Review contractor quotes and portfolios', completed: true },
           { id: generateId('sub'), title: 'Select cabinet style and hardware', completed: true },
@@ -1637,6 +1793,11 @@ const removeSubCategory = (parentCat, subName) => {
         tags: ['research', 'analysis', 'competitive', 'market', 'report', 'deep-work'],
         actualTime: 120,
         percentComplete: 40,
+        description: 'Conduct comprehensive market analysis and competitive research to identify trends, opportunities, and threats. Gather data, analyze competitor strategies, and create visualizations and recommendations for strategic decision-making.',
+        images: [
+          'https://picsum.photos/seed/research1/800/600',
+          'https://picsum.photos/seed/research2/800/600'
+        ],
         subtasks: [
           { id: generateId('sub'), title: 'Gather market data and statistics', completed: true },
           { id: generateId('sub'), title: 'Analyze competitor strategies and positioning', completed: false },
@@ -1676,6 +1837,14 @@ const removeSubCategory = (parentCat, subName) => {
         tags: ['client', 'onboarding', 'meeting', 'real-estate', 'property-search', 'kickoff'],
         actualTime: 85,
         percentComplete: 100,
+        description: 'Initial client onboarding meeting with Alice to understand her property preferences, budget, timeline, and requirements. Review property listings portfolio, establish search criteria, and schedule follow-up viewing appointments.',
+        images: [
+          'https://picsum.photos/seed/property1/800/600',
+          'https://picsum.photos/seed/property2/800/600',
+          'https://picsum.photos/seed/property3/800/600',
+          'https://picsum.photos/seed/property4/800/600',
+          'https://picsum.photos/seed/property5/800/600'
+        ],
         subtasks: [
           { id: generateId('sub'), title: 'Prepare property listings portfolio', completed: true },
           { id: generateId('sub'), title: 'Review client preferences and budget', completed: true },
@@ -1960,29 +2129,29 @@ const removeSubCategory = (parentCat, subName) => {
 
   // Nav items (defensive visibleTabs + custom order + subtabs)
   const allNavItems = [
-    { key: "spin", icon: "🎰", label: "Spin", isSubtab: false },
-    { key: "tasks", icon: "📋", label: "Tasks", isSubtab: false },
-    { key: "timer", icon: "⏱️", label: "Track", isSubtab: false },
-    { key: "lists", icon: "💡", label: "Ideas", isSubtab: false },
-    { key: "goals", icon: "🎯", label: "Goals", isSubtab: false },
-    { key: "stats", icon: "📊", label: "Data", isSubtab: false },
-    { key: "stats:overview", icon: "📊", label: "Data: Overview", isSubtab: true, parentTab: "stats" },
-    { key: "stats:charts", icon: "📈", label: "Data: Charts", isSubtab: true, parentTab: "stats" },
-    { key: "stats:history", icon: "📜", label: "Data: History", isSubtab: true, parentTab: "stats" },
-    { key: "stats:people", icon: "👥", label: "Data: People", isSubtab: true, parentTab: "stats" },
-    { key: "stats:places", icon: "📍", label: "Data: Places", isSubtab: true, parentTab: "stats" },
-    { key: "people", icon: "👥", label: "People", isSubtab: false },
-    { key: "duel", icon: "⚔️", label: "Duel", isSubtab: false },
-    { key: "settings", icon: "⚙️", label: "Settings", isSubtab: false },
-    { key: "settings:view", icon: "👁️", label: "Settings: View", isSubtab: true, parentTab: "settings" },
-    { key: "settings:logic", icon: "🧠", label: "Settings: Logic", isSubtab: true, parentTab: "settings" },
-    { key: "settings:game", icon: "🎮", label: "Settings: Game", isSubtab: true, parentTab: "settings" },
-    { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", isSubtab: true, parentTab: "settings" },
-    { key: "settings:data", icon: "💾", label: "Settings: Data", isSubtab: true, parentTab: "settings" },
+    { key: "spin", icon: "🎰", label: "Spin", displayLabel: "Spin", isSubtab: false },
+    { key: "tasks", icon: "📋", label: "Tasks", displayLabel: "Tasks", isSubtab: false },
+    { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track", isSubtab: false },
+    { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas", isSubtab: false },
+    { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals", isSubtab: false },
+    { key: "stats", icon: "📊", label: "Data", displayLabel: "Data", isSubtab: false },
+    { key: "stats:overview", icon: "📊", label: "Data: Overview", displayLabel: "Overview", isSubtab: true, parentTab: "stats" },
+    { key: "stats:charts", icon: "📈", label: "Data: Charts", displayLabel: "Charts", isSubtab: true, parentTab: "stats" },
+    { key: "stats:history", icon: "📜", label: "Data: History", displayLabel: "History", isSubtab: true, parentTab: "stats" },
+    { key: "stats:people", icon: "👥", label: "Data: People", displayLabel: "People", isSubtab: true, parentTab: "stats" },
+    { key: "stats:places", icon: "📍", label: "Data: Places", displayLabel: "Places", isSubtab: true, parentTab: "stats" },
+    { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel", isSubtab: false },
+    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", isSubtab: false },
+    { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true, parentTab: "settings" },
+    { key: "settings:logic", icon: "🧠", label: "Settings: Logic", displayLabel: "Logic", isSubtab: true, parentTab: "settings" },
+    { key: "settings:game", icon: "🎮", label: "Settings: Game", displayLabel: "Game", isSubtab: true, parentTab: "settings" },
+    { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", displayLabel: "Categories", isSubtab: true, parentTab: "settings" },
+    { key: "settings:data", icon: "💾", label: "Settings: Data", displayLabel: "Data", isSubtab: true, parentTab: "settings" },
   ];
   
-  // Apply custom order if available
-  const customOrder = settings?.navItemsOrder || allNavItems.map(item => item.key);
+  // Apply custom order if available - always fallback to defaults first
+  const defaults = window.DEFAULT_SETTINGS || {};
+  const customOrder = settings?.navItemsOrder || defaults.navItemsOrder || allNavItems.map(item => item.key);
   const orderedItems = [...allNavItems].sort((a, b) => {
     const aIndex = customOrder.indexOf(a.key);
     const bIndex = customOrder.indexOf(b.key);
@@ -1993,19 +2162,48 @@ const removeSubCategory = (parentCat, subName) => {
     return aIndex - bIndex;
   });
   
-  // Filter by visibility (navBarVisibleItems takes precedence, fallback to visibleTabs)
+  // Filter by visibility - use navBarVisibleItems from settings, fallback to defaults
+  // Settings can be hidden (accessible via #settings URL)
+  // Always ensure defaults are available even if settings haven't loaded yet
+  const defaultNavBarVisibleItems = defaults.navBarVisibleItems || {};
   const navItems = orderedItems.filter((item) => {
-    // Check navBarVisibleItems first
+    // Check settings first (if available and has this key)
     if (settings?.navBarVisibleItems && typeof settings.navBarVisibleItems[item.key] === 'boolean') {
       return settings.navBarVisibleItems[item.key] === true;
     }
     
-    // Fallback to visibleTabs for backward compatibility (only for main tabs, not subtabs)
-    if (item.isSubtab) return false; // Subtabs must be explicitly enabled
-    if (item.key === "spin") return true; // Spin always visible by default
-    if (!settings || !settings.visibleTabs) return true;
-    return settings.visibleTabs[item.key] !== false;
+    // Fallback to defaults if setting doesn't exist or item not in settings
+    // This ensures default nav items always show on fresh start
+    if (defaultNavBarVisibleItems && typeof defaultNavBarVisibleItems[item.key] === 'boolean') {
+      return defaultNavBarVisibleItems[item.key] === true;
+    }
+    
+    // If not in defaults either, don't show it
+    return false;
   });
+  
+  // Handle brand click - toggle dock OR toggle default nav items when nav is empty
+  const handleBrandClickWithNav = React.useCallback(() => {
+    // If nav items are empty, toggle default nav items instead of dock
+    if (navItems.length === 0) {
+      const defaultNavBarItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "stats:people"];
+      
+      // Turn on default items
+      setSettings((prev) => {
+        const newVisibleItems = { ...(prev?.navBarVisibleItems || {}) };
+        defaultNavBarItems.forEach(key => {
+          newVisibleItems[key] = true;
+        });
+        return {
+          ...prev,
+          navBarVisibleItems: newVisibleItems,
+        };
+      });
+    } else {
+      // Normal behavior: toggle dock visibility
+      setDockVisible((v) => !v);
+    }
+  }, [navItems.length, settings, setSettings, defaults]);
 
   // Reset / Dev overlay
   const handleEmergencyReset = () => {
@@ -2972,15 +3170,17 @@ const removeSubCategory = (parentCat, subName) => {
             user={cloudUser}
             syncState={syncState}
             onSyncClick={() => setShowSyncModal(true)}
-            onBrandClick={handleBrandClick}
+            onBrandClick={handleBrandClickWithNav}
             dockVisible={isDockVisible}
-            headerRightMode={settings?.headerRightMode || 'none'}
-            headerQuickNavItems={settings?.headerQuickNavItems || []}
+            headerRightMode={settings?.headerRightMode || (window.DEFAULT_SETTINGS?.headerRightMode || 'none')}
+            headerQuickNavItems={settings?.headerQuickNavItems || (window.DEFAULT_SETTINGS?.headerQuickNavItems || [])}
             headerXpShowValue={settings?.headerXpShowValue !== false}
             headerXpShowLevel={settings?.headerXpShowLevel !== false}
             headerXpShowProgress={settings?.headerXpShowProgress || false}
             headerStatusItems={settings?.headerStatusItems || []}
             headerStatusClickable={settings?.headerStatusClickable || false}
+            headerShowAllNavDropdown={settings?.headerShowAllNavDropdown ?? (window.DEFAULT_SETTINGS?.headerShowAllNavDropdown ?? true)}
+            allNavItems={allNavItems}
             currentTab={tab}
             timerState={timerState}
             focusModeActive={!!focusTask}
@@ -2996,6 +3196,14 @@ const removeSubCategory = (parentCat, subName) => {
               else if (statusId === 'focus') setFocusTask(null);
               // reminders doesn't navigate anywhere
             }}
+            showDevTools={settings?.showDevTools !== false}
+            onToggleDevTools={() => {
+              setSettings((prev) => ({
+                ...prev,
+                showDevTools: !(prev?.showDevTools !== false),
+              }));
+            }}
+            onReset={handleEmergencyReset}
           />
 
           <div

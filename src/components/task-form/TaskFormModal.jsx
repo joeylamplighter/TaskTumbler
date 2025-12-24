@@ -128,6 +128,7 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       title: incoming.title || "",
       description: incoming.description || "",
       category: incoming.category || visibleCategories[0] || "Work",
+      subcategory: incoming.subcategory || incoming.subCategory || "",
       subtype: incoming.subtype || null,
       priority: incoming.priority || "Medium",
       weight: incoming.weight || 10,
@@ -166,6 +167,24 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
   const [personInput, setPersonInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [subText, setSubText] = useState("");
+
+  // Get subcategories for current category
+  const subCategories = useMemo(() => {
+    const cat = data.category || "";
+    if (!cat) return [];
+    const subs = settings?.subCategories?.[cat];
+    return Array.isArray(subs) ? subs.filter(Boolean) : [];
+  }, [data.category, settings?.subCategories]);
+
+  // Clear subcategory when category changes if it's not valid for the new category
+  useEffect(() => {
+    if (data.subcategory) {
+      // Clear if new category has no subcategories OR if current subcategory is not in the list
+      if (subCategories.length === 0 || !subCategories.includes(data.subcategory)) {
+        setData((prev) => ({ ...prev, subcategory: "" }));
+      }
+    }
+  }, [data.category, subCategories]);
   // ----------------------------
   // PEOPLE: chip UI + inline editor
   // ----------------------------
@@ -738,6 +757,19 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
               </div>
               <input className="f-input" value={data.category} onChange={(e) => setData({ ...data, category: e.target.value })} list="cat-list" />
               <datalist id="cat-list">{visibleCategories.map((c) => <option key={c} value={c} />)}</datalist>
+              {subCategories.length > 0 && (
+                <select 
+                  className="f-select" 
+                  style={{ marginTop: 8 }} 
+                  value={data.subcategory || ""} 
+                  onChange={(e) => setData({ ...data, subcategory: e.target.value })}
+                >
+                  <option value="">-- Subcategory --</option>
+                  {subCategories.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div style={{ width: 120 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>

@@ -53,7 +53,7 @@ function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
             aria-current={isActive ? 'page' : undefined}
           >
             <div className="nav-icon">{item.icon}</div>
-            <div className="nav-label">{item.label}</div>
+            <div className="nav-label">{item.displayLabel || item.label}</div>
           </button>
         )
       })}

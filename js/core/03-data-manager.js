@@ -172,6 +172,32 @@
         if (typeof validated.categoryMultipliers !== 'object') validated.categoryMultipliers = defaults.categoryMultipliers || {};
         if (typeof validated.categoryXpAdjust !== 'object') validated.categoryXpAdjust = defaults.categoryXpAdjust || {};
         
+        // Deep merge navBarVisibleItems - defaults take precedence to override old saved values
+        if (typeof defaults.navBarVisibleItems === 'object' && defaults.navBarVisibleItems !== null) {
+            validated.navBarVisibleItems = { ...(validated.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+        } else if (typeof validated.navBarVisibleItems !== 'object') {
+            validated.navBarVisibleItems = defaults.navBarVisibleItems || {};
+        }
+        
+        // Ensure headerQuickNavItems defaults are always present
+        if (Array.isArray(defaults.headerQuickNavItems) && defaults.headerQuickNavItems.length > 0) {
+            // If stored settings don't have quickNavItems or it's empty, use defaults
+            if (!Array.isArray(validated.headerQuickNavItems) || validated.headerQuickNavItems.length === 0) {
+                validated.headerQuickNavItems = [...defaults.headerQuickNavItems];
+            }
+        } else if (!Array.isArray(validated.headerQuickNavItems)) {
+            validated.headerQuickNavItems = [];
+        }
+        
+        // Ensure navItemsOrder defaults are always present
+        if (Array.isArray(defaults.navItemsOrder) && defaults.navItemsOrder.length > 0) {
+            if (!Array.isArray(validated.navItemsOrder) || validated.navItemsOrder.length === 0) {
+                validated.navItemsOrder = [...defaults.navItemsOrder];
+            }
+        } else if (!Array.isArray(validated.navItemsOrder)) {
+            validated.navItemsOrder = [];
+        }
+        
         return validated;
     };
 
@@ -299,6 +325,7 @@
     const validateAndRecoverSettings = () => {
         try {
             let settings = loadFromStorage('settings', null);
+            const defaults = window.DEFAULT_SETTINGS || {};
             
             // Check if it's an object
             if (!settings || typeof settings !== 'object') {
@@ -308,28 +335,57 @@
                     settings = backup;
                 } else {
                     console.warn('[DataManager] Backup recovery failed, using defaults');
-                    settings = window.DEFAULT_SETTINGS || {};
+                    settings = {};
                 }
             }
             
             // Validate and merge with defaults
             const validated = validateSettings(settings);
             
-            // Check if validation changed anything
-            if (JSON.stringify(settings) !== JSON.stringify(validated)) {
-                console.warn('[DataManager] Settings were corrupted, recovered with defaults');
-                saveToStorage('settings', validated);
+            // CRITICAL: Always ensure navigation defaults are present
+            // Deep merge navBarVisibleItems - defaults take precedence to override old saved values
+            if (defaults.navBarVisibleItems) {
+                validated.navBarVisibleItems = { ...(validated.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
             }
+            
+            // Ensure headerQuickNavItems defaults
+            if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(validated.headerQuickNavItems) || validated.headerQuickNavItems.length === 0)) {
+                validated.headerQuickNavItems = [...defaults.headerQuickNavItems];
+            }
+            
+            // Ensure navItemsOrder defaults
+            if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(validated.navItemsOrder) || validated.navItemsOrder.length === 0)) {
+                validated.navItemsOrder = [...defaults.navItemsOrder];
+            }
+            
+            // Always save the validated settings to ensure defaults persist
+            // This is critical after a nuke/reset
+            saveToStorage('settings', validated);
             
             return validated;
         } catch (e) {
             console.error('[DataManager] Settings validation error:', e);
             // Try backup
             const backup = restoreBackup('settings');
+            const defaults = window.DEFAULT_SETTINGS || {};
             if (backup && typeof backup === 'object') {
-                return validateSettings(backup);
+                const validated = validateSettings(backup);
+                // Ensure defaults are merged - defaults take precedence to override old saved values
+                if (defaults.navBarVisibleItems) {
+                    validated.navBarVisibleItems = { ...(validated.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+                }
+                if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(validated.headerQuickNavItems) || validated.headerQuickNavItems.length === 0)) {
+                    validated.headerQuickNavItems = [...defaults.headerQuickNavItems];
+                }
+                if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(validated.navItemsOrder) || validated.navItemsOrder.length === 0)) {
+                    validated.navItemsOrder = [...defaults.navItemsOrder];
+                }
+                saveToStorage('settings', validated);
+                return validated;
             }
-            return window.DEFAULT_SETTINGS || {};
+            // Return defaults and save them
+            saveToStorage('settings', defaults);
+            return defaults;
         }
     };
 
@@ -666,7 +722,9 @@
             completedAt: t.completedAt || null,
             actualTime: Number(t.actualTime) || 0,
             lastModified: t.lastModified || new Date().toISOString(),
-            subtype: t.subtype || null
+            subtype: t.subtype || null,
+            description: t.description || '',
+            images: Array.isArray(t.images) ? t.images.filter(Boolean) : []
         };
     };
 
@@ -828,10 +886,52 @@
     };
 
     const normalizeSettings = (s) => {
-        if (!s || typeof s !== 'object') return {};
-        // Merge with defaults to ensure all keys exist
         const defaults = window.DEFAULT_SETTINGS || {};
-        return { ...defaults, ...s };
+        
+        // If input is invalid, return defaults
+        if (!s || typeof s !== 'object') {
+            return defaults;
+        }
+        
+        // Merge with defaults to ensure all keys exist
+        const normalized = { ...defaults, ...s };
+        
+        // CRITICAL: Deep merge navBarVisibleItems - only add defaults for missing keys
+        // Don't override existing user preferences (that happens on first load in validateAndRecoverSettings)
+        if (typeof defaults.navBarVisibleItems === 'object' && defaults.navBarVisibleItems !== null) {
+            if (!normalized.navBarVisibleItems) {
+                normalized.navBarVisibleItems = { ...defaults.navBarVisibleItems };
+            } else {
+                // Only add defaults for keys that don't exist in user settings
+                Object.keys(defaults.navBarVisibleItems).forEach(key => {
+                    if (!(key in normalized.navBarVisibleItems)) {
+                        normalized.navBarVisibleItems[key] = defaults.navBarVisibleItems[key];
+                    }
+                });
+            }
+        } else if (!normalized.navBarVisibleItems) {
+            normalized.navBarVisibleItems = {};
+        }
+        
+        // Ensure headerQuickNavItems defaults are always present
+        if (Array.isArray(defaults.headerQuickNavItems) && defaults.headerQuickNavItems.length > 0) {
+            if (!Array.isArray(normalized.headerQuickNavItems) || normalized.headerQuickNavItems.length === 0) {
+                normalized.headerQuickNavItems = [...defaults.headerQuickNavItems];
+            }
+        } else if (!Array.isArray(normalized.headerQuickNavItems)) {
+            normalized.headerQuickNavItems = [];
+        }
+        
+        // Ensure navItemsOrder defaults are always present
+        if (Array.isArray(defaults.navItemsOrder) && defaults.navItemsOrder.length > 0) {
+            if (!Array.isArray(normalized.navItemsOrder) || normalized.navItemsOrder.length === 0) {
+                normalized.navItemsOrder = [...defaults.navItemsOrder];
+            }
+        } else if (!Array.isArray(normalized.navItemsOrder)) {
+            normalized.navItemsOrder = [];
+        }
+        
+        return normalized;
     };
 
     const normalizeTimerState = (t) => {
@@ -1055,10 +1155,45 @@
         if (!settingsValidated) {
             settingsValidated = true;
             const validated = validateAndRecoverSettings();
-            this.set(validated);
-            return validated;
+            // Always ensure defaults are present, especially for navigation
+            const defaults = window.DEFAULT_SETTINGS || {};
+            const final = { ...defaults, ...validated };
+            
+            // Deep merge navBarVisibleItems - defaults take precedence to override old saved values
+            if (defaults.navBarVisibleItems) {
+                final.navBarVisibleItems = { ...(final.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+            }
+            
+            // Ensure headerQuickNavItems defaults
+            if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(final.headerQuickNavItems) || final.headerQuickNavItems.length === 0)) {
+                final.headerQuickNavItems = [...defaults.headerQuickNavItems];
+            }
+            
+            // Ensure navItemsOrder defaults
+            if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(final.navItemsOrder) || final.navItemsOrder.length === 0)) {
+                final.navItemsOrder = [...defaults.navItemsOrder];
+            }
+            
+            // Always save the merged settings to ensure defaults persist
+            this.set(final);
+            return final;
         }
-        return originalSettingsGet.call(this);
+        const current = originalSettingsGet.call(this);
+        // On every get, ensure defaults are still present (defensive)
+        const defaults = window.DEFAULT_SETTINGS || {};
+        if (defaults.navBarVisibleItems && (!current.navBarVisibleItems || Object.keys(current.navBarVisibleItems).length === 0)) {
+            const merged = { ...defaults, ...current };
+            merged.navBarVisibleItems = { ...(merged.navBarVisibleItems || {}), ...defaults.navBarVisibleItems };
+            if (Array.isArray(defaults.headerQuickNavItems) && (!Array.isArray(merged.headerQuickNavItems) || merged.headerQuickNavItems.length === 0)) {
+                merged.headerQuickNavItems = [...defaults.headerQuickNavItems];
+            }
+            if (Array.isArray(defaults.navItemsOrder) && (!Array.isArray(merged.navItemsOrder) || merged.navItemsOrder.length === 0)) {
+                merged.navItemsOrder = [...defaults.navItemsOrder];
+            }
+            this.set(merged);
+            return merged;
+        }
+        return current;
     };
     const UserStats = makeSingleton('userStats', 'userStats-updated', normalizeUserStats, {
         xp: 0,

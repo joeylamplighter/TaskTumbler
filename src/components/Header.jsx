@@ -24,12 +24,9 @@ function Header({
   onSearchClick,
   onStatusClick,
 }) {
-  const [isRotated, setIsRotated] = useState(false)
-
   const handleBrandClick = useCallback((e) => {
     e?.preventDefault?.()
     e?.stopPropagation?.()
-    setIsRotated(prev => !prev)
     onBrandClick?.()
   }, [onBrandClick])
 
@@ -302,7 +299,7 @@ function Header({
         <span 
           className="brand-icon"
           style={{
-            transform: isRotated ? 'rotate(90deg)' : 'rotate(0deg)'
+            transform: dockVisible ? 'rotate(0deg)' : 'rotate(90deg)'
           }}
         >
           🎰

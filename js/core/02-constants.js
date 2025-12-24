@@ -29,32 +29,35 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "stats", "stats:overview", "stats:charts", "stats:history", "stats:people", "stats:places", "people", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "stats", "stats:overview", "stats:charts", "stats:history", "stats:people", "stats:places", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
       timer: true,
       lists: true,
-      goals: false,
+      goals: true,
       stats: true,
-      "stats:overview": false,
-      "stats:charts": false,
-      "stats:history": false,
-      "stats:people": false,
-      "stats:places": false,
-      people: false,
+      "stats:overview": true,
+      "stats:charts": true,
+      "stats:history": true,
+      "stats:people": true,
+      "stats:places": true,
       duel: true,
-      settings: false, // Can be hidden, but still accessible via permalink
-      "settings:view": false,
-      "settings:logic": false,
-      "settings:game": false,
-      "settings:cats": false,
-      "settings:data": false,
+      settings: true, // Can be hidden, but accessible via #settings URL
+      "settings:view": true,
+      "settings:logic": true,
+      "settings:game": true,
+      "settings:cats": true,
+      "settings:data": true,
     },
     
     // --- Header Right Mode ---
-    headerRightMode: "none", // "none" | "quickNav" | "xp" | "status"
-    headerQuickNavItems: [], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people" (navigates to stats?subView=people), "duel", "settings", "search"]
+    headerRightMode: "quickNav", // "none" | "quickNav" | "xp" | "status"
+    headerQuickNavItems: ["people", "lists", "settings"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people" (navigates to stats?subView=people), "duel", "settings", "search"] - Default quick nav items always loaded on fresh start
+    headerShowAllNavDropdown: true, // Show 4th dropdown option with all navigation items in alphabetical order
+    
+    // --- Default Nav Bar Items (shown when nav bar is empty) ---
+    defaultNavBarItems: ["tasks", "spin", "duel", "settings", "goals", "stats:people"], // Default items to show when navbar is empty and user clicks brand
     headerXpShowValue: true,
     headerXpShowLevel: true,
     headerXpShowProgress: false,

@@ -7,10 +7,11 @@
 
 import React from "react";
 import ReactDOM from "react-dom";
+import { getDisplayName, getInitials } from "../../utils/personUtils";
 
 // --- INTERNAL COMPONENT: PEOPLE MANAGER ---
 // Adds: Compass CRM link, extra links, notes, and People analytics + per-person history
-function PeopleManager({ notify, history = [], tasks = [] }) {
+function PeopleManager({ notify, history = [], tasks = [], onViewTask }) {
     const [people, setPeople] = React.useState(() => {
         try { return JSON.parse(localStorage.getItem('savedPeople') || '[]'); } catch { return []; }
     });
@@ -49,16 +50,130 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
         return { firstName, lastName };
     };
 
-    // Helper to get display name - works with both formats
-    const getDisplayName = (person) => {
-        if (person.firstName || person.lastName) {
-            return [person.firstName, person.lastName].filter(Boolean).join(' ').trim() || person.name || 'Untitled';
-        }
-        return person.name || 'Untitled';
-    };
 
     const [searchText, setSearchText] = React.useState('');
     const [selectedPersonId, setSelectedPersonId] = React.useState(null); // detail view
+    const [viewMode, setViewMode] = React.useState('summary'); // 'summary' or 'detailed'
+    const [listViewMode, setListViewMode] = React.useState('cards'); // 'cards', 'list', 'table', 'compact'
+    
+    // Smart time formatting - converts units with rounding up
+    const formatTimeSmart = (minutes) => {
+        if (!minutes || minutes === 0) return '0m';
+        const mins = Math.ceil(minutes); // Round up
+        
+        // Less than 60 seconds? Show seconds (if applicable)
+        if (mins < 1) return '<1m';
+        
+        // Less than 60 minutes? Show minutes
+        if (mins < 60) return `${mins}m`;
+        
+        // Calculate hours (round up)
+        const hours = Math.ceil(mins / 60);
+        
+        // Less than 24 hours? Show hours
+        if (hours < 24) return `${hours}h`;
+        
+        // Calculate days (round up)
+        const days = Math.ceil(hours / 24);
+        
+        // Less than 7 days? Show days
+        if (days < 7) return `${days}d`;
+        
+        // Calculate weeks (round up)
+        const weeks = Math.ceil(days / 7);
+        
+        // Less than 4 weeks? Show weeks
+        if (weeks < 4) return `${weeks}w`;
+        
+        // Calculate months (approximate, round up)
+        const months = Math.ceil(days / 30);
+        
+        // Less than 12 months? Show months
+        if (months < 12) return `${months}mo`;
+        
+        // Show years (round up)
+        const years = Math.ceil(days / 365);
+        return `${years}y`;
+    };
+    
+    // Helper to get initials
+    const getInitialsForPerson = (person) => {
+        if (person.profilePicture && person.profilePictureType === 'emoji') return null; // Don't show initials for emoji
+        try {
+            return getInitials(person);
+        } catch {
+            // Fallback if getInitials fails
+            const name = getDisplayName(person);
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
+    };
+    
+    // Helper to get profile picture display
+    const getProfilePictureDisplay = (person, size = 80) => {
+        const picType = person.profilePictureType || 'initials';
+        const pic = person.profilePicture;
+        const initials = getInitialsForPerson(person);
+        
+        if (picType === 'emoji' && pic) {
+            return (
+                <div style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size <= 40 ? '50%' : 20,
+                    border: '2px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'var(--input-bg)',
+                    fontSize: size * 0.6
+                }}>
+                    {pic}
+                </div>
+            );
+        } else if ((picType === 'upload' || picType === 'ai') && pic) {
+            return (
+                <div style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size <= 40 ? '50%' : 20,
+                    border: '2px solid var(--border)',
+                    overflow: 'hidden',
+                    background: 'var(--input-bg)'
+                }}>
+                    <img 
+                        src={pic} 
+                        alt={getDisplayName(person)}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                        }}
+                    />
+                </div>
+            );
+        } else {
+            // Default to initials
+            return (
+                <div style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size <= 40 ? '50%' : 20,
+                    border: '2px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'var(--input-bg)',
+                    fontWeight: 900,
+                    fontSize: size <= 40 ? size * 0.4 : size * 0.35
+                }}>
+                    {initials || '?'}
+                </div>
+            );
+        }
+    };
 
     // Listen for updates from other components
     React.useEffect(() => {
@@ -286,28 +401,100 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
             .filter(h => normalizePeopleInItem(h).some(n => n.toLowerCase() === key))
             .slice()
             .sort((a, b) => {
-                const ta = new Date(a?.createdAt || a?.completedAt || 0).getTime();
-                const tb = new Date(b?.createdAt || b?.completedAt || 0).getTime();
+                const ta = new Date(a?.createdAt || a?.completedAt || a?.ts || 0).getTime();
+                const tb = new Date(b?.createdAt || b?.completedAt || b?.ts || 0).getTime();
                 return tb - ta;
             });
     }, [safeHistory, selectedPersonName]);
+    
+    // Find tasks associated with selected person
+    const selectedPersonTasks = React.useMemo(() => {
+        if (!selectedPersonName) return [];
+        const key = selectedPersonName.toLowerCase();
+        const safeTasks = Array.isArray(tasks) ? tasks : [];
+        return safeTasks.filter(task => {
+            const taskPeople = Array.isArray(task.people) ? task.people : [];
+            return taskPeople.some(p => {
+                const personName = typeof p === 'object' ? (p.name || '') : String(p || '');
+                return personName.toLowerCase() === key;
+            });
+        });
+    }, [tasks, selectedPersonName]);
 
     // --- PERSON DETAIL VIEW (analytics + history) ---
     if (selectedPerson) {
         const stat = peopleStats[selectedPersonName] || { count: 0, minutes: 0, lastSeen: 0 };
         const lastSeenTxt = stat.lastSeen ? new Date(stat.lastSeen).toLocaleString() : '—';
-        const hours = (stat.minutes / 60).toFixed(1);
+        const timeDisplay = formatTimeSmart(stat.minutes);
+        const onViewTask = window.onViewTask || (() => {});
 
         return (
-            <div className="fade-in-up" style={{background:'var(--card)', borderRadius:16, padding:20, border:'1px solid var(--border)', boxShadow:'0 8px 30px rgba(0,0,0,0.15)'}}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
-                    <div>
-                        <div style={{fontFamily:'Fredoka', fontSize:20, fontWeight:800}}>{getDisplayName(selectedPerson)}</div>
-                        <div style={{fontSize:11, color:'var(--text-light)', marginTop:2}}>Last seen: {lastSeenTxt}</div>
+            <div className="fade-in-up" style={{background:'var(--card)', borderRadius:16, padding:24, border:'1px solid var(--border)', boxShadow:'0 8px 30px rgba(0,0,0,0.15)'}}>
+                {/* Header with Profile Picture */}
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, gap:16}}>
+                    <div style={{display:'flex', alignItems:'flex-start', gap:16, flex:1}}>
+                        {getProfilePictureDisplay(selectedPerson, 80)}
+                        <div style={{flex:1}}>
+                            <div style={{fontFamily:'Fredoka', fontSize:24, fontWeight:800, marginBottom:6}}>{getDisplayName(selectedPerson)}</div>
+                            <div style={{fontSize:12, color:'var(--text-light)', marginBottom:8}}>Last seen: {lastSeenTxt}</div>
+                            {(selectedPerson.jobTitle || selectedPerson.company) && (
+                                <div style={{fontSize:13, color:'var(--text-light)', marginBottom:4}}>
+                                    {selectedPerson.jobTitle}{selectedPerson.jobTitle && selectedPerson.company ? ' at ' : ''}{selectedPerson.company}
+                                </div>
+                            )}
+                            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:8}}>
+                                <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    background: 'rgba(255,107,53,0.15)',
+                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    textTransform: 'uppercase'
+                                }}>
+                                    {(selectedPerson.type || 'client')}
+                                </span>
+                                {selectedPersonTasks.length > 0 && (
+                                    <span style={{fontSize:12, color:'var(--text-light)'}}>
+                                        📋 {selectedPersonTasks.length} {selectedPersonTasks.length === 1 ? 'task' : 'tasks'}
+                                    </span>
+                                )}
+                                {selectedPersonHistory.length > 0 && (
+                                    <span style={{fontSize:12, color:'var(--text-light)'}}>
+                                        📜 {selectedPersonHistory.length} {selectedPersonHistory.length === 1 ? 'activity' : 'activities'}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <div style={{display:'flex', gap:10}}>
-                        <button className="btn-white-outline" style={{height:40}} onClick={() => setSelectedPersonId(null)}>Back</button>
-                        <button className="btn-primary" style={{height:40}} onClick={() => handleEdit(selectedPerson)}>Edit</button>
+                    <div style={{display:'flex', gap:10, flexDirection:'column', alignItems:'flex-end'}}>
+                        <div style={{display:'flex', gap:8}}>
+                            <button 
+                                className={viewMode === 'summary' ? 'btn-primary' : 'btn-white-outline'} 
+                                style={{height:36, fontSize:12, padding:'0 12px'}} 
+                                onClick={() => setViewMode('summary')}
+                            >
+                                Summary
+                            </button>
+                            <button 
+                                className={viewMode === 'detailed' ? 'btn-primary' : 'btn-white-outline'} 
+                                style={{height:36, fontSize:12, padding:'0 12px'}} 
+                                onClick={() => setViewMode('detailed')}
+                            >
+                                Detailed
+                            </button>
+                        </div>
+                        <div style={{display:'flex', gap:10}}>
+                            <button 
+                                className="btn-white-outline" 
+                                style={{height:40}} 
+                                onClick={() => generateAIPhoto(selectedPerson)}
+                                title="Generate AI Profile Picture"
+                            >
+                                🎨 Gen Pic
+                            </button>
+                            <button className="btn-white-outline" style={{height:40}} onClick={() => setSelectedPersonId(null)}>Back</button>
+                            <button className="btn-primary" style={{height:40}} onClick={() => handleEdit(selectedPerson)}>Edit</button>
+                        </div>
                     </div>
                 </div>
 
@@ -317,8 +504,8 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
                         <div style={{fontSize:10, opacity:0.65, fontWeight:800, textTransform:'uppercase'}}>Mentions</div>
                     </div>
                     <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:'12px 12px', flex:1, textAlign:'center'}}>
-                        <div style={{fontSize:22, fontWeight:900, color:'var(--primary)'}}>{hours}</div>
-                        <div style={{fontSize:10, opacity:0.65, fontWeight:800, textTransform:'uppercase'}}>Hours</div>
+                        <div style={{fontSize:22, fontWeight:900, color:'var(--primary)'}}>{timeDisplay}</div>
+                        <div style={{fontSize:10, opacity:0.65, fontWeight:800, textTransform:'uppercase'}}>Time Tracked</div>
                     </div>
                     <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:'12px 12px', flex:1, textAlign:'center'}}>
                         <div style={{fontSize:22, fontWeight:900, color:'var(--primary)'}}>{selectedPerson.weight || 1}</div>
@@ -326,64 +513,222 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
                     </div>
                 </div>
 
-                {(selectedPerson.compassCrmLink || (Array.isArray(selectedPerson.links) && selectedPerson.links.length)) && (
-                    <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:12, marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:800, opacity:0.7, marginBottom:6}}>Links</div>
-
-                        {selectedPerson.compassCrmLink && (
-                            <div style={{fontSize:12, marginBottom:8}}>
-                                <span style={{opacity:0.7, fontWeight:700}}>Compass CRM:</span>{' '}
-                                <a href={selectedPerson.compassCrmLink} target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}>
-                                    Open
-                                </a>
-                            </div>
-                        )}
-
-                        {Array.isArray(selectedPerson.links) && selectedPerson.links.length > 0 && (
-                            <div style={{display:'grid', gap:6}}>
-                                {selectedPerson.links.slice(0, 6).map((u, idx) => (
-                                    <a key={idx} href={u} target="_blank" rel="noreferrer" style={{color:'var(--primary)', fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                                        {u}
+                {/* Contact Information - Show in detailed view */}
+                {viewMode === 'detailed' && (
+                    <div style={{marginBottom:20}}>
+                        <div style={{fontSize:12, fontWeight:700, color:'var(--text-light)', marginBottom:12, letterSpacing:0.5, textTransform:'uppercase'}}>Contact Information</div>
+                        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:16}}>
+                            {selectedPerson.email && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>📧 EMAIL</div>
+                                    <a href={`mailto:${selectedPerson.email}`} style={{color:'var(--primary)', textDecoration:'none', fontSize:14}}>
+                                        {selectedPerson.email}
                                     </a>
-                                ))}
+                                </div>
+                            )}
+                            {selectedPerson.phone && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>📞 PHONE</div>
+                                    <a href={`tel:${selectedPerson.phone}`} style={{color:'var(--primary)', textDecoration:'none', fontSize:14}}>
+                                        {selectedPerson.phone}
+                                    </a>
+                                </div>
+                            )}
+                            {selectedPerson.company && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>🏢 COMPANY</div>
+                                    <div style={{fontSize:14, fontWeight:600}}>{selectedPerson.company}</div>
+                                </div>
+                            )}
+                            {selectedPerson.website && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>🌐 WEBSITE</div>
+                                    <a href={selectedPerson.website.startsWith('http') ? selectedPerson.website : `https://${selectedPerson.website}`} target="_blank" rel="noreferrer" style={{color:'var(--primary)', textDecoration:'none', fontSize:14}}>
+                                        {selectedPerson.website} →
+                                    </a>
+                                </div>
+                            )}
+                            {selectedPerson.linkedin && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>💼 LINKEDIN</div>
+                                    <a href={selectedPerson.linkedin.startsWith('http') ? selectedPerson.linkedin : `https://${selectedPerson.linkedin}`} target="_blank" rel="noreferrer" style={{color:'var(--primary)', textDecoration:'none', fontSize:14}}>
+                                        View Profile →
+                                    </a>
+                                </div>
+                            )}
+                            {selectedPerson.compassCrmLink && (
+                                <div>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>🧭 CRM LINK</div>
+                                    <a href={selectedPerson.compassCrmLink} target="_blank" rel="noreferrer" style={{color:'var(--primary)', textDecoration:'none', fontSize:14}}>
+                                        View in CRM →
+                                    </a>
+                                </div>
+                            )}
+                            {(selectedPerson.address || selectedPerson.city || selectedPerson.state || selectedPerson.zipCode) && (
+                                <div style={{gridColumn:'1 / -1'}}>
+                                    <div style={{fontSize:11, color:'var(--text-light)', marginBottom:6, fontWeight:700}}>📍 ADDRESS</div>
+                                    <div style={{fontSize:14, lineHeight:1.6}}>
+                                        {[selectedPerson.address, selectedPerson.city, selectedPerson.state, selectedPerson.zipCode, selectedPerson.country].filter(Boolean).join(', ')}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {(selectedPerson.compassCrmLink || (Array.isArray(selectedPerson.links) && selectedPerson.links.length > 0)) && (
+                            <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:12, marginTop:16}}>
+                                <div style={{fontSize:11, fontWeight:800, opacity:0.7, marginBottom:8}}>Additional Links</div>
+                                {Array.isArray(selectedPerson.links) && selectedPerson.links.length > 0 && (
+                                    <div style={{display:'grid', gap:6}}>
+                                        {selectedPerson.links.map((u, idx) => (
+                                            <a key={idx} href={u.startsWith('http') ? u : `https://${u}`} target="_blank" rel="noreferrer" style={{color:'var(--primary)', fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                                                {u} →
+                                            </a>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {selectedPerson.notes && (
+                            <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:12, marginTop:16}}>
+                                <div style={{fontSize:11, fontWeight:800, opacity:0.7, marginBottom:6}}>Notes</div>
+                                <div style={{fontSize:12, whiteSpace:'pre-wrap', lineHeight:1.5}}>{selectedPerson.notes}</div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {selectedPerson.notes && (
-                    <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, padding:12, marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:800, opacity:0.7, marginBottom:6}}>Notes</div>
-                        <div style={{fontSize:12, whiteSpace:'pre-wrap', lineHeight:1.35}}>{selectedPerson.notes}</div>
-                    </div>
-                )}
-
-                <div style={{fontFamily:'Fredoka', fontSize:14, fontWeight:800, marginBottom:10}}>History</div>
-                <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', maxHeight:420, overflowY:'auto'}}>
-                    {selectedPersonHistory.length === 0 ? (
-                        <div style={{padding:18, opacity:0.65, textAlign:'center'}}>No history entries referencing this person yet.</div>
-                    ) : (
-                        selectedPersonHistory.slice(0, 120).map((h, i) => {
-                            const when = new Date(h?.createdAt || h?.completedAt || Date.now());
-                            const title = h?.title || h?.taskName || 'Untitled';
-                            const cat = h?.category || 'General';
-                            const type = h?.type || (h?.completedAt ? 'Completed' : 'Sessions');
-                            const dur = Number(h?.duration) || 0;
-                            const valueText = dur ? `${Math.round(dur)}m` : (h?.value != null ? String(h.value) : '');
-
-                            return (
-                                <div key={i} style={{padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                    <div style={{minWidth:0}}>
-                                        <div style={{fontSize:13, fontWeight:650, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</div>
-                                        <div style={{fontSize:10, color:'var(--text-light)'}}>
-                                            {when.toLocaleDateString()} • {cat} • {type}
+                {/* Tasks Section */}
+                {selectedPersonTasks.length > 0 && (
+                    <div style={{marginBottom:20}}>
+                        <div style={{fontSize:12, fontWeight:700, color:'var(--text-light)', marginBottom:12, letterSpacing:0.5, textTransform:'uppercase', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <span>📋 ASSOCIATED TASKS ({selectedPersonTasks.length})</span>
+                            <span style={{fontSize:11, fontWeight:400, textTransform:'none'}}>
+                                {selectedPersonTasks.filter(t => t.completed).length} completed
+                            </span>
+                        </div>
+                        <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', maxHeight:300, overflowY:'auto'}}>
+                            {selectedPersonTasks.slice(0, 20).map((task) => (
+                                <div
+                                    key={task.id}
+                                    onClick={() => onViewTask?.(task)}
+                                    style={{
+                                        padding:'12px 16px',
+                                        borderBottom:'1px solid var(--border)',
+                                        cursor:'pointer',
+                                        background: task.completed ? 'rgba(0,184,148,0.05)' : 'transparent',
+                                        transition:'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = task.completed ? 'rgba(0,184,148,0.1)' : 'rgba(255,255,255,0.05)';
+                                        e.currentTarget.style.transform = 'translateX(4px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = task.completed ? 'rgba(0,184,148,0.05)' : 'transparent';
+                                        e.currentTarget.style.transform = 'translateX(0)';
+                                    }}
+                                >
+                                    <div style={{display:'flex', alignItems:'center', gap:12}}>
+                                        <span style={{fontSize:16}}>{task.completed ? '✅' : '⭕'}</span>
+                                        <div style={{flex:1, minWidth:0}}>
+                                            <div style={{fontSize:14, fontWeight:600, textDecoration:task.completed ? 'line-through' : 'none', opacity:task.completed ? 0.7 : 1, marginBottom:4}}>
+                                                {task.title || 'Untitled Task'}
+                                            </div>
+                                            <div style={{fontSize:11, color:'var(--text-light)'}}>
+                                                {task.category && `📁 ${task.category} `}
+                                                {task.priority && `⚡ ${task.priority} `}
+                                                {task.dueDate && `📅 ${new Date(task.dueDate).toLocaleDateString()}`}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style={{fontSize:13, fontWeight:800, color:'var(--primary)'}}>{valueText}</div>
                                 </div>
-                            );
-                        })
-                    )}
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* History Section */}
+                <div>
+                    <div style={{fontSize:12, fontWeight:700, color:'var(--text-light)', marginBottom:12, letterSpacing:0.5, textTransform:'uppercase'}}>
+                        📜 ACTIVITY HISTORY ({selectedPersonHistory.length})
+                    </div>
+                    <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', maxHeight:viewMode === 'detailed' ? 500 : 300, overflowY:'auto'}}>
+                        {selectedPersonHistory.length === 0 ? (
+                            <div style={{padding:40, opacity:0.65, textAlign:'center'}}>No history entries referencing this person yet.</div>
+                        ) : (
+                            selectedPersonHistory.slice(0, viewMode === 'detailed' ? 200 : 100).map((h, i) => {
+                                const when = new Date(h?.createdAt || h?.completedAt || h?.ts || Date.now());
+                                const title = h?.title || h?.taskName || h?.text || 'Untitled';
+                                const cat = h?.category || 'General';
+                                const type = h?.type || (h?.completedAt ? 'Completed' : 'Sessions');
+                                const dur = Number(h?.duration) || 0;
+                                const valueText = dur ? `${Math.round(dur)}m` : (h?.value != null ? String(h.value) : '');
+                                const taskId = h?.taskId || h?.raw?.taskId;
+                                const relatedTask = taskId ? (Array.isArray(tasks) ? tasks.find(t => t.id === taskId) : null) : null;
+                                const isClickable = relatedTask || taskId;
+                                
+                                const getHistoryIcon = () => {
+                                    if (type.includes('complete') || type.includes('done')) return '✅';
+                                    if (type.includes('focus') || type.includes('timer')) return '🎯';
+                                    if (type.includes('spin')) return '🎰';
+                                    if (type.includes('create')) return '➕';
+                                    if (type.includes('edit')) return '✏️';
+                                    return '📝';
+                                };
+
+                                return (
+                                    <div
+                                        key={h?.id || i}
+                                        onClick={() => {
+                                            if (relatedTask && onViewTask) {
+                                                onViewTask(relatedTask);
+                                            } else if (taskId && onViewTask) {
+                                                // Try to find task
+                                                const task = Array.isArray(tasks) ? tasks.find(t => t.id === taskId) : null;
+                                                if (task) onViewTask(task);
+                                            }
+                                        }}
+                                        style={{
+                                            padding:'12px 16px',
+                                            borderBottom:'1px solid var(--border)',
+                                            display:'flex',
+                                            justifyContent:'space-between',
+                                            alignItems:'center',
+                                            cursor: isClickable ? 'pointer' : 'default',
+                                            background: 'transparent',
+                                            transition:'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (isClickable) {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.borderLeft = '3px solid var(--primary)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (isClickable) {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.borderLeft = 'none';
+                                            }
+                                        }}
+                                    >
+                                        <div style={{display:'flex', alignItems:'center', gap:12, flex:1, minWidth:0}}>
+                                            <span style={{fontSize:18, flexShrink:0}}>{getHistoryIcon()}</span>
+                                            <div style={{minWidth:0, flex:1}}>
+                                                <div style={{fontSize:13, fontWeight:650, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:4}}>
+                                                    {title}
+                                                    {isClickable && <span style={{fontSize:11, color:'var(--primary)', marginLeft:6}}>→</span>}
+                                                </div>
+                                                <div style={{fontSize:10, color:'var(--text-light)'}}>
+                                                    {when.toLocaleString()} • {cat} • {type}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {valueText && (
+                                            <div style={{fontSize:13, fontWeight:800, color:'var(--primary)', marginLeft:12}}>{valueText}</div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -482,12 +827,81 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
         );
     }
 
+    // AI Photo Generation using UI Avatars or DiceBear
+    const generateAIPhoto = async (person) => {
+        try {
+            const displayName = getDisplayName(person);
+            const initials = getInitialsForPerson(person) || '?';
+            
+            // Use DiceBear API for AI-generated avatars
+            const style = 'avataaars'; // Options: avataaars, personas, identicon, bottts, etc.
+            const seed = displayName.toLowerCase().replace(/\s+/g, '-');
+            const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+            
+            // Convert SVG to base64 or use URL directly
+            // For now, we'll store the URL - could also fetch and convert to base64
+            const updatedPeople = people.map(p => 
+                p.id === person.id 
+                    ? { ...p, profilePicture: avatarUrl, profilePictureType: 'ai', updatedAt: new Date().toISOString() }
+                    : p
+            );
+            persistPeople(updatedPeople);
+            notify?.('AI profile picture generated!', '✨');
+            
+            // Also update selected person if viewing
+            if (selectedPersonId === person.id) {
+                setSelectedPersonId(null);
+                setTimeout(() => setSelectedPersonId(person.id), 100);
+            }
+        } catch (error) {
+            console.error('Error generating AI photo:', error);
+            notify?.('Failed to generate AI photo. Please try again.', '❌');
+        }
+    };
+
     // --- LIST VIEW ---
     return (
         <div className="fade-in">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12}}>
                 <div style={{fontSize:12, fontWeight:700, color:'var(--text-light)', letterSpacing:1}}>MY PEOPLE ({people.length})</div>
-                <button className="btn-orange-small" onClick={() => { setSelectedPersonId(null); setIsEditing(true); }} style={{padding:'6px 12px', fontSize:12}}>+ Add New</button>
+                <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    {/* View Mode Selector */}
+                    <div style={{display:'flex', gap:4, background:'var(--bg)', padding:4, borderRadius:8, border:'1px solid var(--border)'}}>
+                        <button
+                            onClick={() => setListViewMode('cards')}
+                            className={listViewMode === 'cards' ? 'btn-primary' : 'btn-white-outline'}
+                            style={{padding:'4px 10px', fontSize:11, height:28, minWidth:50}}
+                            title="Card View"
+                        >
+                            🎴
+                        </button>
+                        <button
+                            onClick={() => setListViewMode('list')}
+                            className={listViewMode === 'list' ? 'btn-primary' : 'btn-white-outline'}
+                            style={{padding:'4px 10px', fontSize:11, height:28, minWidth:50}}
+                            title="List View"
+                        >
+                            📋
+                        </button>
+                        <button
+                            onClick={() => setListViewMode('table')}
+                            className={listViewMode === 'table' ? 'btn-primary' : 'btn-white-outline'}
+                            style={{padding:'4px 10px', fontSize:11, height:28, minWidth:50}}
+                            title="Table View"
+                        >
+                            📊
+                        </button>
+                        <button
+                            onClick={() => setListViewMode('compact')}
+                            className={listViewMode === 'compact' ? 'btn-primary' : 'btn-white-outline'}
+                            style={{padding:'4px 10px', fontSize:11, height:28, minWidth:50}}
+                            title="Compact View"
+                        >
+                            ⚡
+                        </button>
+                    </div>
+                    <button className="btn-orange-small" onClick={() => { setSelectedPersonId(null); setIsEditing(true); }} style={{padding:'6px 12px', fontSize:12}}>+ Add New</button>
+                </div>
             </div>
 
             <input className="f-input" placeholder="Search people..." value={searchText} onChange={e => setSearchText(e.target.value)} style={{marginBottom:16}} />
@@ -498,102 +912,214 @@ function PeopleManager({ notify, history = [], tasks = [] }) {
                     <div style={{fontWeight:700, fontSize:16}}>{people.length === 0 ? 'No People Yet' : 'No matches'}</div>
                 </div>
             ) : (
-                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10}}>
-                    {filteredPeople.map(p => {
-                        const stat = (peopleStats[(p.name || '').trim()] || { count: 0, minutes: 0, lastSeen: 0 });
-                        const hrs = (stat.minutes / 60);
+                (() => {
+                    // Cards View
+                    if (listViewMode === 'cards') {
                         return (
-                            <div
-                                key={p.id}
-                                onClick={() => setSelectedPersonId(p.id)}
-                                style={{
-                                    background:'var(--card)',
-                                    borderRadius:12,
-                                    padding:14,
-                                    cursor:'pointer',
-                                    border:'1px solid transparent',
-                                    transition:'all 0.2s',
-                                    position:'relative'
-                                }}
-                                onMouseOver={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.borderColor='var(--primary)'; }}
-                                onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor='transparent'; }}
-                            >
-                                <div style={{width:40, height:40, borderRadius:'50%', background:'var(--bg)', margin:'0 auto 8px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18}}>
-                                    {(p.name || '?').charAt(0).toUpperCase()}
-                                </div>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10}}>
+                                {filteredPeople.map(p => {
+                                    const stat = (peopleStats[(getDisplayName(p) || '').trim()] || { count: 0, minutes: 0, lastSeen: 0 });
+                                    const timeTracked = formatTimeSmart(stat.minutes);
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            onClick={() => setSelectedPersonId(p.id)}
+                                            style={{
+                                                background:'var(--card)',
+                                                borderRadius:12,
+                                                padding:14,
+                                                cursor:'pointer',
+                                                border:'1px solid transparent',
+                                                transition:'all 0.2s',
+                                                position:'relative'
+                                            }}
+                                            onMouseOver={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.borderColor='var(--primary)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor='transparent'; }}
+                                        >
+                                            <div style={{display:'flex', justifyContent:'center', marginBottom:8}}>
+                                                {getProfilePictureDisplay(p, 40)}
+                                            </div>
 
-                                <div style={{fontWeight:750, fontSize:14, marginBottom:4, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                                    {p.name}
-                                </div>
+                                            <div style={{fontWeight:750, fontSize:14, marginBottom:4, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                                {getDisplayName(p)}
+                                            </div>
 
-                                {p.contact && (
-                                    <div style={{fontSize:10, color:'var(--text-light)', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                                        {p.contact}
-                                    </div>
-                                )}
+                                            {p.contact && (
+                                                <div style={{fontSize:10, color:'var(--text-light)', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                                    {p.contact}
+                                                </div>
+                                            )}
 
-                                <div style={{display:'flex', justifyContent:'center', gap:10, marginTop:10}}>
-                                    <div style={{fontSize:10, opacity:0.7, fontWeight:800}}>🔁 {stat.count}</div>
-                                    <div 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedPersonId(p.id);
-                                            updateSubView('people');
-                                        }}
-                                        style={{
-                                            fontSize:10, 
-                                            fontWeight:800,
-                                            cursor: 'pointer',
-                                            color: 'var(--primary)',
-                                            textDecoration: 'underline',
-                                            textDecorationColor: 'var(--primary)',
-                                            textUnderlineOffset: 2,
-                                            transition: 'all 0.2s',
-                                            padding: '2px 6px',
-                                            borderRadius: 6,
-                                            background: 'rgba(255, 107, 53, 0.1)'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255, 107, 53, 0.2)';
-                                            e.currentTarget.style.transform = 'scale(1.05)';
-                                            e.currentTarget.style.textDecorationColor = 'var(--primary)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255, 107, 53, 0.1)';
-                                            e.currentTarget.style.transform = 'scale(1)';
-                                            e.currentTarget.style.textDecorationColor = 'var(--primary)';
-                                        }}
-                                        title="Click to view tracked time details"
-                                    >
-                                        ⏱ {hrs ? hrs.toFixed(1) : '0.0'}h <span style={{fontWeight: 900}}>tracked</span>
-                                    </div>
-                                </div>
+                                            <div style={{display:'flex', justifyContent:'center', gap:10, marginTop:10}}>
+                                                <div style={{fontSize:10, opacity:0.7, fontWeight:800}}>🔁 {stat.count}</div>
+                                                <div style={{fontSize:10, fontWeight:800, color:'var(--primary)'}}>
+                                                    ⏱ {timeTracked}
+                                                </div>
+                                            </div>
 
-                                {p.compassCrmLink && (
-                                    <div style={{fontSize:9, color:'var(--primary)', textAlign:'center', marginTop:8, opacity:0.85}}>
-                                        Compass link ✓
-                                    </div>
-                                )}
-
-                                {p.tags && (Array.isArray(p.tags) ? p.tags.length : String(p.tags).length) > 0 && (
-                                    <div style={{fontSize:9, color:'var(--text-light)', textAlign:'center', marginTop:6}}>
-                                        {(Array.isArray(p.tags) ? p.tags : parseTags(p.tags)).slice(0, 2).join(', ')}
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={(e) => handleDelete(e, p.id)}
-                                    style={{position:'absolute', top:8, right:8, background:'none', border:'none', fontSize:12, cursor:'pointer', opacity:0.3}}
-                                    onMouseOver={e => e.target.style.opacity=1}
-                                    onMouseOut={e => e.target.style.opacity=0.3}
-                                    title="Delete"
-                                >
-                                    🗑
-                                </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }}
+                                                style={{position:'absolute', top:8, right:8, background:'none', border:'none', fontSize:12, cursor:'pointer', opacity:0.3}}
+                                                onMouseOver={e => e.target.style.opacity=1}
+                                                onMouseOut={e => e.target.style.opacity=0.3}
+                                                title="Delete"
+                                            >
+                                                🗑
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         );
-                    })}
-                </div>
+                    }
+                    
+                    // List View
+                    if (listViewMode === 'list') {
+                        return (
+                            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                                {filteredPeople.map(p => {
+                                    const stat = (peopleStats[(getDisplayName(p) || '').trim()] || { count: 0, minutes: 0, lastSeen: 0 });
+                                    const timeTracked = formatTimeSmart(stat.minutes);
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            onClick={() => setSelectedPersonId(p.id)}
+                                            style={{
+                                                background:'var(--card)',
+                                                borderRadius:12,
+                                                padding:12,
+                                                cursor:'pointer',
+                                                border:'1px solid var(--border)',
+                                                transition:'all 0.2s',
+                                                display:'flex',
+                                                alignItems:'center',
+                                                gap:12,
+                                                position:'relative'
+                                            }}
+                                            onMouseOver={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.background='rgba(255,107,53,0.05)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.background='var(--card)'; }}
+                                        >
+                                            {getProfilePictureDisplay(p, 48)}
+                                            <div style={{flex:1, minWidth:0}}>
+                                                <div style={{fontWeight:750, fontSize:15, marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                                                    {getDisplayName(p)}
+                                                </div>
+                                                <div style={{fontSize:12, color:'var(--text-light)', display:'flex', gap:12, flexWrap:'wrap'}}>
+                                                    {p.email && <span>📧 {p.email}</span>}
+                                                    {p.phone && <span>📞 {p.phone}</span>}
+                                                    {p.company && <span>🏢 {p.company}</span>}
+                                                    <span>🔁 {stat.count}</span>
+                                                    <span>⏱ {timeTracked}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }}
+                                                style={{background:'none', border:'none', fontSize:14, cursor:'pointer', opacity:0.3, padding:8}}
+                                                onMouseOver={e => e.target.style.opacity=1}
+                                                onMouseOut={e => e.target.style.opacity=0.3}
+                                                title="Delete"
+                                            >
+                                                🗑
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    }
+                    
+                    // Table View
+                    if (listViewMode === 'table') {
+                        return (
+                            <div style={{background:'var(--card)', borderRadius:12, border:'1px solid var(--border)', overflow:'hidden'}}>
+                                <div style={{display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 100px 80px 40px', gap:12, padding:'12px 16px', background:'var(--bg)', borderBottom:'1px solid var(--border)', fontSize:11, fontWeight:700, color:'var(--text-light)', textTransform:'uppercase'}}>
+                                    <div></div>
+                                    <div>Name</div>
+                                    <div>Contact</div>
+                                    <div>Type</div>
+                                    <div>Mentions</div>
+                                    <div>Time</div>
+                                    <div></div>
+                                </div>
+                                <div style={{maxHeight:600, overflowY:'auto'}}>
+                                    {filteredPeople.map(p => {
+                                        const stat = (peopleStats[(getDisplayName(p) || '').trim()] || { count: 0, minutes: 0, lastSeen: 0 });
+                                        const timeTracked = formatTimeSmart(stat.minutes);
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => setSelectedPersonId(p.id)}
+                                                style={{
+                                                    display:'grid',
+                                                    gridTemplateColumns:'40px 2fr 1.5fr 1fr 100px 80px 40px',
+                                                    gap:12,
+                                                    padding:'12px 16px',
+                                                    cursor:'pointer',
+                                                    borderBottom:'1px solid var(--border)',
+                                                    transition:'all 0.2s',
+                                                    alignItems:'center'
+                                                }}
+                                                onMouseOver={e => { e.currentTarget.style.background='rgba(255,107,53,0.05)'; }}
+                                                onMouseOut={e => { e.currentTarget.style.background='transparent'; }}
+                                            >
+                                                <div>{getProfilePictureDisplay(p, 32)}</div>
+                                                <div style={{fontWeight:650, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{getDisplayName(p)}</div>
+                                                <div style={{fontSize:12, color:'var(--text-light)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                                                    {p.email || p.phone || '—'}
+                                                </div>
+                                                <div style={{fontSize:12, textTransform:'capitalize'}}>{(p.type || 'client')}</div>
+                                                <div style={{fontSize:13, fontWeight:600}}>{stat.count}</div>
+                                                <div style={{fontSize:13, fontWeight:600, color:'var(--primary)'}}>{timeTracked}</div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(e, p.id); }}
+                                                    style={{background:'none', border:'none', fontSize:12, cursor:'pointer', opacity:0.3}}
+                                                    onMouseOver={e => e.target.style.opacity=1}
+                                                    onMouseOut={e => e.target.style.opacity=0.3}
+                                                    title="Delete"
+                                                >
+                                                    🗑
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    }
+                    
+                    // Compact View
+                    return (
+                        <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
+                            {filteredPeople.map(p => {
+                                const stat = (peopleStats[(getDisplayName(p) || '').trim()] || { count: 0, minutes: 0, lastSeen: 0 });
+                                const timeTracked = formatTimeSmart(stat.minutes);
+                                return (
+                                    <div
+                                        key={p.id}
+                                        onClick={() => setSelectedPersonId(p.id)}
+                                        style={{
+                                            background:'var(--card)',
+                                            borderRadius:8,
+                                            padding:'8px 12px',
+                                            cursor:'pointer',
+                                            border:'1px solid var(--border)',
+                                            transition:'all 0.2s',
+                                            display:'flex',
+                                            alignItems:'center',
+                                            gap:8
+                                        }}
+                                        onMouseOver={e => { e.currentTarget.style.borderColor='var(--primary)'; }}
+                                        onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; }}
+                                    >
+                                        {getProfilePictureDisplay(p, 28)}
+                                        <div style={{fontWeight:650, fontSize:13}}>{getDisplayName(p)}</div>
+                                        <div style={{fontSize:11, color:'var(--text-light)', marginLeft:4}}>• {timeTracked}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })()
             )}
         </div>
     );
@@ -890,21 +1416,13 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
     }, []);
 
     const [subView, setSubView] = React.useState(() => {
-        // First check URL hash
+        // Only check URL hash - no localStorage persistence to allow permalinks
         const hash = window.location.hash;
         if (hash.includes('subView=charts')) return 'charts';
         if (hash.includes('subView=history')) return 'history';
         if (hash.includes('subView=people')) return 'people';
         if (hash.includes('subView=places')) return 'places';
         if (hash.includes('subView=overview')) return 'overview';
-        
-        // Then check localStorage
-        try {
-            const saved = localStorage.getItem('stats_subView');
-            if (saved && ['overview', 'charts', 'history', 'people', 'places'].includes(saved)) {
-                return saved;
-            }
-        } catch {}
         
         return 'overview';
     });
@@ -930,14 +1448,11 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
         });
     }, []);
 
-    // Persist subView changes to localStorage and URL
+    // Update subView and URL hash only (no localStorage persistence for permalinks)
     const updateSubView = (newSubView) => {
         setSubView(newSubView);
-        try {
-            localStorage.setItem('stats_subView', newSubView);
-        } catch {}
         
-        // Update URL hash
+        // Update URL hash only - no localStorage to allow permalinks
         const currentHash = window.location.hash;
         const baseHash = currentHash.split('?')[0];
         const params = new URLSearchParams(currentHash.split('?')[1] || '');
@@ -2791,7 +3306,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
 
             {subView === 'people' && (
                 <div className="fade-in">
-                    <PeopleManager notify={notify} history={history} tasks={tasks} />
+                    <PeopleManager notify={notify} history={history} tasks={tasks} onViewTask={onViewTask} />
                 </div>
             )}
 

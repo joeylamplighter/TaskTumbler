@@ -167,20 +167,60 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
     }) || null;
   };
 
-  // Detect action type from category, subcategory, tags, or title
+  // Detect action type from subcategory first (supreme priority), then tags, category, or title
   const getActionType = () => {
+    // Subcategory takes supreme priority - if it matches, return immediately
+    const subcategory = String(task.subcategory || '').toLowerCase().trim();
+    if (subcategory) {
+      if (/call|phone|ring|dial|telephone/i.test(subcategory)) {
+        return 'call';
+      }
+      if (/email|mail|send/i.test(subcategory) && !/message|text|sms/i.test(subcategory)) {
+        return 'email';
+      }
+      if (/meeting|meet|appointment/i.test(subcategory)) {
+        return 'meeting';
+      }
+      if (/message|text|sms/i.test(subcategory)) {
+        return 'message';
+      }
+    }
+    
+    // Check tags, category, and title (in that order of priority)
+    const tags = Array.isArray(task.tags) ? task.tags.map(t => String(t).toLowerCase().trim()).filter(Boolean) : [];
     const category = String(task.category || '').toLowerCase();
-    const subcategory = String(task.subcategory || '').toLowerCase();
-    const tags = Array.isArray(task.tags) ? task.tags.map(t => String(t).toLowerCase()) : [];
     const title = String(task.title || '').toLowerCase();
     
-    const allText = [category, subcategory, ...tags, title].join(' ');
+    // Check tags first (higher priority than category/title)
+    const allTagsText = tags.join(' ');
+    if (allTagsText) {
+      if (/call|phone|ring|dial|telephone/i.test(allTagsText)) {
+        return 'call';
+      }
+      if (/email|mail|send/i.test(allTagsText) && !/message|text|sms/i.test(allTagsText)) {
+        return 'email';
+      }
+      if (/meeting|meet|appointment/i.test(allTagsText)) {
+        return 'meeting';
+      }
+      if (/message|text|sms/i.test(allTagsText)) {
+        return 'message';
+      }
+    }
     
+    // Finally check category and title combined
+    const allText = [category, title].join(' ');
     if (/call|phone|ring|dial|telephone/i.test(allText)) {
       return 'call';
     }
-    if (/email|mail|send|message/i.test(allText)) {
+    if (/email|mail|send/i.test(allText) && !/message|text|sms/i.test(allText)) {
       return 'email';
+    }
+    if (/meeting|meet|appointment/i.test(allText)) {
+      return 'meeting';
+    }
+    if (/message|text|sms/i.test(allText)) {
+      return 'message';
     }
     return null;
   };
@@ -317,9 +357,23 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                 opacity: 0.8
               }}
             >
-              {/* Action emoji - only call or email */}
+              {/* Action emoji - call, email, meeting, or message */}
               {actionType === 'call' && <span>📞</span>}
               {actionType === 'email' && <span>✉️</span>}
+              {actionType === 'meeting' && <span>🤝</span>}
+              {actionType === 'message' && <span>💬</span>}
+              
+              {/* Show subcategory if it exists */}
+              {task.subcategory && (
+                <span style={{ 
+                  fontSize: 9, 
+                  opacity: 0.7, 
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  {task.subcategory}
+                </span>
+              )}
               
               {/* People links - compact */}
               {task.people && task.people.length > 0 && task.people.map((personName, idx) => {
@@ -409,10 +463,21 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                           cursor: 'pointer',
                           pointerEvents: 'auto'
                         }}
-                        title={`Email ${displayName}`}
+                        title={`Email ${displayName}: ${personRecord.email}`}
                       >
                         ✉️
                       </a>
+                    )}
+                    {/* Show contact details prominently for action types */}
+                    {actionType === 'call' && hasPhone && (
+                      <span style={{ fontSize: 10, marginLeft: 6, opacity: 0.9, fontWeight: 500 }}>
+                        📞 {personRecord.phone}
+                      </span>
+                    )}
+                    {actionType === 'email' && hasEmail && (
+                      <span style={{ fontSize: 10, marginLeft: 6, opacity: 0.9, fontWeight: 500 }}>
+                        ✉️ {personRecord.email}
+                      </span>
                     )}
                   </span>
                 );

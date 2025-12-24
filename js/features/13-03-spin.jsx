@@ -1494,9 +1494,22 @@ import ReactDOM from 'react-dom/client'
                     padding: "0 12px",
                     textAlign: "center",
                     opacity: spinning ? 0.95 : 1,
+                    width: "100%",
+                    minWidth: 0,
                   }}
                 >
-                  {t?.title || "(Untitled)"}
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "280px",
+                      display: "block",
+                      minWidth: 0,
+                    }}
+                  >
+                    {t?.title || "(Untitled)"}
+                  </span>
                 </div>
               ))
             ) : (

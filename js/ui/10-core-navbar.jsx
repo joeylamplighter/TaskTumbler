@@ -5,6 +5,11 @@
 // ===========================================
 
 function NavBar({ current, set, items, hidden, dockHidden, getCurrentSubtab }) {
+  // Hide completely if no items
+  if (!items || items.length === 0) {
+    return null;
+  }
+  
   const isHidden = !!hidden || !!dockHidden;
   
   // Helper to check if we're on a stats subtab
@@ -102,7 +107,7 @@ const style = {
           >
             <div style={{fontSize: 18, lineHeight: '18px'}}>{item.icon}</div>
             <div style={{fontSize: 10, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase'}}>
-              {item.label}
+              {item.displayLabel || item.label}
             </div>
           </button>
         );
