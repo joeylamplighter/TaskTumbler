@@ -909,6 +909,9 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
         return 'overview';
     });
 
+    // Subtabs collapse state
+    const [subTabsCollapsed, setSubTabsCollapsed] = React.useState(false);
+
     // Persist subView changes to localStorage and URL
     const updateSubView = (newSubView) => {
         setSubView(newSubView);
@@ -1607,12 +1610,37 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                     onClose={() => setSelectedHistoryItem(null)} 
                 />
             )}
-            <div className="segmented-control" style={{marginBottom: 20}}>
-                <button className={`sc-btn ${subView==='overview'?'active':''}`} onClick={()=>updateSubView('overview')}>Overview</button>
-                <button className={`sc-btn ${subView==='charts'?'active':''}`} onClick={()=>updateSubView('charts')}>Charts</button>
-                <button className={`sc-btn ${subView==='history'?'active':''}`} onClick={()=>updateSubView('history')}>History</button>
-                <button className={`sc-btn ${subView==='people'?'active':''}`} onClick={()=>updateSubView('people')}>👥 People</button>
-                <button className={`sc-btn ${subView==='places'?'active':''}`} onClick={()=>updateSubView('places')}>📍 Places</button>
+            <div style={{ marginBottom: 20 }}>
+                <div 
+                    onClick={() => setSubTabsCollapsed(!subTabsCollapsed)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        padding: '8px 0',
+                        userSelect: 'none',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text)',
+                        marginBottom: subTabsCollapsed ? 0 : 8
+                    }}
+                >
+                    <span style={{ 
+                        fontSize: 10, 
+                        display: 'inline-block'
+                    }}>{subTabsCollapsed ? '▶' : '▼'}</span>
+                    <span>Subtabs</span>
+                </div>
+                {!subTabsCollapsed && (
+                    <div className="segmented-control" style={{marginBottom: 20}}>
+                        <button className={`sc-btn ${subView==='overview'?'active':''}`} onClick={()=>updateSubView('overview')}>Overview</button>
+                        <button className={`sc-btn ${subView==='charts'?'active':''}`} onClick={()=>updateSubView('charts')}>Charts</button>
+                        <button className={`sc-btn ${subView==='history'?'active':''}`} onClick={()=>updateSubView('history')}>History</button>
+                        <button className={`sc-btn ${subView==='people'?'active':''}`} onClick={()=>updateSubView('people')}>👥 People</button>
+                        <button className={`sc-btn ${subView==='places'?'active':''}`} onClick={()=>updateSubView('places')}>📍 Places</button>
+                    </div>
+                )}
             </div>
 
             {subView === 'overview' && (

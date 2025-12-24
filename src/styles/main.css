@@ -27,6 +27,17 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--bg);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Desktop: Centered container with comfortable max-width */
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 0 60px rgba(0,0,0,0.2);
+  }
 }
 
 /* Header */
@@ -42,6 +53,14 @@ body {
   z-index: 100;
   flex-shrink: 0;
   gap: 12px;
+}
+
+/* Desktop: Slightly increased header padding */
+@media (min-width: 768px) {
+  .app-header {
+    padding: 18px 24px;
+    gap: 16px;
+  }
 }
 
 .header-right {
@@ -81,6 +100,19 @@ body {
   font-weight: 900;
 }
 
+/* Desktop: Larger brand text */
+@media (min-width: 768px) {
+  .brand-title {
+    font-size: 22px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .brand-title {
+    font-size: 24px;
+  }
+}
+
 .brand-subtitle {
   font-size: 11px;
   color: var(--text-light);
@@ -98,9 +130,16 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Desktop: Slightly increased padding while keeping compact */
+@media (min-width: 768px) {
+  .content {
+    padding: 20px 24px;
+  }
+}
+
 /* Tab Container */
 .tab-container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   width: 100%;
 }
@@ -159,6 +198,24 @@ body {
   justify-content: space-around;
   align-items: center;
   pointer-events: auto;
+}
+
+/* Desktop: Navbar stays aligned with app shell width */
+@media (min-width: 768px) {
+  .navbar {
+    width: min(600px, 94vw);
+    padding: 10px 12px;
+    border-radius: 16px 16px 0 0;
+    height: 60px;
+  }
+  
+  .nav-item {
+    padding: 10px 6px;
+  }
+  
+  .nav-icon {
+    font-size: 20px;
+  }
 }
 
 /* Light theme navbar */
@@ -263,7 +320,7 @@ body {
   animation: fadeInUp 0.3s ease-out;
 }
 
-/* Responsive */
+/* Mobile: Compact spacing for small screens */
 @media (max-width: 640px) {
   .content {
     padding: 16px 12px;

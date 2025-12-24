@@ -29,10 +29,32 @@
       duel: true,
       settings: true,
     },
+    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "stats", "stats:overview", "stats:charts", "stats:history", "stats:people", "stats:places", "people", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navBarVisibleItems: {
+      spin: true,
+      tasks: true,
+      timer: true,
+      lists: true,
+      goals: false,
+      stats: true,
+      "stats:overview": false,
+      "stats:charts": false,
+      "stats:history": false,
+      "stats:people": false,
+      "stats:places": false,
+      people: false,
+      duel: true,
+      settings: false, // Can be hidden, but still accessible via permalink
+      "settings:view": false,
+      "settings:logic": false,
+      "settings:game": false,
+      "settings:cats": false,
+      "settings:data": false,
+    },
     
     // --- Header Right Mode ---
     headerRightMode: "none", // "none" | "quickNav" | "xp" | "status"
-    headerQuickNavItems: [], // Array of up to 3: ["spin", "tasks", "timer", "stats", "settings", "search"]
+    headerQuickNavItems: [], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people" (navigates to stats?subView=people), "duel", "settings", "search"]
     headerXpShowValue: true,
     headerXpShowLevel: true,
     headerXpShowProgress: false,

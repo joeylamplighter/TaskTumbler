@@ -798,23 +798,36 @@ const removeSubCategory = (parentCat, subName) => {
 
   // Error tracking for debug info (persisted across crashes)
   React.useEffect(() => {
+    // Initialize errors array immediately to prevent crashes
+    if (!window.recentErrors) {
+      window.recentErrors = [];
+    }
+    
     // Load persisted errors from localStorage
     try {
       const saved = localStorage.getItem('tt_debug_errors');
-      window.recentErrors = saved ? JSON.parse(saved) : [];
+      if (saved) {
+        window.recentErrors = JSON.parse(saved);
+        if (!Array.isArray(window.recentErrors)) {
+          window.recentErrors = [];
+        }
+      }
     } catch {
       window.recentErrors = [];
     }
 
     const persistErrors = () => {
       try {
-        localStorage.setItem('tt_debug_errors', JSON.stringify(window.recentErrors));
+        if (window.recentErrors && Array.isArray(window.recentErrors)) {
+          localStorage.setItem('tt_debug_errors', JSON.stringify(window.recentErrors));
+        }
       } catch (e) {
         // Silently fail if storage is full
       }
     };
 
     const handleError = (event) => {
+      if (!window.recentErrors) window.recentErrors = [];
       window.recentErrors.push({
         message: event.error?.message || event.message || "Unknown error",
         stack: event.error?.stack,
@@ -826,6 +839,7 @@ const removeSubCategory = (parentCat, subName) => {
     };
 
     const handleRejection = (event) => {
+      if (!window.recentErrors) window.recentErrors = [];
       window.recentErrors.push({
         message: event.reason?.message || event.reason?.toString() || "Unhandled promise rejection",
         stack: event.reason?.stack,
@@ -842,6 +856,7 @@ const removeSubCategory = (parentCat, subName) => {
 
     console.error = (...args) => {
       originalError.apply(console, args);
+      if (!window.recentErrors) window.recentErrors = [];
       window.recentErrors.push({
         message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '),
         time: new Date().toISOString(),
@@ -853,6 +868,7 @@ const removeSubCategory = (parentCat, subName) => {
 
     console.warn = (...args) => {
       originalWarn.apply(console, args);
+      if (!window.recentErrors) window.recentErrors = [];
       window.recentErrors.push({
         message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '),
         time: new Date().toISOString(),
@@ -1443,6 +1459,463 @@ const removeSubCategory = (parentCat, subName) => {
     setTimeout(() => window.location.reload(), 1000);
   };
 
+  // Comprehensive Sample Data - 4 Fully Filled Tasks with All Links
+  const handleLoadComprehensiveSamples = () => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
+    const nextWeek = new Date(now.getTime() + 7 * 86400000).toISOString().split('T')[0];
+    const yesterday = new Date(now.getTime() - 86400000).toISOString().split('T')[0];
+    const lastWeek = new Date(now.getTime() - 7 * 86400000).toISOString().split('T')[0];
+
+    const generateId = (prefix) => window.generateId ? window.generateId(prefix) : `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    // Ensure we have people and locations first (reuse from existing samples or create minimal ones)
+    const requiredPeople = [
+      { id: 'p1', firstName: 'Alice', lastName: 'Client', name: 'Alice Client', type: 'client', phone: '555-0100', email: 'alice@example.com', notes: 'VIP client looking for 3bd/2ba', links: ['https://compass.com/alice'], tags: ['vip'], weight: 15 },
+      { id: 'p4', firstName: 'Diana', lastName: 'Partner', name: 'Diana Partner', type: 'partner', phone: '555-0103', email: 'diana@partners.com', notes: 'Real estate partner', links: [], tags: ['partner'], weight: 20 },
+      { id: 'p5', firstName: 'Eve', lastName: 'Contractor', name: 'Eve Contractor', type: 'vendor', phone: '555-0104', email: 'eve@construction.com', notes: 'General contractor', links: [], tags: ['contractor'], weight: 10 },
+      { id: 'p7', firstName: 'Grace', lastName: 'Designer', name: 'Grace Designer', type: 'vendor', phone: '555-0106', email: 'grace@design.com', notes: 'Interior designer', links: [], tags: ['designer'], weight: 9 }
+    ];
+
+    const requiredLocations = [
+      { id: 'loc1', label: 'Downtown Office', name: 'Downtown Office', address: '123 Main St, City, ST 12345', type: 'client', lat: 37.7749, lon: -122.4194, coords: { lat: 37.7749, lon: -122.4194 } },
+      { id: 'loc2', label: 'Client Home', name: 'Client Home', address: '456 Oak Ave, City, ST 12346', type: 'client', lat: 37.7849, lon: -122.4094, coords: { lat: 37.7849, lon: -122.4094 } },
+      { id: 'loc3', label: 'Coffee Shop', name: 'Coffee Shop', address: '789 Elm Blvd, City, ST 12347', type: 'personal', lat: 37.7649, lon: -122.4294, coords: { lat: 37.7649, lon: -122.4294 } }
+    ];
+
+    // Ensure people and locations exist
+    if (DM?.people?.getAll) {
+      const existing = DM.people.getAll();
+      const toAdd = requiredPeople.filter(p => !existing.find(e => e.id === p.id));
+      if (toAdd.length > 0) DM.people.setAll([...existing, ...toAdd]);
+    } else {
+      const existing = JSON.parse(localStorage.getItem('savedPeople') || '[]');
+      const toAdd = requiredPeople.filter(p => !existing.find(e => e.id === p.id));
+      localStorage.setItem('savedPeople', JSON.stringify([...existing, ...toAdd]));
+      window.dispatchEvent(new Event('people-updated'));
+    }
+
+    if (typeof window.setSavedLocationsV1 === 'function') {
+      const existing = window.getSavedLocationsV1?.() || [];
+      const toAdd = requiredLocations.filter(l => !existing.find(e => e.id === l.id));
+      window.setSavedLocationsV1([...existing, ...toAdd]);
+    } else {
+      const existing = JSON.parse(localStorage.getItem('savedLocations_v1') || '[]');
+      const toAdd = requiredLocations.filter(l => !existing.find(e => e.id === l.id));
+      localStorage.setItem('savedLocations_v1', JSON.stringify([...existing, ...toAdd]));
+      window.dispatchEvent(new Event('locations-updated'));
+    }
+
+    // Create a goal to link to
+    const goalId = 'g_comprehensive_1';
+    const sampleGoal = {
+      id: goalId,
+      title: 'Complete Major Project Milestones',
+      description: 'Finish key deliverables across multiple domains',
+      category: 'Work',
+      target: 100,
+      progress: 45,
+      createdAt: new Date(now.getTime() - 30 * 86400000).toISOString()
+    };
+
+    if (DM?.goals?.getAll) {
+      const existing = DM.goals.getAll();
+      if (!existing.find(g => g.id === goalId)) {
+        DM.goals.setAll([...existing, sampleGoal]);
+      }
+    } else {
+      const existing = JSON.parse(localStorage.getItem('goals') || '[]');
+      if (!existing.find(g => g.id === goalId)) {
+        localStorage.setItem('goals', JSON.stringify([...existing, sampleGoal]));
+        if (setGoals) setGoals(prev => [...prev, sampleGoal]);
+      }
+    }
+
+    // 4 COMPREHENSIVE TASKS WITH ALL FIELDS FILLED
+    const comprehensiveTasks = [
+      {
+        id: generateId('comp_task'),
+        title: 'Complete Q1 Marketing Campaign and Launch Strategy',
+        category: 'Work',
+        subtype: 'Deep Work',
+        priority: 'Urgent',
+        weight: 25,
+        estimatedTime: '480',
+        estimatedTimeUnit: 'min',
+        people: ['Alice Client', 'Diana Partner'],
+        location: 'Downtown Office',
+        locationIds: ['loc1'],
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        completed: false,
+        createdAt: new Date(now.getTime() - 10 * 86400000).toISOString(),
+        completedAt: null,
+        dueDate: nextWeek,
+        dueTime: '17:00',
+        startDate: tomorrow,
+        startTime: '09:00',
+        tags: ['marketing', 'campaign', 'urgent', 'strategy', 'launch', 'q1'],
+        actualTime: 180,
+        percentComplete: 65,
+        subtasks: [
+          { id: generateId('sub'), title: 'Research target audience demographics', completed: true },
+          { id: generateId('sub'), title: 'Create campaign messaging framework', completed: true },
+          { id: generateId('sub'), title: 'Design visual assets and branding', completed: false },
+          { id: generateId('sub'), title: 'Set up marketing automation workflows', completed: false },
+          { id: generateId('sub'), title: 'Finalize launch timeline and milestones', completed: false }
+        ],
+        recurring: 'None',
+        reminderMode: 'due',
+        reminderAnchor: 'due',
+        reminderOffsetValue: 2,
+        reminderOffsetUnit: 'hours',
+        blockedBy: [],
+        goalId: goalId,
+        excludeFromTumbler: false,
+        lastModified: new Date(now.getTime() - 1 * 86400000).toISOString()
+      },
+      {
+        id: generateId('comp_task'),
+        title: 'Kitchen Renovation: Finalize Design and Contractor Selection',
+        category: 'Home Project',
+        subtype: 'Renovation',
+        priority: 'High',
+        weight: 22,
+        estimatedTime: '180',
+        estimatedTimeUnit: 'min',
+        people: ['Eve Contractor', 'Grace Designer'],
+        location: 'Client Home',
+        locationIds: ['loc2'],
+        locationCoords: { lat: 37.7849, lon: -122.4094 },
+        completed: false,
+        createdAt: new Date(now.getTime() - 15 * 86400000).toISOString(),
+        completedAt: null,
+        dueDate: tomorrow,
+        dueTime: '14:00',
+        startDate: tomorrow,
+        startTime: '10:00',
+        tags: ['renovation', 'kitchen', 'home', 'contractor', 'design', 'selection'],
+        actualTime: 90,
+        percentComplete: 75,
+        subtasks: [
+          { id: generateId('sub'), title: 'Review contractor quotes and portfolios', completed: true },
+          { id: generateId('sub'), title: 'Select cabinet style and hardware', completed: true },
+          { id: generateId('sub'), title: 'Choose countertop material (granite vs quartz)', completed: true },
+          { id: generateId('sub'), title: 'Finalize appliance selections', completed: false },
+          { id: generateId('sub'), title: 'Schedule final meeting with Eve and Grace', completed: false }
+        ],
+        recurring: 'None',
+        reminderMode: 'start',
+        reminderAnchor: 'start',
+        reminderOffsetValue: 30,
+        reminderOffsetUnit: 'minutes',
+        blockedBy: [],
+        goalId: null,
+        excludeFromTumbler: false,
+        lastModified: new Date(now.getTime() - 2 * 86400000).toISOString()
+      },
+      {
+        id: generateId('comp_task'),
+        title: 'Deep Dive: Market Analysis and Competitive Research Report',
+        category: 'Work',
+        subtype: 'Research',
+        priority: 'Medium',
+        weight: 18,
+        estimatedTime: '360',
+        estimatedTimeUnit: 'min',
+        people: ['Diana Partner'],
+        location: 'Coffee Shop',
+        locationIds: ['loc3'],
+        locationCoords: { lat: 37.7649, lon: -122.4294 },
+        completed: false,
+        createdAt: new Date(now.getTime() - 8 * 86400000).toISOString(),
+        completedAt: null,
+        dueDate: nextWeek,
+        dueTime: '16:00',
+        startDate: tomorrow,
+        startTime: '13:00',
+        tags: ['research', 'analysis', 'competitive', 'market', 'report', 'deep-work'],
+        actualTime: 120,
+        percentComplete: 40,
+        subtasks: [
+          { id: generateId('sub'), title: 'Gather market data and statistics', completed: true },
+          { id: generateId('sub'), title: 'Analyze competitor strategies and positioning', completed: false },
+          { id: generateId('sub'), title: 'Create visualizations and charts', completed: false },
+          { id: generateId('sub'), title: 'Write executive summary and recommendations', completed: false }
+        ],
+        recurring: 'None',
+        reminderMode: 'due',
+        reminderAnchor: 'due',
+        reminderOffsetValue: 1,
+        reminderOffsetUnit: 'days',
+        blockedBy: [],
+        goalId: goalId,
+        excludeFromTumbler: false,
+        lastModified: new Date(now.getTime() - 3 * 86400000).toISOString()
+      },
+      {
+        id: generateId('comp_task'),
+        title: 'Client Onboarding: Alice - Property Search Kickoff Meeting',
+        category: 'Real Estate',
+        subtype: 'Client Calls',
+        priority: 'High',
+        weight: 20,
+        estimatedTime: '90',
+        estimatedTimeUnit: 'min',
+        people: ['Alice Client'],
+        location: 'Downtown Office',
+        locationIds: ['loc1'],
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        completed: true,
+        createdAt: new Date(now.getTime() - 5 * 86400000).toISOString(),
+        completedAt: new Date(now.getTime() - 4 * 86400000).toISOString(),
+        dueDate: yesterday,
+        dueTime: '11:00',
+        startDate: yesterday,
+        startTime: '10:00',
+        tags: ['client', 'onboarding', 'meeting', 'real-estate', 'property-search', 'kickoff'],
+        actualTime: 85,
+        percentComplete: 100,
+        subtasks: [
+          { id: generateId('sub'), title: 'Prepare property listings portfolio', completed: true },
+          { id: generateId('sub'), title: 'Review client preferences and budget', completed: true },
+          { id: generateId('sub'), title: 'Create initial property search criteria', completed: true },
+          { id: generateId('sub'), title: 'Schedule follow-up viewing appointments', completed: true }
+        ],
+        recurring: 'None',
+        reminderMode: 'start',
+        reminderAnchor: 'start',
+        reminderOffsetValue: 15,
+        reminderOffsetUnit: 'minutes',
+        blockedBy: [],
+        goalId: null,
+        excludeFromTumbler: false,
+        lastModified: new Date(now.getTime() - 4 * 86400000).toISOString()
+      }
+    ];
+
+    // Add tasks (use setTasks which handles both state and DataManager sync)
+    setTasks(prev => [...prev, ...comprehensiveTasks]);
+
+    // Create comprehensive Activities (Tracks) linked to tasks
+    const comprehensiveActivities = [
+      // Activities for Task 1 (Marketing Campaign)
+      {
+        id: generateId('act'),
+        title: 'Marketing Campaign Deep Work Session',
+        category: 'Work',
+        duration: 7200, // 2 hours
+        type: 'focus',
+        taskId: comprehensiveTasks[0].id,
+        people: ['Diana Partner'],
+        locationLabel: 'Downtown Office',
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        locationId: 'loc1',
+        createdAt: new Date(now.getTime() - 3 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Marketing Strategy Planning',
+        category: 'Work',
+        duration: 5400, // 1.5 hours
+        type: 'focus',
+        taskId: comprehensiveTasks[0].id,
+        people: [],
+        locationLabel: 'Coffee Shop',
+        locationCoords: { lat: 37.7649, lon: -122.4294 },
+        locationId: 'loc3',
+        createdAt: new Date(now.getTime() - 5 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Marketing Meeting with Alice',
+        category: 'Work',
+        duration: 3600, // 1 hour
+        type: 'completion',
+        taskId: comprehensiveTasks[0].id,
+        people: ['Alice Client'],
+        locationLabel: 'Downtown Office',
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        locationId: 'loc1',
+        createdAt: new Date(now.getTime() - 2 * 86400000).toISOString()
+      },
+      // Activities for Task 2 (Kitchen Renovation)
+      {
+        id: generateId('act'),
+        title: 'Kitchen Design Consultation',
+        category: 'Home Project',
+        duration: 5400, // 1.5 hours
+        type: 'completion',
+        taskId: comprehensiveTasks[1].id,
+        people: ['Grace Designer', 'Eve Contractor'],
+        locationLabel: 'Client Home',
+        locationCoords: { lat: 37.7849, lon: -122.4094 },
+        locationId: 'loc2',
+        createdAt: new Date(now.getTime() - 4 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Contractor Quote Review Session',
+        category: 'Home Project',
+        duration: 2700, // 45 minutes
+        type: 'completion',
+        taskId: comprehensiveTasks[1].id,
+        people: ['Eve Contractor'],
+        locationLabel: 'Client Home',
+        locationCoords: { lat: 37.7849, lon: -122.4094 },
+        locationId: 'loc2',
+        createdAt: new Date(now.getTime() - 6 * 86400000).toISOString()
+      },
+      // Activities for Task 3 (Market Research)
+      {
+        id: generateId('act'),
+        title: 'Market Research Deep Work',
+        category: 'Work',
+        duration: 10800, // 3 hours
+        type: 'focus',
+        taskId: comprehensiveTasks[2].id,
+        people: [],
+        locationLabel: 'Coffee Shop',
+        locationCoords: { lat: 37.7649, lon: -122.4294 },
+        locationId: 'loc3',
+        createdAt: new Date(now.getTime() - 1 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Research Collaboration with Diana',
+        category: 'Work',
+        duration: 5400, // 1.5 hours
+        type: 'focus',
+        taskId: comprehensiveTasks[2].id,
+        people: ['Diana Partner'],
+        locationLabel: 'Coffee Shop',
+        locationCoords: { lat: 37.7649, lon: -122.4294 },
+        locationId: 'loc3',
+        createdAt: new Date(now.getTime() - 7 * 86400000).toISOString()
+      },
+      // Activities for Task 4 (Client Onboarding - completed)
+      {
+        id: generateId('act'),
+        title: 'Alice Client Onboarding Meeting',
+        category: 'Real Estate',
+        duration: 5100, // 85 minutes
+        type: 'completion',
+        taskId: comprehensiveTasks[3].id,
+        people: ['Alice Client'],
+        locationLabel: 'Downtown Office',
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        locationId: 'loc1',
+        createdAt: new Date(now.getTime() - 4 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Property Search Preparation',
+        category: 'Real Estate',
+        duration: 3600, // 1 hour
+        type: 'completion',
+        taskId: comprehensiveTasks[3].id,
+        people: [],
+        locationLabel: 'Downtown Office',
+        locationCoords: { lat: 37.7749, lon: -122.4194 },
+        locationId: 'loc1',
+        createdAt: new Date(now.getTime() - 5 * 86400000).toISOString()
+      },
+      // Additional standalone tracks
+      {
+        id: generateId('act'),
+        title: 'Quick Strategy Call',
+        category: 'Work',
+        duration: 1800, // 30 minutes
+        type: 'log',
+        taskId: null,
+        people: ['Diana Partner'],
+        locationLabel: '',
+        locationCoords: null,
+        locationId: null,
+        createdAt: new Date(now.getTime() - 1 * 86400000).toISOString()
+      },
+      {
+        id: generateId('act'),
+        title: 'Follow-up Design Discussion',
+        category: 'Home Project',
+        duration: 2400, // 40 minutes
+        type: 'log',
+        taskId: null,
+        people: ['Grace Designer'],
+        locationLabel: 'Client Home',
+        locationCoords: { lat: 37.7849, lon: -122.4094 },
+        locationId: 'loc2',
+        createdAt: new Date(now.getTime() - 2 * 86400000).toISOString()
+      }
+    ];
+
+    // Add activities
+    if (DM?.activities?.add) {
+      comprehensiveActivities.forEach(act => DM.activities.add(act));
+    } else if (DM?.activities?.setAll) {
+      const existing = DM.activities.getAll() || [];
+      DM.activities.setAll([...existing, ...comprehensiveActivities]);
+      if (setActivitiesInternal) {
+        setActivitiesInternal(DM.activities.getAll());
+      }
+    } else {
+      const existing = JSON.parse(localStorage.getItem('activities') || '[]');
+      localStorage.setItem('activities', JSON.stringify([...existing, ...comprehensiveActivities]));
+      if (setActivitiesInternal) {
+        setActivitiesInternal([...existing, ...comprehensiveActivities]);
+      }
+    }
+
+    // Create history events for the tasks
+    const historyEvents = [
+      {
+        id: generateId('hist'),
+        ts: new Date(now.getTime() - 4 * 86400000).toISOString(),
+        type: 'done',
+        taskId: comprehensiveTasks[3].id,
+        title: comprehensiveTasks[3].title,
+        category: comprehensiveTasks[3].category,
+        priority: comprehensiveTasks[3].priority,
+        meta: {}
+      },
+      {
+        id: generateId('hist'),
+        ts: new Date(now.getTime() - 3 * 86400000).toISOString(),
+        type: 'start_focus',
+        taskId: comprehensiveTasks[0].id,
+        title: comprehensiveTasks[0].title,
+        category: comprehensiveTasks[0].category,
+        priority: comprehensiveTasks[0].priority,
+        meta: { duration: 7200 }
+      },
+      {
+        id: generateId('hist'),
+        ts: new Date(now.getTime() - 1 * 86400000).toISOString(),
+        type: 'spin_result',
+        taskId: comprehensiveTasks[2].id,
+        title: comprehensiveTasks[2].title,
+        category: comprehensiveTasks[2].category,
+        priority: comprehensiveTasks[2].priority,
+        meta: { spinDuration: 3000 }
+      }
+    ];
+
+    if (window.TaskEvents?.setAll) {
+      const existing = window.TaskEvents.getAll?.() || [];
+      window.TaskEvents.setAll([...existing, ...historyEvents]);
+    } else if (DM?.history?.setAll) {
+      const existing = DM.history.getAll?.() || [];
+      DM.history.setAll([...existing, ...historyEvents]);
+    } else {
+      const existing = JSON.parse(localStorage.getItem('taskEvents_v1') || '[]');
+      localStorage.setItem('taskEvents_v1', JSON.stringify([...existing, ...historyEvents]));
+      window.dispatchEvent(new Event('history-updated'));
+    }
+
+    notify("4 Comprehensive Tasks + Tracks Loaded! 🎯", "✅");
+    setTimeout(() => window.location.reload(), 1000);
+  };
+
   // Dev Tools helpers
   const handleClearCompleted = () => {
     const completedCount = tasks.filter(t => t.completed).length;
@@ -1485,19 +1958,51 @@ const removeSubCategory = (parentCat, subName) => {
     };
   };
 
-  // Nav items (defensive visibleTabs)
-  const navItems = [
-    { key: "spin", icon: "🎰", label: "Spin" },
-    { key: "tasks", icon: "📋", label: "Tasks" },
-    { key: "timer", icon: "⏱️", label: "Track" },
-    { key: "lists", icon: "💡", label: "Ideas" },
-    { key: "goals", icon: "🎯", label: "Goals" },
-    { key: "stats", icon: "📊", label: "Data" },
-    { key: "people", icon: "👥", label: "People" },
-    { key: "duel", icon: "⚔️", label: "Duel" },
-    { key: "settings", icon: "⚙️", label: "Settings" },
-  ].filter((item) => {
-    if (item.key === "spin" || item.key === "settings") return true;
+  // Nav items (defensive visibleTabs + custom order + subtabs)
+  const allNavItems = [
+    { key: "spin", icon: "🎰", label: "Spin", isSubtab: false },
+    { key: "tasks", icon: "📋", label: "Tasks", isSubtab: false },
+    { key: "timer", icon: "⏱️", label: "Track", isSubtab: false },
+    { key: "lists", icon: "💡", label: "Ideas", isSubtab: false },
+    { key: "goals", icon: "🎯", label: "Goals", isSubtab: false },
+    { key: "stats", icon: "📊", label: "Data", isSubtab: false },
+    { key: "stats:overview", icon: "📊", label: "Data: Overview", isSubtab: true, parentTab: "stats" },
+    { key: "stats:charts", icon: "📈", label: "Data: Charts", isSubtab: true, parentTab: "stats" },
+    { key: "stats:history", icon: "📜", label: "Data: History", isSubtab: true, parentTab: "stats" },
+    { key: "stats:people", icon: "👥", label: "Data: People", isSubtab: true, parentTab: "stats" },
+    { key: "stats:places", icon: "📍", label: "Data: Places", isSubtab: true, parentTab: "stats" },
+    { key: "people", icon: "👥", label: "People", isSubtab: false },
+    { key: "duel", icon: "⚔️", label: "Duel", isSubtab: false },
+    { key: "settings", icon: "⚙️", label: "Settings", isSubtab: false },
+    { key: "settings:view", icon: "👁️", label: "Settings: View", isSubtab: true, parentTab: "settings" },
+    { key: "settings:logic", icon: "🧠", label: "Settings: Logic", isSubtab: true, parentTab: "settings" },
+    { key: "settings:game", icon: "🎮", label: "Settings: Game", isSubtab: true, parentTab: "settings" },
+    { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", isSubtab: true, parentTab: "settings" },
+    { key: "settings:data", icon: "💾", label: "Settings: Data", isSubtab: true, parentTab: "settings" },
+  ];
+  
+  // Apply custom order if available
+  const customOrder = settings?.navItemsOrder || allNavItems.map(item => item.key);
+  const orderedItems = [...allNavItems].sort((a, b) => {
+    const aIndex = customOrder.indexOf(a.key);
+    const bIndex = customOrder.indexOf(b.key);
+    // If not in custom order, keep original position (put at end)
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+  
+  // Filter by visibility (navBarVisibleItems takes precedence, fallback to visibleTabs)
+  const navItems = orderedItems.filter((item) => {
+    // Check navBarVisibleItems first
+    if (settings?.navBarVisibleItems && typeof settings.navBarVisibleItems[item.key] === 'boolean') {
+      return settings.navBarVisibleItems[item.key] === true;
+    }
+    
+    // Fallback to visibleTabs for backward compatibility (only for main tabs, not subtabs)
+    if (item.isSubtab) return false; // Subtabs must be explicitly enabled
+    if (item.key === "spin") return true; // Spin always visible by default
     if (!settings || !settings.visibleTabs) return true;
     return settings.visibleTabs[item.key] !== false;
   });
@@ -1836,6 +2341,21 @@ const removeSubCategory = (parentCat, subName) => {
             }}
           >
             🎲 LOAD SAMPLES
+          </button>
+          <button
+            onClick={handleLoadComprehensiveSamples}
+            style={{
+              background: isLightTheme ? "rgba(200, 100, 255, 0.4)" : "rgba(200, 100, 255, 0.3)",
+              color: getDevColor("#d9a3ff", "#9933cc"),
+              border: isLightTheme ? "1px solid rgba(200, 100, 255, 0.5)" : "1px solid rgba(200, 100, 255, 0.4)",
+              padding: "4px 8px",
+              borderRadius: 6,
+              fontSize: 9,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            🎯 4 COMPREHENSIVE
           </button>
           <button
             onClick={handleManualReload}
@@ -2540,18 +3060,6 @@ const removeSubCategory = (parentCat, subName) => {
 
             {tab === "goals" && <GoalsTabComp goals={goals} setGoals={setGoals} tasks={tasks} notify={notify} />}
             {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} userStats={userStats} onViewTask={setViewTask} />}
-            {tab === "people" && (
-              <PeopleTabComp 
-                tasks={tasks} 
-                history={activities} 
-                categories={categories} 
-                settings={settings} 
-                notify={notify} 
-                locations={[]} 
-                setLocations={() => {}} 
-                onViewTask={setViewTask} 
-              />
-            )}
             {tab === "duel" && (
               <DuelTabComp tasks={tasks} onUpdate={updateTask} settings={settings} notify={notify} fireConfetti={window.fireConfetti} addActivity={addActivity} />
             )}
@@ -2592,7 +3100,34 @@ const removeSubCategory = (parentCat, subName) => {
 )}
           </div>
 
-          <NavBarComp current={tab} set={setTab} items={navItems} hidden={!isDockVisible} />
+          <NavBarComp 
+            current={tab} 
+            set={(tabKey) => {
+              // Handle subtabs
+              if (tabKey.includes(":")) {
+                const [parentTab, subtab] = tabKey.split(":");
+                if (parentTab === "stats") {
+                  setTab("stats");
+                  window.location.hash = `#stats?subView=${subtab}`;
+                  window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
+                } else if (parentTab === "settings") {
+                  setTab("settings");
+                  window.location.hash = `#settings?view=${subtab}`;
+                  window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+                }
+              } else if (tabKey === "people") {
+                // Legacy people - navigate to stats subtab
+                setTab("stats");
+                window.location.hash = "#stats?subView=people";
+                window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
+              } else {
+                setTab(tabKey);
+              }
+            }} 
+            items={navItems} 
+            hidden={!isDockVisible}
+            getCurrentSubtab={getCurrentSubtab}
+          />
         </React.Fragment>
       )}
 
@@ -2729,6 +3264,12 @@ const removeSubCategory = (parentCat, subName) => {
         }
         
         if (modal.type === 'peopleManager' && PeopleManager) {
+          // Get pending selection from window if set
+          const pendingSelection = window.__pendingPeopleManagerSelection || null;
+          if (pendingSelection) {
+            // Clear it after reading
+            delete window.__pendingPeopleManagerSelection;
+          }
           return (
             <div key={`peopleManager-${index}`} style={{ position: 'fixed', inset: 0, zIndex }}>
               <PeopleManager 
@@ -2736,7 +3277,8 @@ const removeSubCategory = (parentCat, subName) => {
                 setPeople={setPeople} 
                 onClose={() => {
                   setModalStack(prev => prev.filter((_, i) => i !== index));
-                }} 
+                }}
+                initialSelectedPersonName={pendingSelection}
               />
             </div>
           );

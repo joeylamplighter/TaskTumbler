@@ -128,12 +128,12 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
   const getPriorityBadge = () => {
     if (!task.priority) return null;
     const priorityMap = {
-      'Low': { text: 'Low', icon: '⚡' },
-      'Medium': { text: 'Medium', icon: '⚡' },
-      'High': { text: 'High', icon: '⚡' },
-      'Urgent': { text: 'Urgent', icon: '⚡' }
+      'Low': { text: 'Low', icon: '▲' },
+      'Medium': { text: 'Medium', icon: '▲' },
+      'High': { text: 'High', icon: '▲' },
+      'Urgent': { text: 'Urgent', icon: '▲' }
     };
-    return priorityMap[task.priority] || { text: task.priority, icon: '⚡' };
+    return priorityMap[task.priority] || { text: task.priority, icon: '▲' };
   };
 
   const priorityBadge = getPriorityBadge();
@@ -239,8 +239,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           background: 'var(--card)', 
           borderRadius: 16, 
           width: 'min(480px, 95vw)', 
-          maxHeight: '85vh',
-          overflow: 'auto',
+          maxHeight: '90vh',
+          overflow: 'hidden',
           border: '1px solid var(--border)',
           boxShadow: '0 0 40px rgba(255,107,53,0.15), 0 20px 60px rgba(0,0,0,0.4)',
           position: 'relative',
@@ -259,8 +259,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8
             }}>
               <span style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: 'var(--text)',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: 'var(--text-light)',
                 padding: '3px 8px',
                 borderRadius: 12,
                 fontSize: 9,
@@ -284,7 +284,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   alignItems: 'center',
                   gap: 3
                 }}>
-                  <span>⚡</span>
+                  <span>{priorityBadge.icon}</span>
                   <span>{priorityBadge.text}</span>
                 </span>
               )}
@@ -334,10 +334,16 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                     <a
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedPersonName(displayName);
-                        setShowPeopleManager(true);
+                        try {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (displayName) {
+                            setSelectedPersonName(displayName);
+                            setShowPeopleManager(true);
+                          }
+                        } catch (error) {
+                          console.error("Error opening PeopleManager:", error);
+                        }
                       }}
                       style={{
                         color: 'var(--primary)',
@@ -467,13 +473,13 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
         </div>
 
         {/* CONTENT */}
-        <div style={{ padding: '0 16px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '0 16px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           
 
           {/* TIMER & FOCUS MODE BAR */}
           <div style={{
-            background: 'linear-gradient(90deg, rgba(108, 92, 231, 0.2), rgba(162, 155, 254, 0.2))',
-            border: '1px solid rgba(108, 92, 231, 0.3)',
+            background: 'rgba(108, 92, 231, 0.15)',
+            border: '1px solid rgba(108, 92, 231, 0.25)',
             borderRadius: 10,
             padding: '10px 14px',
             marginBottom: 16,
@@ -508,8 +514,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   }
                 }}
                 style={{
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  border: 'none',
                   borderRadius: '50%',
                   width: 28,
                   height: 28,
@@ -517,9 +523,9 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: 'var(--text)',
+                  color: '#fff',
                   padding: 0,
-                  fontSize: 12
+                  fontSize: 14
                 }}
               >
                 {isTimerRunning ? '⏸' : '▶'}
@@ -542,11 +548,18 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   background: 'var(--primary)',
                   border: 'none',
                   color: '#fff',
-                  padding: '5px 10px',
+                  padding: '5px 12px',
                   borderRadius: 16,
                   fontSize: 11,
                   fontWeight: 700,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--primary)';
                 }}
               >
                 Focus
@@ -601,7 +614,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                       color: 'var(--primary)',
                       fontWeight: 700,
                       fontSize: 10,
-                      minWidth: 45,
+                      minWidth: 60,
                       paddingTop: 2,
                       flexShrink: 0
                     }}>
@@ -710,14 +723,23 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                         }
                       }}
                       style={{ 
-                        color: st.completed ? 'var(--success)' : 'var(--text-light)', 
-                        fontSize: 14,
+                        color: st.completed ? '#a29bfe' : 'rgba(162, 155, 254, 0.5)', 
+                        fontSize: 16,
                         cursor: 'pointer',
-                        userSelect: 'none'
+                        userSelect: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 20,
+                        height: 20,
+                        border: st.completed ? '2px solid #a29bfe' : '2px solid rgba(162, 155, 254, 0.5)',
+                        borderRadius: 4,
+                        background: st.completed ? 'rgba(162, 155, 254, 0.2)' : 'transparent',
+                        flexShrink: 0
                       }}
                       title={st.completed ? 'Mark as incomplete' : 'Mark as complete'}
                     >
-                      {st.completed ? '☑️' : '⬜'}
+                      {st.completed ? '✓' : ''}
                     </span>
                     <span style={{
                       textDecoration: st.completed ? 'line-through' : 'none',
@@ -765,127 +787,52 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           borderTop: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 12
+          gap: 8
         }}>
-          {/* Group 1: View and Edit */}
-          <div style={{
-            display: 'flex',
-            gap: 8
-          }}>
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // View is just keeping the modal open, so do nothing or refresh
-                // This button might not be needed if we're already viewing
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              style={{ 
-                flex: 1,
-                background: 'var(--input-bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '10px 16px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'var(--text)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--input-bg)';
-              }}
-            >
-              View
-            </button>
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onEdit) {
-                  // Call onEdit first to replace the modal in the stack
-                  onEdit(task);
-                  // Don't call onClose() - let onEdit handle the modal replacement
-                  // The modal stack will replace viewTask with editTask
-                } else {
-                  console.warn('onEdit not provided to ViewTaskModal');
-                }
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              style={{ 
-                flex: 1,
-                background: 'var(--input-bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '10px 16px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'var(--text)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'var(--input-bg)';
-              }}
-            >
-              Edit
-            </button>
-          </div>
+          {/* Top Row: Edit */}
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onEdit) {
+                onEdit(task);
+              } else {
+                console.warn('onEdit not provided to ViewTaskModal');
+              }
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            style={{ 
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '10px 16px',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--text)',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'var(--input-bg)';
+            }}
+          >
+            Edit
+          </button>
 
-          {/* Group 2: Respin, Done, Focus */}
+          {/* Bottom Row: Done and Focus */}
           <div style={{
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
             gap: 8
           }}>
-            {onRespin && (
-              <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onRespin();
-                  onClose();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                style={{ 
-                  flex: 1,
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '10px 16px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--text)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--input-bg)';
-                }}
-              >
-                Respin
-              </button>
-            )}
             <button 
               type="button"
               onClick={(e) => {
@@ -902,7 +849,6 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                 e.stopPropagation();
               }}
               style={{ 
-                flex: 1,
                 background: isDone ? 'var(--input-bg)' : 'var(--primary)',
                 border: isDone ? '1px solid var(--border)' : 'none',
                 borderRadius: 8,
@@ -926,7 +872,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
             >
               {isDone ? 'Undo' : 'Done'}
             </button>
-            {onFocus && (
+            
+            {onFocus ? (
               <button 
                 type="button"
                 onClick={(e) => {
@@ -940,7 +887,6 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   e.stopPropagation();
                 }}
                 style={{ 
-                  flex: 1,
                   background: 'var(--input-bg)',
                   border: '1px solid var(--border)',
                   borderRadius: 8,
@@ -960,6 +906,41 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               >
                 Focus
               </button>
+            ) : onRespin ? (
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRespin();
+                  onClose();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                style={{ 
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '10px 16px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'var(--input-bg)';
+                }}
+              >
+                Respin
+              </button>
+            ) : (
+              <div style={{ background: 'transparent' }}></div>
             )}
           </div>
         </div>
@@ -989,14 +970,15 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               setShowPeopleManager(false);
               setSelectedPersonName(null);
             }}
-            tasks={tasks}
+            tasks={tasks || []}
             onViewTask={(t) => {
               setShowPeopleManager(false);
-              if (onEdit) onEdit(t);
+              if (onEdit && t) {
+                onEdit(t);
+              }
             }}
             locations={allLocations}
             setLocations={updateLocationsGlobally}
-            setTasks={setTasks}
             initialSelectedPersonName={selectedPersonName}
           />
         </div>,

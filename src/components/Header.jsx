@@ -110,9 +110,24 @@ function Header({
     'spin': '🎰',
     'tasks': '📋',
     'timer': '⏱',
+    'lists': '💡',
+    'goals': '🎯',
     'stats': '📊',
+    'people': '👥',
+    'duel': '⚔️',
     'settings': '⚙',
     'search': '🔍',
+  }
+  
+  // Helper to check if we're on a stats subtab
+  const getCurrentSubtab = () => {
+    const hash = window.location.hash;
+    if (hash.includes('subView=people')) return 'people';
+    if (hash.includes('subView=charts')) return 'charts';
+    if (hash.includes('subView=history')) return 'history';
+    if (hash.includes('subView=places')) return 'places';
+    if (hash.includes('subView=overview')) return 'overview';
+    return null;
   }
 
   // XP/Level display computation
@@ -159,7 +174,11 @@ function Header({
       return (
         <div className="header-quick-nav" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {quickNavItems.slice(0, 3).map((item, idx) => {
-            const isActive = item === currentTab
+            // Special handling for people - it's a subtab of stats
+            const isPeople = item === 'people';
+            const isActive = isPeople 
+              ? (currentTab === 'stats' && getCurrentSubtab() === 'people')
+              : item === currentTab;
             const icon = quickNavIcons[item] || '•'
             
             return (
@@ -168,6 +187,11 @@ function Header({
                 onClick={() => {
                   if (item === 'search') {
                     onSearchClick?.()
+                  } else if (item === 'people') {
+                    // Navigate to stats tab with people subtab
+                    onTabChange?.('stats');
+                    window.location.hash = '#stats?subView=people';
+                    window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
                   } else {
                     onTabChange?.(item)
                   }

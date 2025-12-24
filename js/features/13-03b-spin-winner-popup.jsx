@@ -8,10 +8,69 @@
 import React from 'react'
 
 (function () {
-  const { useEffect, useRef } = React;
+  const { useEffect, useRef, useState } = React;
 
   function WinnerPopup({ open, task, onClose, onFocus, onView, onDone, onRespin, onStartTimer }) {
     const closeBtnRef = useRef(null);
+    const [allPeople, setAllPeople] = useState([]);
+
+    // Load people data
+    useEffect(() => {
+      const loadPeople = () => {
+        try {
+          const people = (window.DataManager?.people?.getAll?.()) || JSON.parse(localStorage.getItem("savedPeople") || "[]");
+          setAllPeople(Array.isArray(people) ? people : []);
+        } catch (e) {
+          console.error("People Load Error", e);
+          setAllPeople([]);
+        }
+      };
+      loadPeople();
+      window.addEventListener("people-updated", loadPeople);
+      return () => window.removeEventListener("people-updated", loadPeople);
+    }, []);
+
+    // Helper to get display name
+    const getDisplayName = (person) => {
+      if (!person) return 'Untitled';
+      if (person.firstName || person.lastName) {
+        return [person.firstName, person.lastName].filter(Boolean).join(' ').trim() || person.name || 'Untitled';
+      }
+      return person.name || 'Untitled';
+    };
+
+    // Helper to get person record by name
+    const getPersonRecordByName = (name) => {
+      if (!name || !Array.isArray(allPeople)) return null;
+      const searchName = String(name).trim().toLowerCase();
+      return allPeople.find(p => {
+        const displayName = getDisplayName(p);
+        return String(displayName || "").trim().toLowerCase() === searchName;
+      }) || null;
+    };
+
+    // Detect action type from category, subcategory, tags, or title
+    const getActionType = () => {
+      if (!task) return null;
+      const category = String(task.category || '').toLowerCase();
+      const subcategory = String(task.subcategory || '').toLowerCase();
+      const tags = Array.isArray(task.tags) ? task.tags.map(t => String(t).toLowerCase()) : [];
+      const title = String(task.title || '').toLowerCase();
+      
+      const allText = [category, subcategory, ...tags, title].join(' ');
+      
+      if (/call|phone|ring|dial|telephone/i.test(allText)) {
+        return 'call';
+      }
+      if (/email|mail|send|message/i.test(allText)) {
+        return 'email';
+      }
+      return null;
+    };
+
+    const actionType = getActionType();
+    const firstPersonName = task?.people && Array.isArray(task.people) && task.people.length > 0 ? task.people[0] : null;
+    const firstPerson = firstPersonName ? getPersonRecordByName(firstPersonName) : null;
 
     useEffect(() => {
       if (!open) return;
@@ -28,6 +87,45 @@ import React from 'react'
     }, [open]);
 
     if (!open || !task) return null;
+
+    // Format time duration - converts to hours/days as needed
+    const formatDuration = (value, unit) => {
+      if (!value || value === 0) return null;
+      const numValue = Number(value);
+      if (isNaN(numValue)) return null;
+      
+      // Convert to minutes first
+      let totalMinutes = numValue;
+      if (unit === 'hours' || unit === 'h') {
+        totalMinutes = numValue * 60;
+      } else if (unit === 'days' || unit === 'd') {
+        totalMinutes = numValue * 1440;
+      } else if (unit !== 'minutes' && unit !== 'm') {
+        totalMinutes = numValue; // Assume minutes if unknown
+      }
+      
+      const mins = Math.round(totalMinutes);
+      
+      // Less than 60 minutes: show minutes
+      if (mins < 60) return `${mins}m`;
+      
+      // Calculate hours and remaining minutes
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      
+      // Less than 24 hours: show hours and minutes
+      if (hours < 24) {
+        if (remainingMins === 0) return `${hours}h`;
+        return `${hours}h ${remainingMins}m`;
+      }
+      
+      // 24+ hours: show days and hours
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      
+      if (remainingHours === 0) return `${days}d`;
+      return `${days}d ${remainingHours}h`;
+    };
 
     const pill = (text) => (
       <span
@@ -223,11 +321,153 @@ import React from 'react'
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {pill(task?.category || "General")}
               {task?.priority ? pill(task.priority) : null}
-              {Number(task?.estimatedTime) > 0 ? pill(`${task.estimatedTime}${task.estimatedTimeUnit || "m"}`) : null}
+              {formatDuration(task?.estimatedTime, task?.estimatedTimeUnit) && (
+                pill(formatDuration(task.estimatedTime, task.estimatedTimeUnit))
+              )}
+              {task?.location && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Try to open location in maps if we have coordinates
+                    const locName = task.location;
+                    try {
+                      const savedLocs = JSON.parse(localStorage.getItem("savedLocations_v1") || "[]");
+                      const loc = Array.isArray(savedLocs) ? savedLocs.find(l => 
+                        (l.name || l.label || "").toLowerCase() === locName.toLowerCase()
+                      ) : null;
+                      if (loc && loc.lat && loc.lon) {
+                        window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lon}`, '_blank');
+                      } else {
+                        // Fallback: search for location name
+                        window.open(`https://www.google.com/maps/search/${encodeURIComponent(locName)}`, '_blank');
+                      }
+                    } catch {
+                      window.open(`https://www.google.com/maps/search/${encodeURIComponent(locName)}`, '_blank');
+                    }
+                  }}
+                  style={{
+                    background: "var(--input-bg)",
+                    padding: "5px 9px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--primary)",
+                    border: "1px solid rgba(255,107,53,0.2)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "rgba(255,107,53,0.15)";
+                    e.target.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "var(--input-bg)";
+                    e.target.style.transform = "scale(1)";
+                  }}
+                  title={`Click to open ${task.location} in Maps`}
+                >
+                  📍 {task.location}
+                </span>
+              )}
+              {task?.people && Array.isArray(task.people) && task.people.length > 0 && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Open PeopleManager with the first person selected
+                    if (firstPersonName && window.setShowPeopleManager) {
+                      window.setShowPeopleManager(true);
+                      // Store the person name to be used by PeopleManager
+                      window.__pendingPeopleManagerSelection = firstPersonName;
+                    } else if (onView) {
+                      // Fallback: open task view
+                      onView(task);
+                    }
+                  }}
+                  style={{
+                    background: "var(--input-bg)",
+                    padding: "5px 9px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--primary)",
+                    border: "1px solid rgba(255,107,53,0.2)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "rgba(255,107,53,0.15)";
+                    e.target.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "var(--input-bg)";
+                    e.target.style.transform = "scale(1)";
+                  }}
+                  title={task.people.length === 1 ? `Click to view ${task.people[0]}` : `Click to view ${task.people.length} people`}
+                >
+                  👤 {task.people.length === 1 ? task.people[0] : `${task.people.length} people`}
+                </span>
+              )}
             </div>
           </div>
 
           <div style={{ padding: 18, paddingTop: 10 }}>
+            {/* Action buttons for call/email if applicable */}
+            {actionType && firstPerson && (
+              <>
+                {actionType === 'call' && firstPerson.phone && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const phoneNumber = firstPerson.phone.replace(/\D/g, '');
+                      if (phoneNumber) {
+                        window.location.href = `tel:${phoneNumber}`;
+                        onClose?.();
+                      }
+                    }}
+                    style={{
+                      ...primaryBtn,
+                      background: "var(--success)",
+                      marginBottom: 10
+                    }}
+                    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.99)")}
+                    onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    title={`Call ${getDisplayName(firstPerson)}`}
+                  >
+                    📞 Call {getDisplayName(firstPerson)}
+                  </button>
+                )}
+                {actionType === 'email' && firstPerson.email && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (firstPerson.email) {
+                        window.location.href = `mailto:${firstPerson.email}`;
+                        onClose?.();
+                      }
+                    }}
+                    style={{
+                      ...primaryBtn,
+                      background: "var(--info)",
+                      marginBottom: 10
+                    }}
+                    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.99)")}
+                    onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    title={`Email ${getDisplayName(firstPerson)}`}
+                  >
+                    ✉️ Email {getDisplayName(firstPerson)}
+                  </button>
+                )}
+              </>
+            )}
+
             <button
               onClick={() => {
                 onClose?.();

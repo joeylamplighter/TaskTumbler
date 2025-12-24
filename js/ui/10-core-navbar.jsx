@@ -4,8 +4,22 @@
 // Updated: 2025-12-18 - More washed out unselected icons
 // ===========================================
 
-function NavBar({ current, set, items, hidden, dockHidden }) {
+function NavBar({ current, set, items, hidden, dockHidden, getCurrentSubtab }) {
   const isHidden = !!hidden || !!dockHidden;
+  
+  // Helper to check if we're on a stats subtab
+  const checkSubtab = () => {
+    if (typeof getCurrentSubtab === 'function') {
+      return getCurrentSubtab();
+    }
+    const hash = window.location.hash;
+    if (hash.includes('subView=people')) return 'people';
+    if (hash.includes('subView=charts')) return 'charts';
+    if (hash.includes('subView=history')) return 'history';
+    if (hash.includes('subView=places')) return 'places';
+    if (hash.includes('subView=overview')) return 'overview';
+    return null;
+  };
 
 const style = {
   position: 'fixed',
@@ -43,7 +57,24 @@ const style = {
   return (
     <div style={style}>
       {(items || []).map((item) => {
-        const active = current === item.key;
+        // Handle subtabs and regular tabs
+        let active = false;
+        if (item.key.includes(':')) {
+          const [parentTab, subtab] = item.key.split(':');
+          if (parentTab === 'stats') {
+            active = current === 'stats' && checkSubtab() === subtab;
+          } else if (parentTab === 'settings') {
+            const hash = window.location.hash;
+            const match = hash.match(/[?&]view=([^&]+)/);
+            const currentSubtab = match ? match[1].toLowerCase() : 'view';
+            active = current === 'settings' && currentSubtab === subtab;
+          }
+        } else if (item.key === 'people') {
+          // Legacy people - it's a subtab of stats
+          active = current === 'stats' && checkSubtab() === 'people';
+        } else {
+          active = current === item.key;
+        }
         return (
           <button
             key={item.key}

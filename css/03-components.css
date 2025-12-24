@@ -11,12 +11,28 @@
     padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Desktop: Centered container with comfortable max-width */
+@media (min-width: 768px) {
+    .app-shell {
+        max-width: 600px;
+        margin: 0 auto;
+        box-shadow: 0 0 60px rgba(0,0,0,0.3);
+    }
+}
+
 .content { 
     padding: 16px; flex: 1; overflow-y: auto; 
     display: flex; flex-direction: column; 
     transition: padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     contain: layout style paint; /* Helps contain shadows and effects */
+}
+
+/* Desktop: Slightly increased padding while keeping compact */
+@media (min-width: 768px) {
+    .content {
+        padding: 20px 24px;
+    }
 }
 
 /* --- HEADER --- */
@@ -26,8 +42,31 @@
     border-bottom: 1px solid var(--border); 
     position: sticky; top: 0; z-index: var(--z-sticky); 
 }
+
+/* Desktop: Slightly increased header padding */
+@media (min-width: 768px) {
+    .app-header {
+        padding: 18px 24px;
+    }
+}
+
 .brand { font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+
+/* Desktop: Larger brand text */
+@media (min-width: 768px) {
+    .brand {
+        font-size: 24px;
+    }
+}
+
 .header-right { display: flex; align-items: center; gap: 12px; }
+
+/* Desktop: More spacing in header */
+@media (min-width: 768px) {
+    .header-right {
+        gap: 20px;
+    }
+}
 
 .status-badge { 
     font-size: 10px; padding: 4px 8px; border-radius: 12px; 
@@ -51,11 +90,21 @@
 }
 .nav-hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
 
-/* Desktop Dock Override */
+/* Desktop Dock Override - stays aligned with app shell */
 @media (min-width: 768px) {
     .nav-bar {
-        left: 50%; transform: translateX(-50%); max-width: 500px;
-        border-radius: 12px 12px 0 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+        left: 50%; transform: translateX(-50%); max-width: 600px;
+        border-radius: 16px 16px 0 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+        padding: 8px 12px;
+        height: 60px;
+    }
+    
+    .nav-item {
+        width: 65px;
+    }
+    
+    .nav-icon {
+        font-size: 22px;
     }
 }
 
@@ -76,6 +125,14 @@
     background: var(--card); cursor: pointer; touch-action: pan-y;
     transition: background 0.2s;
 }
+
+/* Desktop: Subtle hover improvement */
+@media (min-width: 768px) {
+    .task-row:hover {
+        background: var(--input-bg);
+    }
+}
+
 .task-row:active { background: var(--input-bg); }
 .task-check { width: 28px; height: 28px; accent-color: var(--primary); cursor: pointer; border-radius: 6px; }
 
@@ -84,12 +141,14 @@
     display: flex; background: var(--card); border: 1px solid var(--border); 
     border-radius: 12px; padding: 4px; margin-bottom: 16px; 
 }
+
 .vs-btn { 
     flex: 1; background: transparent; border: none; padding: 8px; 
     border-radius: 8px; font-size: 13px; font-weight: 600; 
     color: var(--text-light); cursor: pointer; display: flex; 
     align-items: center; justify-content: center; gap: 6px; 
 }
+
 .vs-btn.active { background: var(--bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
 /* Segmented Control */
@@ -113,6 +172,13 @@
 .goal-progress-bar { height: 6px; background: var(--input-bg); border-radius: 3px; overflow: hidden; margin-top: 8px; }
 .goal-progress-fill { height: 100%; background: linear-gradient(90deg, #6c5ce7, #a29bfe); transition: width 0.4s ease; }
 
+/* Desktop: Subtle improvements to goal cards */
+@media (min-width: 768px) {
+    .goal-card {
+        border-radius: 14px;
+    }
+}
+
 /* --- MODALS --- */
 .modal-overlay { 
     position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
@@ -132,6 +198,14 @@
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
+/* Desktop: Slightly larger modals */
+@media (min-width: 768px) {
+    .modal {
+        max-width: 550px;
+        padding: 28px;
+    }
+}
+
 /* Global Add Drawer */
 .global-add-drawer {
     background: var(--card); border-bottom: 2px solid var(--primary);
@@ -139,6 +213,14 @@
     width: 100%; max-width: 480px; z-index: 1000;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     animation: slideDownDrawer 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Desktop: Drawer stays aligned with app shell */
+@media (min-width: 768px) {
+    .global-add-drawer {
+        max-width: 600px;
+        border-radius: 0 0 12px 12px;
+    }
 }
 @keyframes slideDownDrawer { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
@@ -323,6 +405,13 @@
     max-width: 280px; width: 100%; margin: 0 auto 24px; cursor: pointer;
     text-align: left; justify-content: flex-start; transition: border-color 0.3s ease, transform 0.3s ease;
     isolation: isolate; /* Creates new stacking context to contain shadows */
+}
+
+/* Desktop: Subtle duel card improvements */
+@media (min-width: 768px) {
+    .duel-card {
+        border-radius: 14px;
+    }
 }
 .duel-card:hover { 
     border-color: var(--primary); 
@@ -541,6 +630,7 @@
 .empty-state-subtext { font-size: 13px; opacity: 0.7; }
 .chart-container { position: relative; height: 300px; margin: 20px 0; background: var(--input-bg); border-radius: 12px; padding: 16px; border: 1px solid var(--border); }
 
+
 /* --- MISC COMPONENTS --- */
 .result-card { background: linear-gradient(135deg, #ff6b35 0%, #ff9f43 100%); border-radius: 20px; padding: 24px; color: white; margin-bottom: 24px; box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3); animation: popIn 0.5s; text-align: left;}
 .rc-title { font-family: 'Fredoka', sans-serif; font-size: 28px; font-weight: 700; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -558,6 +648,14 @@
     align-items: flex-end;  /* Aligns to right */
     justify-content: flex-end;
     pointer-events: none; 
+}
+
+/* Desktop: Better toast positioning */
+@media (min-width: 768px) {
+    .toast-container {
+        bottom: 90px;
+        right: 24px;
+    }
 }
 .toast { background: rgba(0,0,0,0.9); color: white; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; border: 1px solid #333; animation: slideUpFade 0.3s; display: flex; align-items: center; gap: 8px; pointer-events: none; }
 .toast.undo { background: rgba(255, 107, 53, 0.95); cursor: pointer; user-select: none; pointer-events: all; }

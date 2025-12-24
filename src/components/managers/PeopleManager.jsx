@@ -7,7 +7,7 @@
 // - Closes via X or clicking outside overlay
 // ===========================================
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { getDisplayName, getInitials } from "../../utils/personUtils";
 
 export default function PeopleManager({ people, setPeople, onClose, tasks, onViewTask, locations = [], setLocations, setTasks, initialSelectedPersonName = null }) {
@@ -16,8 +16,30 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   const [isEditing, setIsEditing] = useState(false);
   const [viewingId, setViewingId] = useState(null);
   const [editId, setEditId] = useState(null);
+  
+  // Refs for form fields to enable Enter key navigation
+  const fieldRefs = {
+    firstName: useRef(null),
+    lastName: useRef(null),
+    type: useRef(null),
+    phone: useRef(null),
+    email: useRef(null),
+    weight: useRef(null),
+    compassCrmLink: useRef(null),
+    tags: useRef(null),
+    links: useRef(null),
+    notes: useRef(null)
+  };
   // Column-wide collapse state (entire left panel collapses to letter width)
-  const [isColumnCollapsed, setIsColumnCollapsed] = useState(false);
+  // Load from localStorage to persist state
+  const [isColumnCollapsed, setIsColumnCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('peopleManagerColumnCollapsed');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -118,6 +140,33 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     });
   };
 
+  // Handle Enter key to save and move to next field
+  const handleFieldEnter = (currentField, e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      
+      // Field order for navigation
+      const fieldOrder = ['firstName', 'lastName', 'type', 'phone', 'email', 'weight', 'compassCrmLink', 'tags', 'links', 'notes'];
+      const currentIndex = fieldOrder.indexOf(currentField);
+      
+      if (currentIndex >= 0 && currentIndex < fieldOrder.length - 1) {
+        // Move to next field
+        const nextField = fieldOrder[currentIndex + 1];
+        const nextRef = fieldRefs[nextField];
+        if (nextRef && nextRef.current) {
+          nextRef.current.focus();
+          // For select fields, open the dropdown
+          if (nextField === 'type' && nextRef.current.tagName === 'SELECT') {
+            nextRef.current.click();
+          }
+        }
+      } else {
+        // Last field - save the form
+        handleSave();
+      }
+    }
+  };
+
   const handleSave = () => {
     const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ').trim();
     if (!fullName) return;
@@ -183,7 +232,16 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   };
 
   const toggleColumnCollapse = () => {
-    setIsColumnCollapsed(prev => !prev);
+    setIsColumnCollapsed(prev => {
+      const newState = !prev;
+      // Persist to localStorage
+      try {
+        localStorage.setItem('peopleManagerColumnCollapsed', String(newState));
+      } catch (e) {
+        console.error('Error saving collapse state:', e);
+      }
+      return newState;
+    });
   };
 
   // Generate comprehensive test sample data
@@ -575,86 +633,89 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
         }}
       >
         {/* HEADER */}
-        <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isColumnCollapsed ? 0 : 4 }}>
-              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1, color: 'var(--text-light)' }}>PEOPLE</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {!isColumnCollapsed && (
-                  <>
-                    <button
-                      onClick={handleLoadTestSamples}
-                      title="Load Test Sample Data"
-                      style={{ 
-                        background: 'rgba(138, 43, 226, 0.8)', 
-                        color: 'white', 
-                        border: 'none',
-                        padding: '6px 12px', 
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🧪 Test Samples
-                    </button>
-                    <button
-                      onClick={startAdd}
-                      title="Add person"
-                      style={{ 
-                        background: 'var(--primary)', 
-                        color: 'white', 
-                        border: 'none',
-                        padding: '6px 12px', 
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      + Add
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={toggleColumnCollapse}
-                  title={isColumnCollapsed ? "Expand Column" : "Collapse Column to Letters"}
-                  style={{ 
-                    background: 'transparent', 
-                    color: 'var(--text-light)', 
-                    border: '1px solid var(--border)',
-                    padding: '6px 10px', 
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    opacity: 0.8,
-                    minWidth: 36
-                  }}
-                >
-                  {isColumnCollapsed ? '▶' : '◀'}
-                </button>
-              </div>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Top Row: Title and Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div 
+              onClick={toggleColumnCollapse}
+              style={{ 
+                fontSize: 14, 
+                fontWeight: 900, 
+                letterSpacing: 1, 
+                color: 'var(--text)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = 0.7}
+              onMouseLeave={(e) => e.target.style.opacity = 1}
+              title={isColumnCollapsed ? "Expand Column" : "Collapse Column to Letters"}
+            >
+              PEOPLE
             </div>
-            {!isColumnCollapsed && (
-              <input
-                className="f-input"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search people…"
-                style={{ marginBottom: 0 }}
-              />
-            )}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {!isColumnCollapsed && (
+                <button
+                  onClick={startAdd}
+                  title="Add person"
+                  style={{ 
+                    background: 'var(--primary)', 
+                    color: 'white', 
+                    border: 'none',
+                    padding: '8px 16px', 
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--primary-hover)'}
+                  onMouseLeave={(e) => e.target.style.background = 'var(--primary)'}
+                >
+                  + Add
+                </button>
+              )}
+              <button
+                onClick={() => onClose?.()}
+                title="Close"
+                style={{ 
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: 18,
+                  padding: 0,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--input-bg)';
+                  e.target.style.borderColor = 'var(--primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.borderColor = 'var(--border)';
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
-
-          <button
-            className="btn-white-outline"
-            onClick={() => onClose?.()}
-            title="Close"
-            style={{ width: 44, height: 44, borderRadius: 12 }}
-          >
-            ✕
-          </button>
+          {/* Search Row */}
+          {!isColumnCollapsed && (
+            <input
+              className="f-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search people…"
+              style={{ marginBottom: 0 }}
+            />
+          )}
         </div>
 
         {/* BODY */}
@@ -793,9 +854,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '1 1 200px' }}>
                     <label className="f-label">First Name</label>
                     <input
+                      ref={fieldRefs.firstName}
                       className="f-input"
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('firstName', e)}
                       placeholder="First name…"
                       autoFocus
                     />
@@ -804,9 +867,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '1 1 200px' }}>
                     <label className="f-label">Last Name</label>
                     <input
+                      ref={fieldRefs.lastName}
                       className="f-input"
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('lastName', e)}
                       placeholder="Last name…"
                     />
                   </div>
@@ -814,9 +879,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '0 0 200px' }}>
                     <label className="f-label">Type</label>
                     <select
+                      ref={fieldRefs.type}
                       className="f-select"
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('type', e)}
                     >
                       <option value="client">Client</option>
                       <option value="lead">Lead</option>
@@ -832,10 +899,12 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '1 1 240px' }}>
                     <label className="f-label">Phone</label>
                     <input
+                      ref={fieldRefs.phone}
                       className="f-input"
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('phone', e)}
                       placeholder="(555) 123-4567"
                     />
                   </div>
@@ -843,10 +912,12 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '1 1 240px' }}>
                     <label className="f-label">Email</label>
                     <input
+                      ref={fieldRefs.email}
                       className="f-input"
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('email', e)}
                       placeholder="name@email.com"
                     />
                   </div>
@@ -856,20 +927,24 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   <div style={{ flex: '1 1 200px' }}>
                     <label className="f-label">Weight</label>
                     <input
+                      ref={fieldRefs.weight}
                       type="number"
                       className="f-input"
                       min="1"
                       value={formData.weight}
                       onChange={(e) => setFormData({ ...formData, weight: parseInt(e.target.value) || 1 })}
+                      onKeyDown={(e) => handleFieldEnter('weight', e)}
                     />
                   </div>
 
                   <div style={{ flex: '1 1 200px' }}>
                     <label className="f-label">Compass CRM Link</label>
                     <input
+                      ref={fieldRefs.compassCrmLink}
                       className="f-input"
                       value={formData.compassCrmLink}
                       onChange={(e) => setFormData({ ...formData, compassCrmLink: e.target.value })}
+                      onKeyDown={(e) => handleFieldEnter('compassCrmLink', e)}
                       placeholder="https://..."
                     />
                   </div>
@@ -878,9 +953,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                 <div>
                   <label className="f-label">Tags</label>
                   <input
+                    ref={fieldRefs.tags}
                     className="f-input"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                    onKeyDown={(e) => handleFieldEnter('tags', e)}
                     placeholder="tag1, tag2, tag3"
                   />
                 </div>
@@ -888,9 +965,16 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                 <div>
                   <label className="f-label">Links</label>
                   <textarea
+                    ref={fieldRefs.links}
                     className="f-input"
                     value={formData.links}
                     onChange={(e) => setFormData({ ...formData, links: e.target.value })}
+                    onKeyDown={(e) => {
+                      // Allow Shift+Enter for new lines, but Enter alone moves to next field
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        handleFieldEnter('links', e);
+                      }
+                    }}
                     rows={3}
                     placeholder="One per line or comma-separated"
                     style={{ resize: 'vertical' }}
@@ -955,9 +1039,16 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                 <div>
                   <label className="f-label">Notes</label>
                   <textarea
+                    ref={fieldRefs.notes}
                     className="f-input"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onKeyDown={(e) => {
+                      // Allow Shift+Enter for new lines, but Enter alone saves
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        handleFieldEnter('notes', e);
+                      }
+                    }}
                     rows={5}
                     placeholder="Anything important…"
                     style={{ resize: 'vertical' }}
