@@ -2176,6 +2176,12 @@ const removeSubCategory = (parentCat, subName) => {
   // Always ensure defaults are available even if settings haven't loaded yet
   const defaultNavBarVisibleItems = defaults.navBarVisibleItems || {};
   const navItems = orderedItems.filter((item) => {
+    // Always include items that have groupLabel (dropdown children) so they can be rendered in dropdowns
+    // These won't show as navbar buttons but need to be available for dropdown rendering
+    if (item.groupLabel) {
+      return true;
+    }
+
     // Check settings first (if available and has this key)
     if (settings?.navBarVisibleItems && typeof settings.navBarVisibleItems[item.key] === 'boolean') {
       return settings.navBarVisibleItems[item.key] === true;

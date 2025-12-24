@@ -75,8 +75,8 @@ const style = {
 
   return (
     <div style={style}>
-      {(items || []).map((item) => {
-        // All items now show in navbar (removed groupLabel filter)
+      {(items || []).filter(item => !item.groupLabel).map((item) => {
+        // Filter out items with groupLabel - they should only appear in dropdowns
 
         // Handle tabs with dropdowns and regular tabs
         let active = false;
