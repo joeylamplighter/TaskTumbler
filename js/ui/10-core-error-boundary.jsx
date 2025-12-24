@@ -67,6 +67,33 @@ class ErrorBoundary extends React.Component {
         }
     }
 
+    fallbackCopy(text, button) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            } else {
+                alert('Failed to copy to clipboard. Please copy manually from the debug info above.');
+            }
+        } catch (err) {
+            console.error('Fallback copy error:', err);
+            alert('Failed to copy to clipboard. Please copy manually from the debug info above.');
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+
     render() {
         if (this.state.hasError) {
             const { error, errorInfo, countdown } = this.state;
@@ -206,7 +233,7 @@ class ErrorBoundary extends React.Component {
                         {/* Action buttons */}
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
                                     const errorText = [
                                         'ERROR DETAILS',
                                         '=============',
@@ -221,17 +248,24 @@ class ErrorBoundary extends React.Component {
                                         errorInfo?.componentStack || 'No component stack available'
                                     ].join('\n');
 
-                                    navigator.clipboard.writeText(errorText).then(() => {
-                                        // Show brief feedback
-                                        const btn = event.target;
-                                        const originalText = btn.textContent;
-                                        btn.textContent = 'Copied!';
-                                        setTimeout(() => {
-                                            btn.textContent = originalText;
-                                        }, 2000);
-                                    }).catch(() => {
-                                        alert('Failed to copy to clipboard');
-                                    });
+                                    // Try modern clipboard API first
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        navigator.clipboard.writeText(errorText).then(() => {
+                                            const btn = e.target;
+                                            const originalText = btn.textContent;
+                                            btn.textContent = 'Copied!';
+                                            setTimeout(() => {
+                                                btn.textContent = originalText;
+                                            }, 2000);
+                                        }).catch((err) => {
+                                            console.error('Clipboard error:', err);
+                                            // Fallback to textarea method
+                                            this.fallbackCopy(errorText, e.target);
+                                        });
+                                    } else {
+                                        // Fallback for older browsers
+                                        this.fallbackCopy(errorText, e.target);
+                                    }
                                 }}
                                 style={{
                                     background: 'rgba(255, 255, 255, 0.1)',
