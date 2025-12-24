@@ -2143,12 +2143,11 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "stats:charts", icon: "📈", label: "Charts", displayLabel: "Charts", groupLabel: "Data" },
     { key: "stats:history", icon: "📜", label: "History", displayLabel: "History", groupLabel: "Data" },
     { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel" },
-    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", hasDropdown: true, dropdownItems: ["settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"] },
-    { key: "settings:view", icon: "👁️", label: "View", displayLabel: "View", groupLabel: "Settings" },
-    { key: "settings:logic", icon: "🧠", label: "Logic", displayLabel: "Logic", groupLabel: "Settings" },
-    { key: "settings:game", icon: "🎮", label: "Game", displayLabel: "Game", groupLabel: "Settings" },
-    { key: "settings:cats", icon: "🏷️", label: "Categories", displayLabel: "Cats", groupLabel: "Settings" },
-    { key: "settings:data", icon: "💾", label: "Data", displayLabel: "Data", groupLabel: "Settings" },
+    { key: "settings:view", icon: "👁️", label: "View", displayLabel: "View" },
+    { key: "settings:logic", icon: "🧠", label: "Logic", displayLabel: "Logic" },
+    { key: "settings:game", icon: "🎮", label: "Game", displayLabel: "Game" },
+    { key: "settings:cats", icon: "🏷️", label: "Categories", displayLabel: "Cats" },
+    { key: "settings:data", icon: "💾", label: "Data Settings", displayLabel: "Data" },
   ];
   
   // Apply custom order if available - always fallback to defaults first
@@ -2195,7 +2194,7 @@ const removeSubCategory = (parentCat, subName) => {
   const handleBrandClickWithNav = React.useCallback(() => {
     // If nav items are empty, toggle default nav items instead of dock
     if (navItems.length === 0) {
-      const defaultNavBarItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "people"];
+      const defaultNavBarItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings:view", "goals", "people"];
       
       // Turn on default items
       setSettings((prev) => {

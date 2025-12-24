@@ -1600,11 +1600,11 @@ function Fold({ title, right, open, onToggle, children }) {
                 ];
                 
                 const defaults = window.DEFAULT_SETTINGS || {};
-                const currentDefaultItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "stats:people"];
-                
+                const currentDefaultItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings:view", "goals", "stats:people"];
+
                 return allNavItems.map((item) => {
                   const isSelected = currentDefaultItems.includes(item.key);
-                  
+
                   return (
                     <label
                       key={item.key}
@@ -1626,7 +1626,7 @@ function Fold({ title, right, open, onToggle, children }) {
                         checked={isSelected}
                         onChange={() => {
                           setSettings((p) => {
-                            const current = p?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "stats:people"];
+                            const current = p?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings:view", "goals", "stats:people"];
                             const newItems = isSelected
                               ? current.filter((key) => key !== item.key)
                               : [...current, item.key];

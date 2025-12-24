@@ -43,7 +43,6 @@
       people: true,
       places: true,
       duel: true,
-      settings: true, // Can be hidden, but accessible via #settings URL
       "settings:view": true,
       "settings:logic": true,
       "settings:game": true,
@@ -53,11 +52,11 @@
     
     // --- Header Right Mode ---
     headerRightMode: "quickNav", // "none" | "quickNav" | "xp" | "status"
-    headerQuickNavItems: ["people", "lists", "settings"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings", "search"] - Default quick nav items always loaded on fresh start
+    headerQuickNavItems: ["people", "lists", "settings:view"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings:view", "search"] - Default quick nav items always loaded on fresh start
     headerShowAllNavDropdown: true, // Show 4th dropdown option with all navigation items in alphabetical order
-    
+
     // --- Default Nav Bar Items (shown when nav bar is empty) ---
-    defaultNavBarItems: ["tasks", "spin", "duel", "settings", "goals", "people"], // Default items to show when navbar is empty and user clicks brand
+    defaultNavBarItems: ["tasks", "spin", "duel", "settings:view", "goals", "people"], // Default items to show when navbar is empty and user clicks brand
     headerXpShowValue: true,
     headerXpShowLevel: true,
     headerXpShowProgress: false,
