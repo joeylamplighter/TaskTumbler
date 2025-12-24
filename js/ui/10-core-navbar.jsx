@@ -107,8 +107,7 @@ const style = {
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             return current === 'settings' && currentSubtab === subtab;
           }
-          // Handle non-prefixed children like "people" and "places"
-          return current === childKey;
+          return false;
         });
 
         const isActive = active || hasActiveChild;
@@ -184,9 +183,6 @@ const style = {
                       const match = hash.match(/[?&]view=([^&]+)/);
                       const currentSubtab = match ? match[1].toLowerCase() : 'view';
                       childActive = current === 'settings' && currentSubtab === subtab;
-                    } else {
-                      // Handle non-prefixed children like "people" and "places"
-                      childActive = current === childKey;
                     }
 
                     return (

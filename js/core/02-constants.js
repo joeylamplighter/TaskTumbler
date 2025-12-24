@@ -29,7 +29,7 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "people", "places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
@@ -40,8 +40,8 @@
       "stats:overview": false,
       "stats:charts": false,
       "stats:history": false,
-      people: false,
-      places: false,
+      people: true,
+      places: true,
       duel: true,
       settings: true,
       "settings:view": false,
