@@ -6,7 +6,7 @@
 // ===========================================
 
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createPortal } from 'react-dom'
 
 (function () {
   const { useState, useEffect, useRef } = React;
@@ -86,7 +86,7 @@ import ReactDOM from 'react-dom'
       <>
         {render}
         {open &&
-          ReactDOM.createPortal(
+          createPortal(
             <div
               className="pop-menu"
               style={{
@@ -156,7 +156,7 @@ import ReactDOM from 'react-dom'
       <>
         {render}
         {open &&
-          ReactDOM.createPortal(
+          createPortal(
             <div
               className="pop-menu"
               style={{
@@ -233,7 +233,7 @@ import ReactDOM from 'react-dom'
       <>
         {render}
         {open &&
-          ReactDOM.createPortal(
+          createPortal(
             <div
               className="pop-menu"
               style={{
@@ -368,7 +368,7 @@ import ReactDOM from 'react-dom'
       <>
         {render}
         {open &&
-          ReactDOM.createPortal(
+          createPortal(
             <div
               className="pop-menu"
               style={{

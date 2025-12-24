@@ -111,6 +111,7 @@ function Header({
     'goals': '🎯',
     'stats': '📊',
     'people': '👥',
+    'places': '📍',
     'duel': '⚔️',
     'settings': '⚙',
     'search': '🔍',
@@ -171,11 +172,7 @@ function Header({
       return (
         <div className="header-quick-nav" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {quickNavItems.slice(0, 3).map((item, idx) => {
-            // Special handling for people - it's a subtab of stats
-            const isPeople = item === 'people';
-            const isActive = isPeople 
-              ? (currentTab === 'stats' && getCurrentSubtab() === 'people')
-              : item === currentTab;
+            const isActive = item === currentTab;
             const icon = quickNavIcons[item] || '•'
             
             return (
@@ -184,11 +181,6 @@ function Header({
                 onClick={() => {
                   if (item === 'search') {
                     onSearchClick?.()
-                  } else if (item === 'people') {
-                    // Navigate to stats tab with people subtab
-                    onTabChange?.('stats');
-                    window.location.hash = '#stats?subView=people';
-                    window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
                   } else {
                     onTabChange?.(item)
                   }

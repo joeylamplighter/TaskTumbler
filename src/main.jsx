@@ -16,6 +16,9 @@ import './components/task-form/TaskFormModal'
 // Import managers to ensure they're available on window
 import './components/managers/LocationsManager'
 import './components/managers/PeopleManager'
+// Import tab components to ensure they're available on window
+import './components/tabs/PeopleTab'
+import './components/tabs/PlacesTab'
 // Import core infrastructure FIRST (must load before other modules)
 import './core/constants'
 import './core/dataManager'

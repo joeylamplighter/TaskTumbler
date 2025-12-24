@@ -403,6 +403,7 @@ const removeSubCategory = (parentCat, subName) => {
   const GoalsTab = window.GoalsTab;
   const StatsTab = window.StatsTab;
   const PeopleTab = window.PeopleTab;
+  const PlacesTab = window.PlacesTab;
   const DuelTab = window.DuelTab;
   const SettingsTab = window.SettingsTab;
 
@@ -417,6 +418,7 @@ const removeSubCategory = (parentCat, subName) => {
   const GoalsTabComp = SafeComponent(GoalsTab, "GoalsTab");
   const StatsTabComp = SafeComponent(StatsTab, "StatsTab");
   const PeopleTabComp = SafeComponent(PeopleTab, "PeopleTab");
+  const PlacesTabComp = SafeComponent(PlacesTab, "PlacesTab");
   const DuelTabComp = SafeComponent(DuelTab, "DuelTab");
   const SettingsTabComp = SafeComponent(SettingsTab, "SettingsTab");
 
@@ -2134,12 +2136,12 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track", isSubtab: false },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas", isSubtab: false },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals", isSubtab: false },
+    { key: "people", icon: "👥", label: "People", displayLabel: "People", isSubtab: false },
+    { key: "places", icon: "📍", label: "Places", displayLabel: "Places", isSubtab: false },
     { key: "stats", icon: "📊", label: "Data", displayLabel: "Data", isSubtab: false },
     { key: "stats:overview", icon: "📊", label: "Data: Overview", displayLabel: "Overview", isSubtab: true, parentTab: "stats" },
     { key: "stats:charts", icon: "📈", label: "Data: Charts", displayLabel: "Charts", isSubtab: true, parentTab: "stats" },
     { key: "stats:history", icon: "📜", label: "Data: History", displayLabel: "History", isSubtab: true, parentTab: "stats" },
-    { key: "stats:people", icon: "👥", label: "Data: People", displayLabel: "People", isSubtab: true, parentTab: "stats" },
-    { key: "stats:places", icon: "📍", label: "Data: Places", displayLabel: "Places", isSubtab: true, parentTab: "stats" },
     { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel", isSubtab: false },
     { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", isSubtab: false },
     { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true, parentTab: "settings" },
@@ -2186,7 +2188,7 @@ const removeSubCategory = (parentCat, subName) => {
   const handleBrandClickWithNav = React.useCallback(() => {
     // If nav items are empty, toggle default nav items instead of dock
     if (navItems.length === 0) {
-      const defaultNavBarItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "stats:people"];
+      const defaultNavBarItems = settings?.defaultNavBarItems || defaults.defaultNavBarItems || ["tasks", "spin", "duel", "settings", "goals", "people"];
       
       // Turn on default items
       setSettings((prev) => {
@@ -3267,6 +3269,8 @@ const removeSubCategory = (parentCat, subName) => {
             )}
 
             {tab === "goals" && <GoalsTabComp goals={goals} setGoals={setGoals} tasks={tasks} notify={notify} />}
+            {tab === "people" && <PeopleTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
+            {tab === "places" && <PlacesTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
             {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} userStats={userStats} onViewTask={setViewTask} />}
             {tab === "duel" && (
               <DuelTabComp tasks={tasks} onUpdate={updateTask} settings={settings} notify={notify} fireConfetti={window.fireConfetti} addActivity={addActivity} />
@@ -3323,11 +3327,6 @@ const removeSubCategory = (parentCat, subName) => {
                   window.location.hash = `#settings?view=${subtab}`;
                   window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
                 }
-              } else if (tabKey === "people") {
-                // Legacy people - navigate to stats subtab
-                setTab("stats");
-                window.location.hash = "#stats?subView=people";
-                window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
               } else {
                 setTab(tabKey);
               }

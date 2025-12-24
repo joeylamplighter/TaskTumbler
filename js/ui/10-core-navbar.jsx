@@ -74,9 +74,6 @@ const style = {
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             active = current === 'settings' && currentSubtab === subtab;
           }
-        } else if (item.key === 'people') {
-          // Legacy people - it's a subtab of stats
-          active = current === 'stats' && checkSubtab() === 'people';
         } else {
           active = current === item.key;
         }

@@ -54,6 +54,7 @@ function AppHeader({
     'goals': '🎯',
     'stats': '📊',
     'people': '👥',
+    'places': '📍',
     'duel': '⚔️',
     'settings': '⚙',
     'search': '🔍',
@@ -236,10 +237,6 @@ function AppHeader({
         window.location.hash = `#settings?view=${subtab}`;
         window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
       }
-    } else if (item.key === 'people') {
-      onTabChange?.('stats');
-      window.location.hash = '#stats?subView=people';
-      window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
     } else {
       onTabChange?.(item.key);
     }
@@ -268,11 +265,7 @@ function AppHeader({
       return (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }}>
           {headerQuickNavItems.slice(0, 3).map((item) => {
-            // Special handling for people - it's a subtab of stats
-            const isPeople = item === 'people';
-            const isActive = isPeople 
-              ? (currentTab === 'stats' && getCurrentSubtab() === 'people')
-              : item === currentTab;
+            const isActive = item === currentTab;
             const icon = quickNavIcons[item] || '•';
             
             return (
@@ -281,11 +274,6 @@ function AppHeader({
                 onClick={() => {
                   if (item === 'search') {
                     onSearchClick?.();
-                  } else if (item === 'people') {
-                    // Navigate to stats tab with people subtab
-                    onTabChange?.('stats');
-                    window.location.hash = '#stats?subView=people';
-                    window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
                   } else {
                     onTabChange?.(item);
                   }
@@ -390,7 +378,7 @@ function AppHeader({
                         const isActive = item.key.includes(':')
                           ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
                           || (item.key.startsWith('settings:') && currentTab === 'settings')
-                          : item.key === currentTab || (item.key === 'people' && currentTab === 'stats' && getCurrentSubtab() === 'people');
+                          : item.key === currentTab;
                         
                         return (
                           <button
@@ -510,7 +498,6 @@ function AppHeader({
                 </div>
               )}
             </div>
-          )}
         </div>
       );
     }

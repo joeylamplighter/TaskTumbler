@@ -438,12 +438,6 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
   return (
     <div className={`duel-container ${screenShake ? 'screen-shake' : ''}`}>
-      {/* Combo Streak Display */}
-      {comboCount > 1 && (
-        <div className="combo-display">
-          COMBO x{comboCount}!
-        </div>
-      )}
 
 
       {/* Particle Effects */}
@@ -476,6 +470,14 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
             style={{ color: 'var(--success)' }}
           >
             {weightChange.text}
+          </span>
+        )}
+        {loserWeightChange.id === pair[0].id && (
+          <span
+            className="weight-change-fx loser-score"
+            style={{ color: 'var(--danger)' }}
+          >
+            {loserWeightChange.text}
           </span>
         )}
 
@@ -592,6 +594,14 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
             style={{ color: 'var(--success)' }}
           >
             {weightChange.text}
+          </span>
+        )}
+        {loserWeightChange.id === pair[1].id && (
+          <span
+            className="weight-change-fx loser-score"
+            style={{ color: 'var(--danger)' }}
+          >
+            {loserWeightChange.text}
           </span>
         )}
 

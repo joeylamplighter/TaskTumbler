@@ -29,7 +29,7 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "stats", "stats:overview", "stats:charts", "stats:history", "stats:people", "stats:places", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "people", "places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
@@ -40,8 +40,8 @@
       "stats:overview": true,
       "stats:charts": true,
       "stats:history": true,
-      "stats:people": true,
-      "stats:places": true,
+      people: true,
+      places: true,
       duel: true,
       settings: true, // Can be hidden, but accessible via #settings URL
       "settings:view": true,
@@ -53,11 +53,11 @@
     
     // --- Header Right Mode ---
     headerRightMode: "quickNav", // "none" | "quickNav" | "xp" | "status"
-    headerQuickNavItems: ["people", "lists", "settings"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people" (navigates to stats?subView=people), "duel", "settings", "search"] - Default quick nav items always loaded on fresh start
+    headerQuickNavItems: ["people", "lists", "settings"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings", "search"] - Default quick nav items always loaded on fresh start
     headerShowAllNavDropdown: true, // Show 4th dropdown option with all navigation items in alphabetical order
     
     // --- Default Nav Bar Items (shown when nav bar is empty) ---
-    defaultNavBarItems: ["tasks", "spin", "duel", "settings", "goals", "stats:people"], // Default items to show when navbar is empty and user clicks brand
+    defaultNavBarItems: ["tasks", "spin", "duel", "settings", "goals", "people"], // Default items to show when navbar is empty and user clicks brand
     headerXpShowValue: true,
     headerXpShowLevel: true,
     headerXpShowProgress: false,

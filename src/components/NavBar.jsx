@@ -37,9 +37,6 @@ function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             isActive = current === 'settings' && currentSubtab === subtab;
           }
-        } else if (item.key === 'people') {
-          // Legacy people - it's a subtab of stats
-          isActive = current === 'stats' && checkSubtab() === 'people';
         } else {
           isActive = current === item.key;
         }
