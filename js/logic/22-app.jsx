@@ -3318,6 +3318,29 @@ const removeSubCategory = (parentCat, subName) => {
   />
 )}
           </div>
+
+          <NavBarComp
+            current={tab}
+            set={(tabKey) => {
+              if (tabKey.includes(":")) {
+                const [parentTab, subtab] = tabKey.split(":");
+                if (parentTab === "stats") {
+                  setTab("stats");
+                  window.location.hash = `#stats?subView=${subtab}`;
+                  window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
+                } else if (parentTab === "settings") {
+                  setTab("settings");
+                  window.location.hash = `#settings?view=${subtab}`;
+                  window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+                }
+              } else {
+                setTab(tabKey);
+              }
+            }}
+            items={navItems}
+            hidden={!isDockVisible}
+            getCurrentSubtab={getCurrentSubtab}
+          />
         </React.Fragment>
       )}
 
