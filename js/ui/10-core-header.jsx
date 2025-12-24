@@ -30,9 +30,7 @@ function AppHeader({
   onTabChange,
   onSearchClick,
   onStatusClick,
-  // Dev/Reset actions
-  showDevTools = false,
-  onToggleDevTools,
+  // Reset actions
   onReset,
   onLoadSamples,
   // Additional actions
@@ -554,39 +552,6 @@ function AppHeader({
                     </>
                   )}
 
-                  {/* Dev Tools - Only show when searched */}
-                  {onToggleDevTools && searchQuery.trim() && 'dev'.includes(searchQuery.toLowerCase()) && (
-                    <button
-                      onClick={() => {
-                        onToggleDevTools();
-                        setDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        background: showDevTools ? 'var(--primary-light)' : 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        textAlign: 'left',
-                        color: 'var(--text)',
-                        transition: 'background 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!showDevTools) e.currentTarget.style.background = 'var(--input-bg)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!showDevTools) e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>🛠️</span>
-                      <span>Dev Mode</span>
-                      {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
-                    </button>
-                  )}
                   {onLoadSamples && searchQuery.trim() && ('load'.includes(searchQuery.toLowerCase()) || 'sample'.includes(searchQuery.toLowerCase())) && (
                     <button
                       onClick={() => {

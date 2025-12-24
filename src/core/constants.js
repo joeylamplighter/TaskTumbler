@@ -44,7 +44,6 @@
     autoCompleteSubtask: true,
     confirmTaskDeletion: true,
     showDebugInfo: true,
-    showDevTools: false,
     enableNotifications: true,
     hideCompletedDelay: 0,
 
