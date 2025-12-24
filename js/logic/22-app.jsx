@@ -2153,7 +2153,14 @@ const removeSubCategory = (parentCat, subName) => {
   
   // Apply custom order if available - always fallback to defaults first
   const defaults = window.DEFAULT_SETTINGS || {};
-  const customOrder = settings?.navItemsOrder || defaults.navItemsOrder || allNavItems.map(item => item.key);
+  let customOrder = settings?.navItemsOrder || defaults.navItemsOrder || allNavItems.map(item => item.key);
+
+  // Ensure all nav items are in customOrder (add missing ones at the end)
+  const missingItems = allNavItems.filter(item => !customOrder.includes(item.key));
+  if (missingItems.length > 0) {
+    customOrder = [...customOrder, ...missingItems.map(item => item.key)];
+  }
+
   const orderedItems = [...allNavItems].sort((a, b) => {
     const aIndex = customOrder.indexOf(a.key);
     const bIndex = customOrder.indexOf(b.key);
@@ -2173,15 +2180,15 @@ const removeSubCategory = (parentCat, subName) => {
     if (settings?.navBarVisibleItems && typeof settings.navBarVisibleItems[item.key] === 'boolean') {
       return settings.navBarVisibleItems[item.key] === true;
     }
-    
+
     // Fallback to defaults if setting doesn't exist or item not in settings
     // This ensures default nav items always show on fresh start
     if (defaultNavBarVisibleItems && typeof defaultNavBarVisibleItems[item.key] === 'boolean') {
       return defaultNavBarVisibleItems[item.key] === true;
     }
-    
-    // If not in defaults either, don't show it
-    return false;
+
+    // If not in defaults either, show it by default (new items should be visible)
+    return true;
   });
   
   // Handle brand click - toggle dock OR toggle default nav items when nav is empty
