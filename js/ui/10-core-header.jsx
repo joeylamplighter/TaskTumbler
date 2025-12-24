@@ -437,7 +437,7 @@ function AppHeader({
             </div>
 
             {/* Actions section */}
-            {(onToggleDevTools || onLoadSamples || onReset || onExport || onImport || onClearCompleted) && (
+            {(onLoadSamples || onReset || onExport || onImport || onClearCompleted) && (
               <>
                 <div style={{
                   height: '1px',
