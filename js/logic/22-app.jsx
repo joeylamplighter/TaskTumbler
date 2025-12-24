@@ -244,30 +244,76 @@ class ErrorBoundary extends React.Component {
               )}
             </div>
 
-            {/* Manual reload button */}
-            <button
-              onClick={() => {
-                try {
-                  localStorage.clear();
-                } catch {}
-                window.location.reload();
-              }}
-              style={{
-                background: '#ff6b6b',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'transform 0.1s ease',
-              }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-            >
-              Reload Now
-            </button>
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  const errorText = [
+                    'ERROR DETAILS',
+                    '=============',
+                    '',
+                    `Time: ${new Date().toISOString()}`,
+                    `Error: ${error?.toString() || 'Unknown error'}`,
+                    '',
+                    'STACK TRACE:',
+                    error?.stack || 'No stack trace available',
+                    '',
+                    'COMPONENT STACK:',
+                    errorInfo?.componentStack || 'No component stack available'
+                  ].join('\n');
+
+                  navigator.clipboard.writeText(errorText).then(() => {
+                    // Show brief feedback
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {
+                      btn.textContent = originalText;
+                    }, 2000);
+                  }).catch(() => {
+                    alert('Failed to copy to clipboard');
+                  });
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s ease',
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >
+                Copy Error Details
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.clear();
+                  } catch {}
+                  window.location.reload();
+                }}
+                style={{
+                  background: '#ff6b6b',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s ease',
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >
+                Reload Now
+              </button>
+            </div>
           </div>
         </div>
       );
