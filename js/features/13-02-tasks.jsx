@@ -317,7 +317,7 @@ import ReactDOM from 'react-dom/client'
   }
 
   // ---------- 4. TASK ROW ----------
-  function SwipeableTaskRow({ task, onView, onComplete, onDelete, urgencyStyle = {}, priClass = '', settings = {} }) {
+  function SwipeableTaskRow({ task, onView, onComplete, onDelete, onUpdate, urgencyStyle = {}, priClass = '', settings = {} }) {
     const [offset, setOffset] = useState(0);
     const startX = useRef(null);
     const isDragging = useRef(false);
@@ -344,6 +344,15 @@ import ReactDOM from 'react-dom/client'
       return h > 0 ? `${h}h${m>0?` ${m}m`:''}` : `${m}m`;
     };
 
+    const handleProgressChange = (e) => {
+      e.stopPropagation();
+      const newProgress = parseInt(e.target.value) || 0;
+      // Update both progress and percentComplete for compatibility
+      safeCall(onUpdate, task.id, { progress: newProgress, percentComplete: newProgress });
+    };
+
+    const progress = task.progress !== undefined ? task.progress : (task.percentComplete !== undefined ? task.percentComplete : (task.completed ? 100 : 0));
+
     let bg = offset > 0 ? { background: 'var(--success)', justifyContent: 'flex-start' } : { background: '#ff7675', justifyContent: 'flex-end' };
     let icon = offset > 0 ? (task.completed ? '↺' : '✓') : '✎';
 
@@ -359,6 +368,55 @@ import ReactDOM from 'react-dom/client'
           <input type="checkbox" className="task-check" checked={!!task.completed} onChange={e => { e.stopPropagation(); safeCall(onComplete, task.id); }} onClick={e => e.stopPropagation()} />
           <div style={{ flex: 1, marginLeft: 10, opacity: task.completed ? 0.6 : 1 }}>
             <div style={{ fontWeight: 600, fontSize: 15, textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</div>
+            {/* Progress Slider */}
+            {!task.completed && (
+              <div style={{ marginTop: 6, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 6,
+                      borderRadius: 3,
+                      background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${progress}%, var(--input-bg) ${progress}%, var(--input-bg) 100%)`,
+                      pointerEvents: 'none',
+                      zIndex: 1
+                    }} />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={progress}
+                      onChange={handleProgressChange}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: 6,
+                        borderRadius: 3,
+                        background: 'transparent',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        zIndex: 2,
+                        margin: 0,
+                        padding: 0
+                      }}
+                      onMouseMove={(e) => {
+                        if (e.buttons === 1) e.stopPropagation();
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-light)', minWidth: 35, textAlign: 'right' }}>
+                    {progress}%
+                  </span>
+                </div>
+              </div>
+            )}
             {!!settings?.showTaskTimes && (task.estimatedTime || task.actualTime > 0) && (
               <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 2 }}>
                 {task.estimatedTime && <span style={{marginRight:8}}>⏱️ {task.estimatedTime}m</span>}
@@ -379,8 +437,11 @@ import ReactDOM from 'react-dom/client'
   window.SwipeableTaskRow = SwipeableTaskRow;
 
   // --- TASKS TAB MAIN ---
-  function TasksTab({ tasks, onView, onComplete, onDelete, categories, onAdd, openAdd, notify, settings }) {
-    const [viewMode, setViewMode] = useState('active'); // Default to active
+  function TasksTab({ tasks, onView, onComplete, onDelete, onUpdate, categories, onAdd, openAdd, notify, settings }) {
+    const [viewMode, setViewMode] = useState('active'); // Filter mode: active, done, all
+    const [displayView, setDisplayView] = useState(() => {
+      try { return localStorage.getItem('tasksDisplayView') || 'list'; } catch { return 'list'; }
+    }); // Display view: list, kanban, calendar
     const [searchText, setSearchText] = useState('');
     
     // Command Bar State
@@ -626,6 +687,66 @@ import ReactDOM from 'react-dom/client'
               title="Search & Filter"
             >
               <span style={{ fontSize: 16, lineHeight: 1 }}>🔍</span>
+            </button>
+          </div>
+          
+          <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
+
+          {/* VIEW MODE SELECTOR */}
+          <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 8, padding: 2 }}>
+            <button 
+              type="button" 
+              onClick={() => { setDisplayView('list'); try { localStorage.setItem('tasksDisplayView', 'list'); } catch {} }}
+              style={{
+                padding: '4px 10px',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: displayView === 'list' ? 'var(--primary)' : 'transparent',
+                color: displayView === 'list' ? '#fff' : 'var(--text-light)',
+                transition: 'all 0.15s'
+              }}
+              title="List View"
+            >
+              📋
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setDisplayView('kanban'); try { localStorage.setItem('tasksDisplayView', 'kanban'); } catch {} }}
+              style={{
+                padding: '4px 10px',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: displayView === 'kanban' ? 'var(--primary)' : 'transparent',
+                color: displayView === 'kanban' ? '#fff' : 'var(--text-light)',
+                transition: 'all 0.15s'
+              }}
+              title="Kanban View"
+            >
+              📌
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setDisplayView('calendar'); try { localStorage.setItem('tasksDisplayView', 'calendar'); } catch {} }}
+              style={{
+                padding: '4px 10px',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: displayView === 'calendar' ? 'var(--primary)' : 'transparent',
+                color: displayView === 'calendar' ? '#fff' : 'var(--text-light)',
+                transition: 'all 0.15s'
+              }}
+              title="Calendar View"
+            >
+              📅
             </button>
           </div>
           
@@ -918,13 +1039,21 @@ import ReactDOM from 'react-dom/client'
             </window.SimpleModal>
         )}
 
-        {/* LIST */}
-        <div className="task-list">
-          {displayTasks.map(t => (
-              <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} settings={settings} />
-          ))}
-          {displayTasks.length === 0 && <div style={{textAlign:'center', padding:20, opacity:0.5}}>No tasks found.</div>}
-        </div>
+        {/* VIEW CONTENT */}
+        {displayView === 'list' && (
+          <div className="task-list">
+            {displayTasks.map(t => (
+                <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} settings={settings} />
+            ))}
+            {displayTasks.length === 0 && <div style={{textAlign:'center', padding:20, opacity:0.5}}>No tasks found.</div>}
+          </div>
+        )}
+        {displayView === 'kanban' && window.BoardView && (
+          <window.BoardView tasks={displayTasks} onView={onView} />
+        )}
+        {displayView === 'calendar' && window.CalendarView && (
+          <window.CalendarView tasks={displayTasks} onView={onView} />
+        )}
       </div>
     );
   }

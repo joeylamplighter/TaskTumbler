@@ -784,7 +784,15 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                         if (updateTask) {
                           const newSubtasks = [...subtasks];
                           newSubtasks[i] = { ...newSubtasks[i], completed: !newSubtasks[i].completed };
-                          updateTask(task.id, { subtasks: newSubtasks });
+                          // Calculate progress based on completed subtasks
+                          const completedCount = newSubtasks.filter(s => s.completed).length;
+                          const newProgress = newSubtasks.length === 0 ? 0 : Math.round((completedCount / newSubtasks.length) * 100);
+                          // Update both progress and percentComplete for compatibility
+                          updateTask(task.id, { 
+                            subtasks: newSubtasks,
+                            progress: newProgress,
+                            percentComplete: newProgress
+                          });
                         }
                       }}
                       style={{ 
@@ -836,7 +844,14 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                 if (e.key === 'Enter' && subtaskInput.trim()) {
                   const newSubtasks = [...subtasks, { title: subtaskInput.trim(), completed: false }];
                   if (updateTask) {
-                    updateTask(task.id, { subtasks: newSubtasks });
+                    // Calculate progress when adding a new subtask
+                    const completedCount = newSubtasks.filter(s => s.completed).length;
+                    const newProgress = newSubtasks.length === 0 ? 0 : Math.round((completedCount / newSubtasks.length) * 100);
+                    updateTask(task.id, { 
+                      subtasks: newSubtasks,
+                      progress: newProgress,
+                      percentComplete: newProgress
+                    });
                   }
                   setSubtaskInput('');
                 }

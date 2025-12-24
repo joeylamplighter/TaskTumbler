@@ -48,13 +48,24 @@ const normalizePerson = (p) => {
     if (typeof p === 'string') {
         const name = String(p || '').trim();
         if (!name) return null;
-        return { id: makeId('p'), name, contact: '', tags: [], weight: 1 };
+        return { id: makeId('p'), name, contact: '', tags: [], weight: 1, profilePicture: '', profilePictureType: 'initials' };
     }
     if (p && typeof p === 'object') {
         const name = String(p.name || '').trim();
         if (!name) return null;
         const id = String(p.id || '').trim() || makeId('p');
-        return { id, name, contact: p.contact || '', tags: p.tags || [], weight: p.weight || 1 };
+        // Preserve profilePicture (DP) - support both profilePicture and dp field names
+        const profilePicture = String(p.profilePicture || p.dp || '').trim();
+        const profilePictureType = p.profilePictureType || 'initials';
+        return { 
+            id, 
+            name, 
+            contact: p.contact || '', 
+            tags: p.tags || [], 
+            weight: p.weight || 1,
+            profilePicture,
+            profilePictureType
+        };
     }
     return null;
 };

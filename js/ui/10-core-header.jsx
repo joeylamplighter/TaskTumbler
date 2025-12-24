@@ -35,6 +35,10 @@ function AppHeader({
   onToggleDevTools,
   onReset,
   onLoadSamples,
+  // Additional actions
+  onExport,
+  onImport,
+  onClearCompleted,
 }) {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -59,6 +63,7 @@ function AppHeader({
     'duel': '⚔️',
     'settings': '⚙',
     'search': '🔍',
+    'sync': '☁️',
   };
   
   // Helper to check if we're on a stats subtab
@@ -232,6 +237,13 @@ function AppHeader({
         onTabChange?.('settings');
         window.location.hash = `#settings?view=${subtab}`;
         window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+      } else if (parentTab === 'crm') {
+        // CRM dropdown items map to existing tabs
+        if (subtab === 'people') {
+          onTabChange?.('people');
+        } else if (subtab === 'places') {
+          onTabChange?.('places');
+        }
       }
     } else {
       onTabChange?.(item.key);
@@ -351,10 +363,21 @@ function AppHeader({
               {sortedNavItems.length > 0 ? (
                 (() => {
                   let lastGroup = null;
-                  return sortedNavItems.map((item, index) => {
+                  // Filter out parent dropdown menus (crm, settings, stats) - they're just organizational headers
+                  const clickableItems = sortedNavItems.filter(item => {
+                    // Exclude parent dropdown items (crm, settings, stats with hasDropdown)
+                    // Their children (with groupLabel) will still be shown
+                    if (item.hasDropdown && (item.key === 'crm' || item.key === 'settings' || item.key === 'stats')) {
+                      return false;
+                    }
+                    return true;
+                  });
+                  
+                  return clickableItems.map((item, index) => {
                     const isActive = item.key.includes(':')
                       ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
                       || (item.key.startsWith('settings:') && currentTab === 'settings')
+                      || (item.key.startsWith('crm:') && currentTab === item.key.split(':')[1])
                       : item.key === currentTab;
 
                     const showGroupHeader = item.groupLabel && item.groupLabel !== lastGroup;
@@ -415,8 +438,8 @@ function AppHeader({
               )}
             </div>
 
-            {/* Actions section - Dev Mode, Reset, etc. */}
-            {(onToggleDevTools || onLoadSamples || onReset) && (
+            {/* Actions section */}
+            {(onToggleDevTools || onLoadSamples || onReset || onExport || onImport || onClearCompleted || onSearchClick || onSyncClick) && (
               <>
                 <div style={{
                   height: '1px',
@@ -424,6 +447,179 @@ function AppHeader({
                   margin: '8px 0'
                 }} />
                 <div style={{ padding: '4px 0' }}>
+                  {/* Quick Actions */}
+                  {onSearchClick && (
+                    <button
+                      onClick={() => {
+                        onSearchClick();
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        color: 'var(--text)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>🔍</span>
+                      <span>Search</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '11px', opacity: 0.6 }}>⌘K</span>
+                    </button>
+                  )}
+                  {onSyncClick && (
+                    <button
+                      onClick={() => {
+                        onSyncClick();
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        color: 'var(--text)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>☁️</span>
+                      <span>Cloud Sync</span>
+                    </button>
+                  )}
+                  
+                  {/* Data Management */}
+                  {(onExport || onImport || onClearCompleted) && (
+                    <>
+                      {onExport && (
+                        <button
+                          onClick={() => {
+                            onExport();
+                            setDropdownOpen(false);
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            color: 'var(--text)',
+                            transition: 'background 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--input-bg)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>📥</span>
+                          <span>Export Data</span>
+                        </button>
+                      )}
+                      {onImport && (
+                        <label
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            color: 'var(--text)',
+                            transition: 'background 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--input-bg)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>📤</span>
+                          <span>Import Data</span>
+                          <input
+                            type="file"
+                            accept=".json"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                onImport(e);
+                                setDropdownOpen(false);
+                              }
+                              e.target.value = ''; // Reset input
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      )}
+                      {onClearCompleted && (
+                        <button
+                          onClick={() => {
+                            onClearCompleted();
+                            setDropdownOpen(false);
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            color: 'var(--text)',
+                            transition: 'background 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--input-bg)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>🧹</span>
+                          <span>Clear Completed Tasks</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* Dev Tools */}
                   {onToggleDevTools && (
                     <button
                       onClick={() => {
@@ -548,6 +744,8 @@ function AppHeader({
                 onClick={() => {
                   if (item === 'search') {
                     onSearchClick?.();
+                  } else if (item === 'sync') {
+                    onSyncClick?.();
                   } else {
                     onTabChange?.(item);
                   }
@@ -563,8 +761,8 @@ function AppHeader({
                   opacity: isActive ? 1 : 0.7,
                   transition: 'all 0.2s ease',
                 }}
-                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : `Go to ${item}`}
-                aria-label={item === 'search' ? 'Search' : `Go to ${item}`}
+                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
+                aria-label={item === 'search' ? 'Search' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
               >
                 {icon}
               </button>
@@ -644,6 +842,21 @@ function AppHeader({
         </div>
       );
     }
+
+    if (headerRightMode === 'syncButton') {
+      return (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {window.SyncButton && onSyncClick && (
+            <window.SyncButton 
+              user={user}
+              syncState={syncState}
+              onOpenModal={onSyncClick}
+            />
+          )}
+          {renderHamburgerMenu()}
+        </div>
+      );
+    }
     
     return null;
   };
@@ -697,13 +910,22 @@ function AppHeader({
         </div>
       </a>
 
-      {/* Right: Reserved space to prevent layout shift */}
+      {/* Center/Right: Standalone Sync Button (default) + Right side content */}
       <div style={{ 
         minWidth: headerRightMode === 'none' ? '0' : '120px',
         display: 'flex',
         justifyContent: 'flex-end',
         alignItems: 'center',
+        gap: '8px',
       }}>
+        {/* Standalone Sync Button - Visible by default, hidden when mode is "syncButton" */}
+        {window.SyncButton && onSyncClick && headerRightMode !== 'syncButton' && (
+          <window.SyncButton 
+            user={user}
+            syncState={syncState}
+            onOpenModal={onSyncClick}
+          />
+        )}
         {renderRightSide()}
       </div>
     </div>

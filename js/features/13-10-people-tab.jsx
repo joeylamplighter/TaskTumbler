@@ -7,7 +7,7 @@ import React from 'react'
 
 (function() {
     // Access PeopleManager from stats feature
-    function PeopleTab({ tasks = [], history = [], categories = [], settings, notify, locations = [], setLocations = () => {}, onViewTask }) {
+    function PeopleTab({ people = [], setPeople = () => {}, tasks = [], history = [], categories = [], settings, notify, locations = [], setLocations = () => {}, setTasks = () => {}, onViewTask }) {
         const PeopleManager = window.PeopleManager;
         
         if (!PeopleManager) {
@@ -21,12 +21,15 @@ import React from 'react'
         
         return React.createElement('div', { className: 'fade-in', style: { paddingBottom: 20 } },
             React.createElement(PeopleManager, {
+                people,
+                setPeople,
                 notify,
                 history,
                 tasks,
                 locations,
+                setLocations,
+                setTasks,
                 initialSelectedPersonName: null,
-                onPersonSelected: () => {},
                 onViewTask
             })
         );

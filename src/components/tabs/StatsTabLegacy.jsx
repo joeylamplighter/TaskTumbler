@@ -56,6 +56,29 @@ function PeopleManager({ notify, history = [], tasks = [], onViewTask }) {
     const [viewMode, setViewMode] = React.useState('summary'); // 'summary' or 'detailed'
     const [listViewMode, setListViewMode] = React.useState('cards'); // 'cards', 'list', 'table', 'compact'
     
+    // Listen for person selection events from history clicks
+    React.useEffect(() => {
+        const handleSelectPerson = (event) => {
+            if (event.detail && event.detail.personId) {
+                setSelectedPersonId(event.detail.personId);
+            }
+        };
+        window.addEventListener('select-person', handleSelectPerson);
+        return () => window.removeEventListener('select-person', handleSelectPerson);
+    }, []);
+    
+    // Also check for pending selection from window variable
+    React.useEffect(() => {
+        if (window.__pendingPeopleSelection && people.length > 0) {
+            const personId = window.__pendingPeopleSelection;
+            const person = people.find(p => p.id === personId);
+            if (person) {
+                setSelectedPersonId(personId);
+                window.__pendingPeopleSelection = null;
+            }
+        }
+    }, [people]);
+    
     // Smart time formatting - converts units with rounding up
     const formatTimeSmart = (minutes) => {
         if (!minutes || minutes === 0) return '0m';
@@ -2191,21 +2214,60 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                             <div style={{background:'var(--bg)', padding:14, borderRadius:12, border:'1px solid var(--border)'}}>
                                 <div style={{fontSize:11, fontWeight:700, opacity:0.7, marginBottom:6, textTransform:'uppercase'}}>People</div>
                                 <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                                    {who.map((person, idx) => (
-                                        <span
+                                    {who.map((personName, idx) => {
+                                        // Helper to find person by name and open them
+                                        const handlePersonClick = (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                                const allPeople = JSON.parse(localStorage.getItem('savedPeople') || '[]');
+                                                const person = allPeople.find(p => {
+                                                    const displayName = getDisplayName(p);
+                                                    return displayName.toLowerCase() === String(personName || '').toLowerCase();
+                                                });
+                                                if (person && person.id) {
+                                                    // Switch to people view and select the person
+                                                    updateSubView('people');
+                                                    window.__pendingPeopleSelection = person.id;
+                                                    window.dispatchEvent(new CustomEvent('select-person', { detail: { personId: person.id } }));
+                                                    onClose(); // Close the modal
+                                                } else {
+                                                    notify?.('Person not found in contacts', 'ℹ️');
+                                                }
+                                            } catch (error) {
+                                                console.error('Error opening person:', error);
+                                                notify?.('Error opening person', '❌');
+                                            }
+                                        };
+                                        
+                                        return (
+                                            <a
                                             key={idx}
+                                            href="#"
+                                            onClick={handlePersonClick}
                                             style={{
                                                 padding:'6px 12px',
                                                 background:'var(--primary)',
                                                 color:'white',
                                                 borderRadius:20,
-                                                fontSize:12,
-                                                fontWeight:700
+                                                textDecoration:'none',
+                                                cursor:'pointer',
+                                                transition:'all 0.2s',
+                                                display:'inline-block'
                                             }}
+                                            onMouseEnter={(e) => {
+                                                e.target.style.background = 'rgba(255,107,53,0.9)';
+                                                e.target.style.transform = 'scale(1.05)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.background = 'var(--primary)';
+                                                e.target.style.transform = 'scale(1)';
+                                            }}
+                                            title={`Click to view ${personName}`}
                                         >
-                                            👤 {person}
-                                        </span>
-                                    ))}
+                                            👤 {personName}
+                                        </a>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -3166,12 +3228,82 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                         ) : (
                             historyRows.slice(0, 150).map((act, i) => {
                                 const when = safeDate(act.createdAt);
-                                const who = (Array.isArray(act.people) && act.people.length) ? ` • ${act.people.join(', ')}` : '';
+                                const peopleList = Array.isArray(act.people) && act.people.length ? act.people : [];
                                 const where = (act.locationLabel || '').trim() ? ` • ${act.locationLabel}` : '';
                                 
                                 // Find related task if available
                                 const relatedTask = act.raw?.taskId ? safeTasks.find(t => t.id === act.raw.taskId) : null;
                                 const hasClickableTask = relatedTask && onViewTask;
+                                
+                                // Helper to find person by name and open them
+                                const handlePersonClick = (personName, e) => {
+                                    if (e) {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                    }
+                                    console.log('handlePersonClick called for:', personName);
+                                    try {
+                                        // Try multiple ways to get people data
+                                        const allPeople = window.DataManager?.people?.getAll?.() || 
+                                                         JSON.parse(localStorage.getItem('savedPeople') || '[]');
+                                        
+                                        console.log('Found', allPeople.length, 'people in database');
+                                        
+                                        const searchName = String(personName || '').trim().toLowerCase();
+                                        console.log('Searching for person with name:', searchName);
+                                        
+                                        // Try to find person - check multiple name formats
+                                        const person = allPeople.find(p => {
+                                            if (!p) return false;
+                                            
+                                            // Check display name
+                                            const displayName = getDisplayName(p);
+                                            if (displayName.toLowerCase() === searchName) return true;
+                                            
+                                            // Check name field directly
+                                            if (p.name && String(p.name).toLowerCase() === searchName) return true;
+                                            
+                                            // Check firstName + lastName
+                                            const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ').toLowerCase();
+                                            if (fullName === searchName) return true;
+                                            
+                                            // Check if search name is contained in any name field (partial match)
+                                            if (displayName.toLowerCase().includes(searchName) || 
+                                                searchName.includes(displayName.toLowerCase())) return true;
+                                            
+                                            return false;
+                                        });
+                                        
+                                        if (person && person.id) {
+                                            console.log('Found person:', person, 'ID:', person.id);
+                                            // Switch to people view and select the person
+                                            if (typeof updateSubView === 'function') {
+                                                console.log('Calling updateSubView("people")');
+                                                updateSubView('people');
+                                            } else {
+                                                console.warn('updateSubView is not a function!', typeof updateSubView);
+                                            }
+                                            // Store the person ID to be selected when PeopleManager loads
+                                            window.__pendingPeopleSelection = person.id;
+                                            // Trigger a custom event that PeopleManager can listen to
+                                            console.log('Dispatching select-person event for ID:', person.id);
+                                            window.dispatchEvent(new CustomEvent('select-person', { detail: { personId: person.id } }));
+                                            // Also try to trigger after a short delay to ensure the view has switched
+                                            setTimeout(() => {
+                                                console.log('Dispatching delayed select-person event');
+                                                window.dispatchEvent(new CustomEvent('select-person', { detail: { personId: person.id } }));
+                                            }, 100);
+                                            if (notify) notify('Opening person...', '👤');
+                                        } else {
+                                            console.warn('Person not found. Searched for:', searchName);
+                                            console.log('Available people:', allPeople.map(p => ({ id: p.id, name: getDisplayName(p) })));
+                                            if (notify) notify(`Person "${personName}" not found in contacts`, 'ℹ️');
+                                        }
+                                    } catch (error) {
+                                        console.error('Error opening person:', error, error.stack);
+                                        if (notify) notify('Error opening person', '❌');
+                                    }
+                                };
                                 
                                 return (
                                     <div 
@@ -3208,7 +3340,38 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                                                 {hasClickableTask && <span style={{ marginLeft: 6, opacity: 0.6, fontSize: 11 }}>🔗</span>}
                                             </div>
                                             <div style={{ fontSize:10, color:'var(--text-light)' }}>
-                                                {when.toLocaleDateString()} • {act.category}{who}{where}
+                                                {when.toLocaleDateString()} • {act.category}
+                                                {peopleList.length > 0 && (
+                                                    <>
+                                                        {' • '}
+                                                        {peopleList.map((personName, idx) => (
+                                                            <React.Fragment key={idx}>
+                                                                <a
+                                                                    href="#"
+                                                                    onClick={(e) => handlePersonClick(personName, e)}
+                                                                    style={{
+                                                                        color: 'var(--primary)',
+                                                                        textDecoration: 'none',
+                                                                        borderBottom: '1px dotted var(--primary)',
+                                                                        cursor: 'pointer',
+                                                                        marginRight: idx < peopleList.length - 1 ? '4px' : '0'
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.target.style.textDecoration = 'underline';
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.target.style.textDecoration = 'none';
+                                                                    }}
+                                                                    title={`Click to view ${personName}`}
+                                                                >
+                                                                    {personName}
+                                                                </a>
+                                                                {idx < peopleList.length - 1 && ', '}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                {where}
                                             </div>
                                         </div>
                                         {act.valueText && act.duration > 0 ? (

@@ -153,6 +153,7 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       location: incoming.location || "",
       locationCoords: incoming.locationCoords || null,
       percentComplete: incoming.percentComplete || 0,
+      progress: incoming.progress !== undefined ? incoming.progress : (incoming.percentComplete || 0),
     };
     const draft = loadDraft();
     if (!draft) return d;
@@ -702,6 +703,8 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       people: peopleArray, // Explicitly include people array
       location: locationInput, 
       weight: Number(data.weight), 
+      progress: data.progress !== undefined ? data.progress : (data.percentComplete || 0),
+      percentComplete: data.progress !== undefined ? data.progress : (data.percentComplete || 0), // Keep both for backward compatibility
       reminders, 
       reminderMode: mode, 
       reminderAnchor: anchor, 
@@ -758,17 +761,10 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
               <input className="f-input" value={data.category} onChange={(e) => setData({ ...data, category: e.target.value })} list="cat-list" />
               <datalist id="cat-list">{visibleCategories.map((c) => <option key={c} value={c} />)}</datalist>
               {subCategories.length > 0 && (
-                <select 
-                  className="f-select" 
-                  style={{ marginTop: 8 }} 
-                  value={data.subcategory || ""} 
-                  onChange={(e) => setData({ ...data, subcategory: e.target.value })}
-                >
-                  <option value="">-- Subcategory --</option>
-                  {subCategories.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <>
+                  <input className="f-input" style={{ marginTop: 8 }} value={data.subcategory || ""} onChange={(e) => setData({ ...data, subcategory: e.target.value })} list="subcat-list" />
+                  <datalist id="subcat-list">{subCategories.map((s) => <option key={s} value={s} />)}</datalist>
+                </>
               )}
             </div>
             <div style={{ width: 120 }}>
@@ -1261,15 +1257,31 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
 
           <HeaderToggle title="💫 Spin Mods" section="spin" />
           {expanded.spin && (
-            <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
-                <label className="f-label">Weight: {data.weight}</label>
-                <input type="range" min="1" max="50" value={data.weight} onChange={(e) => setData({ ...data, weight: parseInt(e.target.value, 10) })} style={{ width: "100%" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <label className="f-label">Weight: {data.weight}</label>
+                  <input type="range" min="1" max="50" value={data.weight} onChange={(e) => setData({ ...data, weight: parseInt(e.target.value, 10) })} style={{ width: "100%" }} />
+                </div>
+                <label style={{ cursor: "pointer", textAlign: "center" }}>
+                  <span className="f-label">Exclude</span>
+                  <input type="checkbox" checked={!!data.excludeFromTumbler} onChange={(e) => setData({ ...data, excludeFromTumbler: e.target.checked })} style={{ width: 18, height: 18 }} />
+                </label>
               </div>
-              <label style={{ cursor: "pointer", textAlign: "center" }}>
-                <span className="f-label">Exclude</span>
-                <input type="checkbox" checked={!!data.excludeFromTumbler} onChange={(e) => setData({ ...data, excludeFromTumbler: e.target.checked })} style={{ width: 18, height: 18 }} />
-              </label>
+              <div>
+                <label className="f-label">Progress: {data.progress !== undefined ? data.progress : (data.percentComplete || 0)}%</label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={data.progress !== undefined ? data.progress : (data.percentComplete || 0)} 
+                  onChange={(e) => {
+                    const progress = parseInt(e.target.value, 10);
+                    setData({ ...data, progress, percentComplete: progress }); // Update both for backward compatibility
+                  }} 
+                  style={{ width: "100%" }} 
+                />
+              </div>
             </div>
           )}
 

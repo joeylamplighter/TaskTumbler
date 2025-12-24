@@ -472,6 +472,9 @@
             relationships: Array.isArray(p.relationships) ? p.relationships.filter(Boolean) : [],
             notesHistory: Array.isArray(p.notesHistory) ? p.notesHistory : [],
             externalId: String(p.externalId || '').trim(), // Compass CRM personId
+            // Profile picture (DP) - same as profilePicture - preserve if exists
+            profilePicture: p.profilePicture || p.dp || '',
+            profilePictureType: p.profilePictureType || 'initials',
             createdAt: p.createdAt || new Date().toISOString(),
             updatedAt: p.updatedAt || p.createdAt || new Date().toISOString(),
         };

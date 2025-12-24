@@ -36,6 +36,9 @@ function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
             const match = hash.match(/[?&]view=([^&]+)/);
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             isActive = current === 'settings' && currentSubtab === subtab;
+          } else if (parentTab === 'crm') {
+            // CRM dropdown items map to existing tabs
+            isActive = current === subtab;
           } else if (parentTab === 'contacts') {
             isActive = current === `contacts:${subtab}`;
           }

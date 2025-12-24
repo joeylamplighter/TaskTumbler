@@ -40,6 +40,12 @@ import React from 'react'
       setGameSections(prev => ({ ...prev, [section]: !prev[section] }));
     }, []);
 
+    // Logic Settings section collapse states
+    const [logicSections, setLogicSections] = useState({
+      app: true,
+      behavior: true
+    });
+
     // Advanced settings: History filter defaults
     const allPossibleHistoryTypes = [
       'Completed',
@@ -1248,6 +1254,9 @@ function Fold({ title, right, open, onToggle, children }) {
               <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
                 ⚙️ Logic
               </button>
+              <button className={`sc-btn ${settingsView === "ai" ? "active" : ""}`} onClick={() => setSettingsView("ai")}>
+                🧠 AI
+              </button>
               <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
                 ⚔️ Game
               </button>
@@ -1320,7 +1329,8 @@ function Fold({ title, right, open, onToggle, children }) {
                   { key: "duel", icon: "⚔️", label: "Duel", isSubtab: false },
                   { key: "settings", icon: "⚙️", label: "Settings", isSubtab: false },
                   { key: "settings:view", icon: "👁️", label: "Settings: View", isSubtab: true },
-                  { key: "settings:logic", icon: "🧠", label: "Settings: Logic", isSubtab: true },
+                  { key: "settings:logic", icon: "⚙️", label: "Settings: Logic", isSubtab: true },
+                  { key: "settings:ai", icon: "🧠", label: "Settings: AI", isSubtab: true },
                   { key: "settings:game", icon: "🎮", label: "Settings: Game", isSubtab: true },
                   { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", isSubtab: true },
                   { key: "settings:data", icon: "💾", label: "Settings: Data", isSubtab: true },
@@ -1426,6 +1436,7 @@ function Fold({ title, right, open, onToggle, children }) {
                             } else if (parentTab === "settings") {
                               window.location.hash = `#settings?view=${subtab}`;
                               if (window.setTab) window.setTab("settings");
+                              setSettingsView(subtab);
                             }
                           } else {
                             window.location.hash = `#${item.key}`;
@@ -1487,7 +1498,8 @@ function Fold({ title, right, open, onToggle, children }) {
                   { key: "duel", icon: "⚔️", label: "Duel", isSubtab: false },
                   { key: "settings", icon: "⚙️", label: "Settings", isSubtab: false },
                   { key: "settings:view", icon: "👁️", label: "Settings: View", isSubtab: true },
-                  { key: "settings:logic", icon: "🧠", label: "Settings: Logic", isSubtab: true },
+                  { key: "settings:logic", icon: "⚙️", label: "Settings: Logic", isSubtab: true },
+                  { key: "settings:ai", icon: "🧠", label: "Settings: AI", isSubtab: true },
                   { key: "settings:game", icon: "🎮", label: "Settings: Game", isSubtab: true },
                   { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", isSubtab: true },
                   { key: "settings:data", icon: "💾", label: "Settings: Data", isSubtab: true },
@@ -1667,6 +1679,7 @@ function Fold({ title, right, open, onToggle, children }) {
                   <option value="quickNav">Quick Nav</option>
                   <option value="xp">XP + Level</option>
                   <option value="status">Status</option>
+                  <option value="syncButton">Cloud Sync Button</option>
                 </select>
               </div>
               
@@ -1689,6 +1702,7 @@ function Fold({ title, right, open, onToggle, children }) {
                         { key: "duel", icon: "⚔️", label: "Duel" },
                         { key: "settings", icon: "⚙️", label: "Settings" },
                         { key: "search", icon: "🔍", label: "Search (Cmd/Ctrl+K)" },
+                        { key: "sync", icon: "☁️", label: "Cloud Sync" },
                       ];
                       
                       return quickNavOptions.map((option) => {
@@ -1854,51 +1868,302 @@ function Fold({ title, right, open, onToggle, children }) {
         {/* LOGIC TAB */}
         {settingsView === "logic" && (
           <div className="fade-in-up">
-            <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 16 }}>⚙️ App Behavior & AI</h3>
+            <style>{`
+              .logic-section {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 14px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+              }
+              .logic-section-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--border-light);
+                cursor: pointer;
+                user-select: none;
+              }
+              .logic-section-title {
+                font-family: Fredoka;
+                font-size: 14px;
+                font-weight: 800;
+                color: var(--text);
+                margin: 0;
+                flex: 1;
+              }
+              .logic-section-icon {
+                font-size: 16px;
+                line-height: 1;
+              }
+              .logic-setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.04);
+              }
+              .logic-setting-row:last-child {
+                border-bottom: none;
+              }
+              .logic-setting-label {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                flex: 1;
+              }
+              .logic-setting-label-text {
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--text);
+              }
+              .logic-setting-label-hint {
+                font-size: 10px;
+                color: var(--text-light);
+                opacity: 0.65;
+                line-height: 1.3;
+              }
+            `}</style>
 
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #8a2be2" }}>
-              <label className="f-label">GEMINI API KEY</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <input type="text" className="f-input" style={{ marginBottom: 0, flex: 1 }} placeholder="Paste API key..." value={settings?.geminiApiKey || ""} onChange={(e) => handleChange("geminiApiKey", e.target.value)} />
-                <button className="btn-white-outline" onClick={testAiKey} style={{ minWidth: 80 }}>
-                  {aiTestStatus === "testing" ? "..." : aiTestStatus === "success" ? "✔" : "🧠 Test"}
-                </button>
+            {/* APP SETTINGS SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #4CAF50" }}>
+              <div className="logic-section-header" onClick={() => setLogicSections(prev => ({ ...prev, app: !prev.app }))}>
+                <span className="logic-section-icon">📱</span>
+                <h3 className="logic-section-title">App Settings</h3>
+                <span style={{ fontSize: 10, color: 'var(--text-light)' }}>{logicSections.app ? '▼' : '▶'}</span>
               </div>
-              <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Tip: this key is stored locally in your browser storage unless you sync settings to cloud.</div>
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 11,
-                  color: "var(--primary)",
-                  textDecoration: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontWeight: 600,
-                  transition: "opacity 0.2s"
-                }}
-                onMouseEnter={(e) => e.target.style.opacity = "0.8"}
-                onMouseLeave={(e) => e.target.style.opacity = "1"}
-              >
-                🔗 Get Gemini API Key →
-              </a>
+              {logicSections.app && (
+                <div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏱️ Auto-start Timer</span>
+                      <span className="logic-setting-label-hint">Automatically start timer when entering focus mode</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.autoStartTimer} onChange={() => handleToggle("autoStartTimer")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">✅ Auto-complete Subtasks</span>
+                      <span className="logic-setting-label-hint">Mark parent task complete when all subtasks are done</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoCompleteSubtask !== false} onChange={() => handleToggle("autoCompleteSubtask")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🗑️ Confirm Task Deletion</span>
+                      <span className="logic-setting-label-hint">Show confirmation dialog before deleting tasks</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.confirmTaskDeletion !== false} onChange={() => handleToggle("confirmTaskDeletion")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🎭 Reduced Motion</span>
+                      <span className="logic-setting-label-hint">Reduce animations and transitions for accessibility</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.reducedMotion} onChange={() => handleToggle("reducedMotion")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">👁️ Show Debug Info</span>
+                      <span className="logic-setting-label-hint">Display debugging information in console and UI</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.showDebugInfo !== false} onChange={() => handleToggle("showDebugInfo")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🛠️ Dev Tools</span>
+                      <span className="logic-setting-label-hint">Show developer tools and advanced options</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.showDevTools !== false} onChange={() => handleToggle("showDevTools")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏳ Hide Completed Delay (seconds)</span>
+                      <span className="logic-setting-label-hint">Delay before hiding completed tasks (0 = hide immediately)</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      className="f-input" 
+                      style={{ width: 80, marginBottom: 0 }} 
+                      value={settings?.hideCompletedDelay || 0} 
+                      onChange={(e) => handleChange("hideCompletedDelay", Math.max(0, parseInt(e.target.value) || 0))} 
+                      min="0"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12 }}>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, cursor: "pointer" }}>
-                <span>🔔 System Notifications</span>
-                <input type="checkbox" checked={!!settings?.enableNotifications} onChange={() => handleToggle("enableNotifications")} />
-              </label>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, cursor: "pointer" }}>
-                <span>⏰ Auto reminders</span>
-                <input type="checkbox" checked={settings?.autoAddReminders !== false} onChange={() => handleToggle("autoAddReminders")} />
-              </label>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <span>🛠️ Dev Tools</span>
-                <input type="checkbox" checked={settings?.showDevTools !== false} onChange={() => handleToggle("showDevTools")} />
-              </label>
+            {/* BEHAVIOR SETTINGS SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #2196F3" }}>
+              <div className="logic-section-header" onClick={() => setLogicSections(prev => ({ ...prev, behavior: !prev.behavior }))}>
+                <span className="logic-section-icon">⚡</span>
+                <h3 className="logic-section-title">Behavior Settings</h3>
+                <span style={{ fontSize: 10, color: 'var(--text-light)' }}>{logicSections.behavior ? '▼' : '▶'}</span>
+              </div>
+              {logicSections.behavior && (
+                <div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🔔 System Notifications</span>
+                      <span className="logic-setting-label-hint">Enable browser notifications for reminders and alerts</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.enableNotifications} onChange={() => handleToggle("enableNotifications")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏰ Auto Add Reminders</span>
+                      <span className="logic-setting-label-hint">Automatically add reminders when setting task due dates</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoAddReminders !== false} onChange={() => handleToggle("autoAddReminders")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⌨️ Keyboard Shortcuts</span>
+                      <span className="logic-setting-label-hint">Enable keyboard shortcuts for quick actions</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.enableKeyboardShortcuts !== false} onChange={() => handleToggle("enableKeyboardShortcuts")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">💾 Auto-save Drafts</span>
+                      <span className="logic-setting-label-hint">Automatically save form drafts while editing</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoSaveDrafts !== false} onChange={() => handleToggle("autoSaveDrafts")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🔄 Auto-refresh Data</span>
+                      <span className="logic-setting-label-hint">Automatically refresh data when switching tabs</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoRefreshData !== false} onChange={() => handleToggle("autoRefreshData")} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* AI TAB */}
+        {settingsView === "ai" && (
+          <div className="fade-in-up">
+            <style>{`
+              .logic-section {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 14px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+              }
+              .logic-setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.04);
+              }
+              .logic-setting-row:last-child {
+                border-bottom: none;
+              }
+              .logic-setting-label {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                flex: 1;
+              }
+              .logic-setting-label-text {
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--text);
+              }
+              .logic-setting-label-hint {
+                font-size: 10px;
+                color: var(--text-light);
+                opacity: 0.65;
+                line-height: 1.3;
+              }
+            `}</style>
+
+            {/* AI SETTINGS SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #8a2be2" }}>
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label">GEMINI API KEY</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input type="text" className="f-input" style={{ marginBottom: 0, flex: 1 }} placeholder="Paste API key..." value={settings?.geminiApiKey || ""} onChange={(e) => handleChange("geminiApiKey", e.target.value)} />
+                  <button className="btn-white-outline" onClick={testAiKey} style={{ minWidth: 80 }}>
+                    {aiTestStatus === "testing" ? "..." : aiTestStatus === "success" ? "✔" : "🧠 Test"}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Tip: this key is stored locally in your browser storage unless you sync settings to cloud.</div>
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: 11,
+                    color: "var(--primary)",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontWeight: 600,
+                    transition: "opacity 0.2s"
+                  }}
+                  onMouseEnter={(e) => e.target.style.opacity = "0.8"}
+                  onMouseLeave={(e) => e.target.style.opacity = "1"}
+                >
+                  🔗 Get Gemini API Key →
+                </a>
+              </div>
+              <div className="logic-setting-row">
+                <div className="logic-setting-label">
+                  <span className="logic-setting-label-text">🤖 AI Task Parsing</span>
+                  <span className="logic-setting-label-hint">Use AI to parse tasks from natural language input</span>
+                </div>
+                <input type="checkbox" checked={settings?.enableAITaskParsing !== false} onChange={() => handleToggle("enableAITaskParsing")} />
+              </div>
+              <div className="logic-setting-row">
+                <div className="logic-setting-label">
+                  <span className="logic-setting-label-text">✨ AI Task Suggestions</span>
+                  <span className="logic-setting-label-hint">Get AI-powered task suggestions based on your activity</span>
+                </div>
+                <input type="checkbox" checked={!!settings?.enableAISuggestions} onChange={() => handleToggle("enableAISuggestions")} />
+              </div>
+              <div className="logic-setting-row">
+                <div className="logic-setting-label">
+                  <span className="logic-setting-label-text">🎯 AI Task Prioritization</span>
+                  <span className="logic-setting-label-hint">Let AI suggest priority levels for new tasks</span>
+                </div>
+                <input type="checkbox" checked={!!settings?.enableAIPrioritization} onChange={() => handleToggle("enableAIPrioritization")} />
+              </div>
+              <div className="logic-setting-row">
+                <div className="logic-setting-label">
+                  <span className="logic-setting-label-text">📝 AI Description Generation</span>
+                  <span className="logic-setting-label-hint">Generate task descriptions automatically from titles</span>
+                </div>
+                <input type="checkbox" checked={!!settings?.enableAIDescriptionGeneration} onChange={() => handleToggle("enableAIDescriptionGeneration")} />
+              </div>
+              <div className="logic-setting-row">
+                <div className="logic-setting-label">
+                  <span className="logic-setting-label-text">🌡️ AI Model Temperature</span>
+                  <span className="logic-setting-label-hint">Control creativity vs consistency (0.0 = focused, 1.0 = creative)</span>
+                </div>
+                <input 
+                  type="number" 
+                  className="f-input" 
+                  style={{ width: 80, marginBottom: 0 }} 
+                  value={settings?.aiTemperature !== undefined ? settings.aiTemperature : 0.7} 
+                  onChange={(e) => handleChange("aiTemperature", Math.max(0, Math.min(1, parseFloat(e.target.value) || 0.7)))} 
+                  min="0"
+                  max="1"
+                  step="0.1"
+                />
+              </div>
             </div>
           </div>
         )}

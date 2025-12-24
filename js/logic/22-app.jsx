@@ -160,6 +160,7 @@ const initialSettingsView = () => {
   const map = {
     view: "view",
     logic: "logic",
+    ai: "ai",
     game: "game",
     cats: "cats",
     data: "data",
@@ -807,7 +808,7 @@ const removeSubCategory = (parentCat, subName) => {
       const match = hash.match(/[?&]view=([^&]+)/);
       if (match) {
         const view = match[1].toLowerCase();
-        const map = { view: "view", logic: "logic", game: "game", cats: "cats", data: "data" };
+        const map = { view: "view", logic: "logic", ai: "ai", game: "game", cats: "cats", data: "data" };
         return map[view] || "view";
       }
       return "view";
@@ -2146,16 +2147,18 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
-    { key: "people", icon: "👥", label: "People", displayLabel: "People" },
-    { key: "places", icon: "📍", label: "Places", displayLabel: "Places" },
+    { key: "crm", icon: "👔", label: "CRM", displayLabel: "CRM", hasDropdown: true, dropdownItems: ["crm:people", "crm:places"] },
+    { key: "crm:people", icon: "👥", label: "People", displayLabel: "People", groupLabel: "CRM" },
+    { key: "crm:places", icon: "📍", label: "Places", displayLabel: "Places", groupLabel: "CRM" },
     { key: "stats", icon: "📊", label: "Data", displayLabel: "Data", hasDropdown: true, dropdownItems: ["stats:overview", "stats:charts", "stats:history"] },
     { key: "stats:overview", icon: "📊", label: "Overview", displayLabel: "Overview", groupLabel: "Data" },
     { key: "stats:charts", icon: "📈", label: "Charts", displayLabel: "Charts", groupLabel: "Data" },
     { key: "stats:history", icon: "📜", label: "History", displayLabel: "History", groupLabel: "Data" },
     { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel" },
-    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", hasDropdown: true, dropdownItems: ["settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"] },
+    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", hasDropdown: true, dropdownItems: ["settings:view", "settings:logic", "settings:ai", "settings:game", "settings:cats", "settings:data"] },
     { key: "settings:view", icon: "👁️", label: "View", displayLabel: "View", groupLabel: "Settings" },
-    { key: "settings:logic", icon: "🧠", label: "Logic", displayLabel: "Logic", groupLabel: "Settings" },
+    { key: "settings:logic", icon: "⚙️", label: "Logic", displayLabel: "Logic", groupLabel: "Settings" },
+    { key: "settings:ai", icon: "🧠", label: "AI", displayLabel: "AI", groupLabel: "Settings" },
     { key: "settings:game", icon: "🎮", label: "Game", displayLabel: "Game", groupLabel: "Settings" },
     { key: "settings:cats", icon: "🏷️", label: "Categories", displayLabel: "Cats", groupLabel: "Settings" },
     { key: "settings:data", icon: "💾", label: "Data Settings", displayLabel: "Data", groupLabel: "Settings" },
@@ -2436,7 +2439,7 @@ const removeSubCategory = (parentCat, subName) => {
               {/* Settings Subtabs */}
               <div style={{ marginTop: 4, paddingTop: 4, borderTop: isLightTheme ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.1)" }}>
                 <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 8, color: getDevColor("#9cf", "#0066cc") }}>Settings Subtabs:</div>
-                {["view", "logic", "game", "cats", "data"].map((subtab) => {
+                {["view", "logic", "ai", "game", "cats", "data"].map((subtab) => {
                   const key = `settings:${subtab}`;
                   const isEnabled = autoRefreshConfig[key] === true;
                   return (
@@ -3041,7 +3044,7 @@ const removeSubCategory = (parentCat, subName) => {
           <div>
             <div style={{ fontWeight: 600, marginBottom: 4, color: getDevColor("#9cf", "#0066cc"), fontSize: 9 }}>Settings:</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {["view", "logic", "game", "cats", "data"].map((subtab) => {
+              {["view", "logic", "ai", "game", "cats", "data"].map((subtab) => {
                 const isActive = tab === "settings" && getCurrentSubtab() === subtab;
                 return (
                   <a
@@ -3230,6 +3233,38 @@ const removeSubCategory = (parentCat, subName) => {
             }}
             onReset={handleEmergencyReset}
             onLoadSamples={handleLoadSamples}
+            onExport={handleExportBackup}
+            onImport={(e) => {
+              try {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  try {
+                    const data = JSON.parse(ev.target.result);
+                    if (data.tasks) setTasks(data.tasks || []);
+                    if (data.goals) setGoals(data.goals || []);
+                    if (data.categories) setCategories(data.categories || []);
+                    if (data.activities && setActivitiesInternal) setActivitiesInternal(data.activities || []);
+                    if (data.savedNotes && setSavedNotes) setSavedNotes(data.savedNotes || []);
+                    if (data.settings) setSettings((prev) => ({ ...(prev || {}), ...(data.settings || {}) }));
+                    if (data.userStats && setUserStats) setUserStats(data.userStats || { xp: 0, level: 1 });
+                    if (data.savedPeople && DM?.people?.setAll) {
+                      DM.people.setAll(data.savedPeople);
+                    }
+                    notify("Data Imported!", "✅");
+                  } catch (err) {
+                    console.error(err);
+                    notify("Import Failed", "❌");
+                  }
+                };
+                reader.readAsText(file);
+              } catch (err) {
+                console.error(err);
+                notify("Import Failed", "❌");
+              }
+            }}
+            onClearCompleted={handleClearCompleted}
           />
 
           <div
@@ -3261,6 +3296,7 @@ const removeSubCategory = (parentCat, subName) => {
                 onView={setViewTask}
                 onComplete={completeTask}
                 onDelete={deleteTask}
+                onUpdate={updateTask}
                 onAdd={addTask}
                 settings={settings}
                 openAdd={() => setIsAdding(true)}
@@ -3350,6 +3386,13 @@ const removeSubCategory = (parentCat, subName) => {
                   setSettingsView(subtab);
                   window.location.hash = `#settings?view=${subtab}`;
                   window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+                } else if (parentTab === "crm") {
+                  // CRM dropdown items map to existing tabs
+                  if (subtab === "people") {
+                    setTab("people");
+                  } else if (subtab === "places") {
+                    setTab("places");
+                  }
                 }
               } else {
                 setTab(tabKey);

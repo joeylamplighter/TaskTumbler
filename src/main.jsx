@@ -42,6 +42,7 @@ window.completeTask = completeTask
 import '../js/ui/10-core-header.jsx'
 import '../js/ui/10-core-navbar.jsx'
 import '../js/ui/10-core-toast.jsx'
+import '../js/ui/11-sync.jsx'
 
 // Import legacy feature tabs (they export to window)
 // Spin tab dependencies first

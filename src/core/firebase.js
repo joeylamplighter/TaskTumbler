@@ -72,11 +72,33 @@ const enablePersistenceWithRetry = async (maxRetries = 3, delay = 1000) => {
     return false;
 };
 
-if (isFirebaseConfigured() && typeof firebase !== 'undefined') {
+// Initialize Firebase when it becomes available
+const initializeFirebase = () => {
+    if (!isFirebaseConfigured()) {
+        console.log('⚠️ Firebase not configured - cloud sync disabled');
+        return;
+    }
+    
+    // Check if firebase is available (from CDN)
+    if (typeof firebase === 'undefined') {
+        // Wait for Firebase to load from CDN
+        setTimeout(() => {
+            if (typeof firebase !== 'undefined') {
+                initializeFirebase();
+            } else {
+                console.warn('⚠️ Firebase library not loaded - cloud sync disabled');
+            }
+        }, 100);
+        return;
+    }
+    
     try {
         firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
         auth = firebase.auth();
         db = firebase.firestore();
+        
+        // Expose firebase globally for other modules
+        window.firebase = firebase;
 
         enablePersistenceWithRetry().catch(() => {
             // Already logged in the function
@@ -86,9 +108,10 @@ if (isFirebaseConfigured() && typeof firebase !== 'undefined') {
     } catch (e) {
         console.error('Firebase init error:', e);
     }
-} else {
-    console.log('⚠️ Firebase not configured - cloud sync disabled');
-}
+};
+
+// Start initialization
+initializeFirebase();
 
 const safeHaptics = (pattern = [50]) => {
     try {

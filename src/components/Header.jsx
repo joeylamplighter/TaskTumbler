@@ -23,6 +23,8 @@ function Header({
   onTabChange,
   onSearchClick,
   onStatusClick,
+  onSyncClick,
+  user,
 }) {
   const handleBrandClick = useCallback((e) => {
     e?.preventDefault?.()
@@ -118,6 +120,7 @@ function Header({
     'duel': '⚔️',
     'settings': '⚙',
     'search': '🔍',
+    'sync': '☁️',
   }
   
   // Helper to check if we're on a stats subtab
@@ -184,6 +187,8 @@ function Header({
                 onClick={() => {
                   if (item === 'search') {
                     onSearchClick?.()
+                  } else if (item === 'sync') {
+                    onSyncClick?.()
                   } else {
                     onTabChange?.(item)
                   }
@@ -201,8 +206,8 @@ function Header({
                   background: isActive ? 'var(--primary-light)' : 'transparent',
                   transition: 'all 0.2s ease',
                 }}
-                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : `Go to ${item}`}
-                aria-label={item === 'search' ? 'Search' : `Go to ${item}`}
+                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
+                aria-label={item === 'search' ? 'Search' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
               >
                 {icon}
               </button>
@@ -307,13 +312,22 @@ function Header({
         </div>
       </a>
       
-      {/* Right side - reserved space to prevent layout shift */}
+      {/* Center/Right: Standalone Sync Button (default) + Right side content */}
       <div className="header-right" style={{ 
         minWidth: headerRightMode === 'none' ? '0' : '120px',
         display: 'flex',
         justifyContent: 'flex-end',
         alignItems: 'center',
+        gap: '8px',
       }}>
+        {/* Standalone Sync Button - Always visible by default */}
+        {window.SyncButton && onSyncClick && (
+          <window.SyncButton 
+            user={user}
+            syncState={syncState}
+            onOpenModal={onSyncClick}
+          />
+        )}
         {renderRightSide()}
       </div>
     </header>

@@ -15,6 +15,62 @@ function NavBar({ current, set, items, hidden, dockHidden, getCurrentSubtab }) {
 
   const isHidden = !!hidden || !!dockHidden;
 
+  // Get NavBar appearance settings with real-time updates
+  const [settings, setSettings] = React.useState(() => {
+    try {
+      // Try DataManager first, then localStorage
+      if (window.DataManager?.settings?.get) {
+        return window.DataManager.settings.get() || {};
+      }
+      const saved = localStorage.getItem('settings');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Listen for settings changes
+  React.useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'settings') {
+        try {
+          const newSettings = e.newValue ? JSON.parse(e.newValue) : {};
+          setSettings(newSettings);
+        } catch {}
+      }
+    };
+    
+    // Also listen to custom settings-updated event
+    const handleSettingsUpdate = () => {
+      try {
+        // Try DataManager first, then localStorage
+        if (window.DataManager?.settings?.get) {
+          const newSettings = window.DataManager.settings.get();
+          if (newSettings) setSettings(newSettings);
+        } else {
+          const saved = localStorage.getItem('settings');
+          if (saved) {
+            setSettings(JSON.parse(saved));
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('settings-updated', handleSettingsUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('settings-updated', handleSettingsUpdate);
+    };
+  }, []);
+  
+  // NavBar appearance settings with defaults
+  const dockOpacity = settings?.navBarDockOpacity !== undefined ? settings.navBarDockOpacity : 0.55;
+  const inactiveOpacity = settings?.navBarInactiveOpacity !== undefined ? settings.navBarInactiveOpacity : 0.4;
+  const grayscaleAmount = settings?.navBarGrayscaleAmount !== undefined ? settings.navBarGrayscaleAmount : 100;
+  const themeColor = settings?.navBarThemeColor || null; // null means use CSS variable
+
   // Helper to check if we're on a stats subtab
   const checkSubtab = () => {
     if (typeof getCurrentSubtab === 'function') {
@@ -55,13 +111,13 @@ const style = {
   // almost square
   borderRadius: 3,
 
-  // more opaque to reduce color bleed
-  background: 'rgba(0,0,0,0.55)',
+  // more opaque to reduce color bleed - use setting if available
+  background: `rgba(0,0,0,${dockOpacity})`,
   backdropFilter: 'blur(16px) saturate(100%)',
   WebkitBackdropFilter: 'blur(16px) saturate(100%)',
 
-  // very subtle edge definition
-  border: '1px solid rgba(255,255,255,0.08)',
+  // very subtle edge definition - use theme color if set
+  border: themeColor ? `1px solid ${themeColor}33` : '1px solid rgba(255,255,255,0.08)',
 
   // lighter shadow so it doesn’t look like a slab
   boxShadow:
@@ -89,6 +145,9 @@ const style = {
             const match = hash.match(/[?&]view=([^&]+)/);
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             active = current === 'settings' && currentSubtab === subtab;
+          } else if (parentTab === 'crm') {
+            // CRM dropdown items map to existing tabs
+            active = current === subtab;
           } else if (parentTab === 'contacts') {
             active = current === `contacts:${subtab}`;
           }
@@ -109,6 +168,10 @@ const style = {
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             return current === 'settings' && currentSubtab === subtab;
           }
+          if (childKey.startsWith('crm:')) {
+            const subtab = childKey.split(':')[1];
+            return current === subtab;
+          }
           if (childKey.startsWith('contacts:')) {
             return current === childKey;
           }
@@ -126,6 +189,18 @@ const style = {
             >
               <button
                 onClick={() => {
+                  // Navigate to the parent tab first (if applicable)
+                  if (item.key === 'settings' && current !== 'settings') {
+                    set('settings');
+                  } else if (item.key === 'stats' && current !== 'stats') {
+                    set('stats');
+                  } else if (item.key === 'crm') {
+                    // CRM doesn't have its own tab, navigate to first dropdown item (people)
+                    if (current !== 'people') {
+                      set('crm:people');
+                    }
+                  }
+                  // Toggle dropdown
                   if (openDropdown === item.key) {
                     setOpenDropdown(null);
                   } else {
@@ -136,7 +211,7 @@ const style = {
                   width: '100%',
                   background: 'transparent',
                   border: 'none',
-                  color: isActive ? 'white' : 'rgba(255,255,255,0.30)',
+                  color: isActive ? (themeColor || 'white') : 'rgba(255,255,255,0.30)',
                   padding: '10px 6px',
                   borderRadius: 20,
                   cursor: 'pointer',
@@ -144,8 +219,8 @@ const style = {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 4,
-                  filter: isActive ? 'none' : 'grayscale(100%)',
-                  opacity: isActive ? 1 : 0.4,
+                  filter: isActive ? 'none' : `grayscale(${grayscaleAmount}%)`,
+                  opacity: isActive ? 1 : inactiveOpacity,
                   transition: 'all 0.2s ease'
                 }}
                 title={item.label}
@@ -188,6 +263,9 @@ const style = {
                       const match = hash.match(/[?&]view=([^&]+)/);
                       const currentSubtab = match ? match[1].toLowerCase() : 'view';
                       childActive = current === 'settings' && currentSubtab === subtab;
+                    } else if (childKey.startsWith('crm:')) {
+                      const subtab = childKey.split(':')[1];
+                      childActive = current === subtab;
                     } else if (childKey.startsWith('contacts:')) {
                       childActive = current === childKey;
                     }
@@ -201,7 +279,7 @@ const style = {
                         }}
                         style={{
                           width: '100%',
-                          background: childActive ? 'var(--primary)' : 'transparent',
+                          background: childActive ? (themeColor || 'var(--primary)') : 'transparent',
                           border: 'none',
                           color: 'white',
                           padding: '10px 12px',
@@ -246,7 +324,7 @@ const style = {
               flex: 1,
               background: 'transparent',
               border: 'none',
-              color: isActive ? 'white' : 'rgba(255,255,255,0.30)',
+              color: isActive ? (themeColor || 'white') : 'rgba(255,255,255,0.30)',
               padding: '10px 6px',
               borderRadius: 20,
               cursor: 'pointer',
@@ -254,8 +332,8 @@ const style = {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
-              filter: isActive ? 'none' : 'grayscale(100%)',
-              opacity: isActive ? 1 : 0.4,
+              filter: isActive ? 'none' : `grayscale(${grayscaleAmount}%)`,
+              opacity: isActive ? 1 : inactiveOpacity,
               transition: 'all 0.2s ease'
             }}
             title={item.label}

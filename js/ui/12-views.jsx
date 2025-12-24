@@ -23,18 +23,37 @@
         const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
         const progress = totalSubtasks === 0 ? 0 : Math.round((completedSubtasks / totalSubtasks) * 100);
 
+        // Helper function to calculate progress based on subtasks
+        const calculateProgressFromSubtasks = (subtasks) => {
+            if (!subtasks || subtasks.length === 0) return 0;
+            const completed = subtasks.filter(s => s.completed).length;
+            return Math.round((completed / subtasks.length) * 100);
+        };
+
         const toggleSubtask = (subId) => {
             const updatedSubtasks = (task.subtasks || []).map(s => 
                 s.id === subId ? { ...s, completed: !s.completed } : s
             );
-            updateTask(task.id, { subtasks: updatedSubtasks });
+            const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
+            // Update both progress and percentComplete for compatibility
+            updateTask(task.id, { 
+                subtasks: updatedSubtasks,
+                progress: newProgress,
+                percentComplete: newProgress
+            });
         };
 
         const deleteSubtask = (e, subId) => {
             e.stopPropagation();
             // WARNING REMOVED: Instantly deletes the subtask
             const updatedSubtasks = (task.subtasks || []).filter(s => s.id !== subId);
-            updateTask(task.id, { subtasks: updatedSubtasks });
+            const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
+            // Update both progress and percentComplete for compatibility
+            updateTask(task.id, { 
+                subtasks: updatedSubtasks,
+                progress: newProgress,
+                percentComplete: newProgress
+            });
         };
 
         const handleAddSubtask = () => {
@@ -43,7 +62,14 @@
             // Saving as both title and text for compatibility
             const newItem = { id: newId, title: newSubtask.trim(), text: newSubtask.trim(), completed: false };
             const currentSubtasks = task.subtasks || [];
-            updateTask(task.id, { subtasks: [...currentSubtasks, newItem] });
+            const updatedSubtasks = [...currentSubtasks, newItem];
+            // Recalculate progress when adding a new subtask (progress decreases if we had completed subtasks)
+            const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
+            updateTask(task.id, { 
+                subtasks: updatedSubtasks,
+                progress: newProgress,
+                percentComplete: newProgress
+            });
             setNewSubtask('');
         };
 

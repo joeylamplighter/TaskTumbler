@@ -54,6 +54,12 @@ export default function SettingsTabLegacy(props) {
       setGameSections(prev => ({ ...prev, [section]: !prev[section] }));
     }, []);
 
+    // Logic Settings section collapse states
+    const [logicSections, setLogicSections] = useState({
+      app: true,
+      behavior: true
+    });
+
     // Advanced settings: History filter defaults
     const allPossibleHistoryTypes = [
       'Completed',
@@ -213,14 +219,28 @@ export default function SettingsTabLegacy(props) {
     // ===========================================
     const handleToggle = useCallback(
       (key) => {
-        setSettings?.((p) => ({ ...p, [key]: !p?.[key] }));
+        setSettings?.((p) => {
+          const newSettings = { ...p, [key]: !p?.[key] };
+          // Dispatch event for NavBar to update in real-time
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('settings-updated'));
+          }, 0);
+          return newSettings;
+        });
       },
       [setSettings]
     );
 
     const handleChange = useCallback(
       (key, val) => {
-        setSettings?.((p) => ({ ...p, [key]: val }));
+        setSettings?.((p) => {
+          const newSettings = { ...p, [key]: val };
+          // Dispatch event for NavBar to update in real-time
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('settings-updated'));
+          }, 0);
+          return newSettings;
+        });
       },
       [setSettings]
     );
@@ -1265,6 +1285,110 @@ function Fold({ title, right, open, onToggle, children }) {
 
             {/* Navigation Bar Configuration */}
             <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, marginTop: 24 }}>Navigation Bar</h4>
+            
+            {/* Nav Bar Appearance */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h5 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>🎨 Appearance</h5>
+              
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  🔲 Dock Transparency: {Math.round((settings?.navBarDockOpacity !== undefined ? settings.navBarDockOpacity : 0.55) * 100)}%
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  Adjust how transparent the main dock background is (0% = fully transparent, 100% = fully opaque)
+                </p>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={Math.round((settings?.navBarDockOpacity !== undefined ? settings.navBarDockOpacity : 0.55) * 100)}
+                  onChange={(e) => handleChange("navBarDockOpacity", parseInt(e.target.value) / 100)}
+                  style={{ width: "100%", marginBottom: 8 }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-light)" }}>
+                  <span>Transparent</span>
+                  <span>Opaque</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  🎭 Inactive Icon Washout: {Math.round((settings?.navBarInactiveOpacity !== undefined ? settings.navBarInactiveOpacity : 0.4) * 100)}%
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  How faded inactive icons appear (0% = invisible, 100% = fully visible)
+                </p>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={Math.round((settings?.navBarInactiveOpacity !== undefined ? settings.navBarInactiveOpacity : 0.4) * 100)}
+                  onChange={(e) => handleChange("navBarInactiveOpacity", parseInt(e.target.value) / 100)}
+                  style={{ width: "100%", marginBottom: 8 }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-light)" }}>
+                  <span>Faded</span>
+                  <span>Visible</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  🎨 Grayscale Amount: {Math.round((settings?.navBarGrayscaleAmount !== undefined ? settings.navBarGrayscaleAmount : 100))}%
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  How much color is removed from inactive icons (0% = full color, 100% = grayscale)
+                </p>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={Math.round(settings?.navBarGrayscaleAmount !== undefined ? settings.navBarGrayscaleAmount : 100)}
+                  onChange={(e) => handleChange("navBarGrayscaleAmount", parseInt(e.target.value))}
+                  style={{ width: "100%", marginBottom: 8 }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-light)" }}>
+                  <span>Colorful</span>
+                  <span>Grayscale</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  🌈 Theme Color Override
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  Override the theme's primary color for active nav items (leave empty to use theme default)
+                </p>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="color"
+                    value={settings?.navBarThemeColor || "#ff6b35"}
+                    onChange={(e) => handleChange("navBarThemeColor", e.target.value)}
+                    style={{ width: 60, height: 40, borderRadius: 6, border: "1px solid var(--border)", cursor: "pointer" }}
+                  />
+                  <input
+                    type="text"
+                    className="f-input"
+                    placeholder="#ff6b35"
+                    value={settings?.navBarThemeColor || ""}
+                    onChange={(e) => handleChange("navBarThemeColor", e.target.value)}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  />
+                  <button
+                    className="btn-white-outline"
+                    onClick={() => handleChange("navBarThemeColor", "")}
+                    style={{ padding: "8px 12px", fontSize: 12 }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
                 Choose which items appear in the main navigation bar and their order
@@ -1501,6 +1625,7 @@ function Fold({ title, right, open, onToggle, children }) {
                   <option value="quickNav">Quick Nav</option>
                   <option value="xp">XP + Level</option>
                   <option value="status">Status</option>
+                  <option value="syncButton">Cloud Sync Button</option>
                 </select>
               </div>
               
@@ -1677,56 +1802,455 @@ function Fold({ title, right, open, onToggle, children }) {
         {/* LOGIC TAB */}
         {settingsView === "logic" && (
           <div className="fade-in-up">
-            <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 16 }}>⚙️ App Behavior & AI</h3>
+            <style>{`
+              .logic-section {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 14px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+              }
+              .logic-section-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--border-light);
+                cursor: pointer;
+                user-select: none;
+              }
+              .logic-section-title {
+                font-family: Fredoka;
+                font-size: 14px;
+                font-weight: 800;
+                color: var(--text);
+                margin: 0;
+                flex: 1;
+              }
+              .logic-section-icon {
+                font-size: 16px;
+                line-height: 1;
+              }
+              .logic-setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.04);
+              }
+              .logic-setting-row:last-child {
+                border-bottom: none;
+              }
+              .logic-setting-label {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                flex: 1;
+              }
+              .logic-setting-label-text {
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--text);
+              }
+              .logic-setting-label-hint {
+                font-size: 10px;
+                color: var(--text-light);
+                opacity: 0.65;
+                line-height: 1.3;
+              }
+            `}</style>
 
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #8a2be2" }}>
-              <label className="f-label">GEMINI API KEY</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <input type="text" className="f-input" style={{ marginBottom: 0, flex: 1 }} placeholder="Paste API key..." value={settings?.geminiApiKey || ""} onChange={(e) => handleChange("geminiApiKey", e.target.value)} />
-                <button className="btn-white-outline" onClick={testAiKey} style={{ minWidth: 80 }}>
-                  {aiTestStatus === "testing" ? "..." : aiTestStatus === "success" ? "✔" : "🧠 Test"}
-                </button>
+            {/* APP SETTINGS SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #4CAF50" }}>
+              <div className="logic-section-header" onClick={() => setLogicSections(prev => ({ ...prev, app: !prev.app }))}>
+                <span className="logic-section-icon">📱</span>
+                <h3 className="logic-section-title">App Settings</h3>
+                <span style={{ fontSize: 10, color: 'var(--text-light)' }}>{logicSections.app ? '▼' : '▶'}</span>
               </div>
-              <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 6 }}>Tip: this key is stored locally in your browser storage unless you sync settings to cloud.</div>
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 11,
-                  color: "var(--primary)",
-                  textDecoration: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontWeight: 600,
-                  transition: "opacity 0.2s"
-                }}
-                onMouseEnter={(e) => e.target.style.opacity = "0.8"}
-                onMouseLeave={(e) => e.target.style.opacity = "1"}
-              >
-                🔗 Get Gemini API Key →
-              </a>
+              {logicSections.app && (
+                <div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏱️ Auto-start Timer</span>
+                      <span className="logic-setting-label-hint">Automatically start timer when entering focus mode</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.autoStartTimer} onChange={() => handleToggle("autoStartTimer")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">✅ Auto-complete Subtasks</span>
+                      <span className="logic-setting-label-hint">Mark parent task complete when all subtasks are done</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoCompleteSubtask !== false} onChange={() => handleToggle("autoCompleteSubtask")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🗑️ Confirm Task Deletion</span>
+                      <span className="logic-setting-label-hint">Show confirmation dialog before deleting tasks</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.confirmTaskDeletion !== false} onChange={() => handleToggle("confirmTaskDeletion")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🎭 Reduced Motion</span>
+                      <span className="logic-setting-label-hint">Reduce animations and transitions for accessibility</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.reducedMotion} onChange={() => handleToggle("reducedMotion")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">👁️ Show Debug Info</span>
+                      <span className="logic-setting-label-hint">Display debugging information in console and UI</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.showDebugInfo !== false} onChange={() => handleToggle("showDebugInfo")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🛠️ Dev Tools</span>
+                      <span className="logic-setting-label-hint">Show developer tools and advanced options</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.showDevTools !== false} onChange={() => handleToggle("showDevTools")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏳ Hide Completed Delay (seconds)</span>
+                      <span className="logic-setting-label-hint">Delay before hiding completed tasks (0 = hide immediately)</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      className="f-input" 
+                      style={{ width: 80, marginBottom: 0 }} 
+                      value={settings?.hideCompletedDelay || 0} 
+                      onChange={(e) => handleChange("hideCompletedDelay", Math.max(0, parseInt(e.target.value) || 0))} 
+                      min="0"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12 }}>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, cursor: "pointer" }}>
-                <span>🔔 System Notifications</span>
-                <input type="checkbox" checked={!!settings?.enableNotifications} onChange={() => handleToggle("enableNotifications")} />
-              </label>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, cursor: "pointer" }}>
-                <span>⏰ Auto reminders</span>
-                <input type="checkbox" checked={settings?.autoAddReminders !== false} onChange={() => handleToggle("autoAddReminders")} />
-              </label>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <span>🛠️ Dev Tools</span>
-                <input type="checkbox" checked={settings?.showDevTools !== false} onChange={() => handleToggle("showDevTools")} />
-              </label>
+            {/* BEHAVIOR SETTINGS SECTION */}
+            <div className="logic-section" style={{ borderLeft: "4px solid #2196F3" }}>
+              <div className="logic-section-header" onClick={() => setLogicSections(prev => ({ ...prev, behavior: !prev.behavior }))}>
+                <span className="logic-section-icon">⚡</span>
+                <h3 className="logic-section-title">Behavior Settings</h3>
+                <span style={{ fontSize: 10, color: 'var(--text-light)' }}>{logicSections.behavior ? '▼' : '▶'}</span>
+              </div>
+              {logicSections.behavior && (
+                <div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🔔 System Notifications</span>
+                      <span className="logic-setting-label-hint">Enable browser notifications for reminders and alerts</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.enableNotifications} onChange={() => handleToggle("enableNotifications")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏰ Auto Add Reminders</span>
+                      <span className="logic-setting-label-hint">Automatically add reminders when setting task due dates</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoAddReminders !== false} onChange={() => handleToggle("autoAddReminders")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⌨️ Keyboard Shortcuts</span>
+                      <span className="logic-setting-label-hint">Enable keyboard shortcuts for quick actions</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.enableKeyboardShortcuts !== false} onChange={() => handleToggle("enableKeyboardShortcuts")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">💾 Auto-save Drafts</span>
+                      <span className="logic-setting-label-hint">Automatically save form drafts while editing</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoSaveDrafts !== false} onChange={() => handleToggle("autoSaveDrafts")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">🔄 Auto-refresh Data</span>
+                      <span className="logic-setting-label-hint">Automatically refresh data when switching tabs</span>
+                    </div>
+                    <input type="checkbox" checked={settings?.autoRefreshData !== false} onChange={() => handleToggle("autoRefreshData")} />
+                  </div>
+                </div>
+              )}
             </div>
+
           </div>
         )}
 
         {/* GAME TAB */}
+        {/* AI TAB */}
+        {settingsView === "ai" && (
+          <div className="fade-in-up">
+            <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 16 }}>🧠 AI Settings</h3>
+            
+            {/* API Configuration */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>🔑 API Configuration</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Enter your Google Gemini API key to enable AI features. Get your key from{" "}
+                <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)" }}>
+                  Google AI Studio
+                </a>
+              </p>
+              
+              <input
+                className="f-input"
+                type="password"
+                placeholder="Enter your Gemini API key"
+                value={settings?.geminiApiKey || ""}
+                onChange={(e) => handleChange("geminiApiKey", e.target.value)}
+                style={{ width: "100%", marginBottom: 12 }}
+              />
+              
+              <button
+                className={aiTestStatus === "testing" ? "btn-white-outline" : aiTestStatus === "success" ? "btn-primary" : "btn-primary"}
+                onClick={testAiKey}
+                disabled={aiTestStatus === "testing"}
+                style={{ width: "100%" }}
+              >
+                {aiTestStatus === "testing" && "⏳ Testing..."}
+                {aiTestStatus === "success" && "✅ API Key Works!"}
+                {aiTestStatus === "error" && "❌ Test Failed"}
+                {aiTestStatus === "idle" && "🔍 Test API Key"}
+              </button>
+            </div>
+
+            {/* Model Settings */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>⚙️ Model Settings</h4>
+              
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  🌡️ Temperature: {settings?.aiTemperature !== undefined ? settings.aiTemperature.toFixed(1) : 0.7}
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  Controls creativity vs consistency. Lower = more focused, Higher = more creative
+                </p>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={settings?.aiTemperature !== undefined ? settings.aiTemperature : 0.7}
+                  onChange={(e) => handleChange("aiTemperature", parseFloat(e.target.value))}
+                  style={{ width: "100%", marginBottom: 8 }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-light)" }}>
+                  <span>Focused (0.0)</span>
+                  <span>Balanced (0.7)</span>
+                  <span>Creative (1.0)</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🔄 Auto-retry on Failure</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Automatically retry failed AI requests up to 3 times</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings?.aiAutoRetry !== false}
+                    onChange={() => handleToggle("aiAutoRetry")}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Feature Toggles */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>✨ AI Features</h4>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🤖 AI Task Parsing</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Use AI to parse tasks from natural language input</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings?.enableAITaskParsing !== false}
+                    onChange={() => handleToggle("enableAITaskParsing")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>📝 AI Description Generation</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Generate task descriptions automatically from titles</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAIDescriptionGeneration}
+                    onChange={() => handleToggle("enableAIDescriptionGeneration")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>📋 AI Subtask Generation</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Generate subtasks automatically for new tasks</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAISubtasks}
+                    onChange={() => handleToggle("enableAISubtasks")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>✨ AI Task Suggestions</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Get AI-powered task suggestions based on your activity</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAISuggestions}
+                    onChange={() => handleToggle("enableAISuggestions")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🎯 AI Task Prioritization</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Let AI suggest priority levels for new tasks</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAIPrioritization}
+                    onChange={() => handleToggle("enableAIPrioritization")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>💡 AI Ideas Enhancement</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Use AI to expand and refine ideas in the Ideas tab</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAIIdeas}
+                    onChange={() => handleToggle("enableAIIdeas")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🎯 AI Goal Generation</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Generate goals and break them into tasks using AI</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAIGoals}
+                    onChange={() => handleToggle("enableAIGoals")}
+                  />
+                </label>
+
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🎰 AI Spin Suggestions</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Get AI suggestions when spinning for tasks</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.enableAISpin}
+                    onChange={() => handleToggle("enableAISpin")}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* AI Personality */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>🎭 AI Personality</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Choose how AI responds to you - from encouraging to direct
+              </p>
+              
+              <select
+                className="f-select"
+                value={settings?.aiPersonality || "helpful"}
+                onChange={(e) => handleChange("aiPersonality", e.target.value)}
+                style={{ width: "100%" }}
+              >
+                <option value="helpful">🤝 Helpful Assistant (Default)</option>
+                <option value="encouraging">💪 Encouraging Coach</option>
+                <option value="direct">🎯 Direct & Focused</option>
+                <option value="creative">✨ Creative & Inspiring</option>
+                <option value="professional">💼 Professional & Formal</option>
+                <option value="friendly">😊 Friendly & Casual</option>
+              </select>
+            </div>
+
+            {/* Advanced Settings */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid var(--primary)" }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>⚡ Advanced Settings</h4>
+              
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>
+                  📏 Max Response Length
+                </label>
+                <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 8 }}>
+                  Maximum tokens for AI responses (higher = longer responses, more cost)
+                </p>
+                <input
+                  type="number"
+                  className="f-input"
+                  min="100"
+                  max="4000"
+                  step="100"
+                  value={settings?.aiMaxTokens || 1000}
+                  onChange={(e) => handleChange("aiMaxTokens", parseInt(e.target.value) || 1000)}
+                  style={{ width: "100%", marginBottom: 0 }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🔇 Silent Mode</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Disable success notifications for AI operations</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.aiSilentMode}
+                    onChange={() => handleToggle("aiSilentMode")}
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>🐛 Debug Mode</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Log AI requests and responses to console</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.aiDebugMode}
+                    onChange={() => handleToggle("aiDebugMode")}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Info Section */}
+            <div style={{ background: "rgba(255, 107, 53, 0.1)", padding: 12, borderRadius: 12, border: "1px solid rgba(255, 107, 53, 0.2)" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--primary)" }}>ℹ️ About AI Features</div>
+              <div style={{ fontSize: 11, color: "var(--text-light)", lineHeight: 1.6 }}>
+                AI features use Google's Gemini API. Usage may incur costs based on your API plan. 
+                All AI processing happens through Google's servers - your data is sent to Gemini for processing.
+                Enable only the features you need to optimize performance and costs.
+              </div>
+            </div>
+          </div>
+        )}
+
         {settingsView === "game" && (
           <div className="fade-in-up">
             <style>{`

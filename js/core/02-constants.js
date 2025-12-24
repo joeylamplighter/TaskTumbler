@@ -29,15 +29,16 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "people", "places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "crm", "crm:people", "crm:places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:ai", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
       timer: true,
       lists: true,
       goals: true,
-      people: true,
-      places: true,
+      crm: true,
+      "crm:people": false,
+      "crm:places": false,
       stats: true,
       "stats:overview": false,
       "stats:charts": false,
@@ -46,6 +47,7 @@
       settings: true,
       "settings:view": false,
       "settings:logic": false,
+      "settings:ai": false,
       "settings:game": false,
       "settings:cats": false,
       "settings:data": false,
@@ -53,7 +55,7 @@
 
     // --- Header Right Mode ---
     headerRightMode: "quickNav", // "none" | "quickNav" | "xp" | "status"
-    headerQuickNavItems: ["people", "lists", "settings:view"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings:view", "search"] - Default quick nav items always loaded on fresh start
+    headerQuickNavItems: ["people", "lists", "settings:view"], // Array of up to 3: ["spin", "tasks", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings:view", "search", "sync"] - Default quick nav items always loaded on fresh start
     headerShowAllNavDropdown: true, // Show 4th dropdown option with all navigation items in alphabetical order
 
     // --- Default Nav Bar Items (shown when nav bar is empty) ---
