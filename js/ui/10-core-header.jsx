@@ -4,12 +4,12 @@
 // Updated: 2025-12-21 - Header Right Mode system
 // ===========================================
 
-function AppHeader({ 
-  userStats, 
-  user, 
-  syncState, 
-  onSyncClick, 
-  onBrandClick, 
+function AppHeader({
+  userStats,
+  user,
+  syncState,
+  onSyncClick,
+  onBrandClick,
   dockVisible,
   // New props for header right mode
   headerRightMode = 'none',
@@ -34,6 +34,7 @@ function AppHeader({
   showDevTools = false,
   onToggleDevTools,
   onReset,
+  onLoadSamples,
 }) {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -415,7 +416,7 @@ function AppHeader({
             </div>
 
             {/* Actions section - Dev Mode, Reset, etc. */}
-            {(onToggleDevTools || onReset) && (
+            {(onToggleDevTools || onLoadSamples || onReset) && (
               <>
                 <div style={{
                   height: '1px',
@@ -453,6 +454,37 @@ function AppHeader({
                       <span style={{ fontSize: '16px' }}>🛠️</span>
                       <span>Dev Mode</span>
                       {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
+                    </button>
+                  )}
+                  {onLoadSamples && (
+                    <button
+                      onClick={() => {
+                        onLoadSamples();
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        color: 'var(--text)',
+                        transition: 'background 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--input-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>🎲</span>
+                      <span>Load Sample Data</span>
                     </button>
                   )}
                   {onReset && (

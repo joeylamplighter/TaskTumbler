@@ -3229,6 +3229,7 @@ const removeSubCategory = (parentCat, subName) => {
               }));
             }}
             onReset={handleEmergencyReset}
+            onLoadSamples={handleLoadSamples}
           />
 
           <div
