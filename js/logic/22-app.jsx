@@ -3292,7 +3292,7 @@ const removeSubCategory = (parentCat, subName) => {
             )}
 
             {tab === "goals" && <GoalsTabComp goals={goals} setGoals={setGoals} tasks={tasks} notify={notify} />}
-            {tab === "people" && <PeopleTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
+            {tab === "people" && <PeopleTabComp people={allPeople} setPeople={setPeople} tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setTasks={setTasks} onViewTask={setViewTask} />}
             {tab === "places" && <PlacesTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
             {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} userStats={userStats} onViewTask={setViewTask} />}
             {tab === "duel" && (
