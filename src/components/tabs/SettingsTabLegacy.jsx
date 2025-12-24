@@ -2,44 +2,24 @@
 import React from "react";
 
 export default function SettingsTabLegacy(props) {
-  const {
-    settings,
-    setSettings,
-    categories,
-    setCategories,
-    onExport,
-    onImport,
-    onLoadSamples,
-    onFullReset,
-    initialView,
-    notify,
-  } = props;
+  try {
+    const {
+      settings,
+      setSettings,
+      categories,
+      setCategories,
+      onExport,
+      onImport,
+      onLoadSamples,
+      onFullReset,
+      initialView,
+      notify,
+    } = props;
 
-  const { useState, useEffect, useMemo, useRef, useCallback } = React;
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
     const [foldRename, setFoldRename] = useState(false);
     const [foldScore, setFoldScore] = useState(false);
     const [foldSubs, setFoldSubs] = useState(true); // usually the only one you need open
-    
-    // Subtabs collapse state (persisted in localStorage)
-    const [subTabsCollapsed, setSubTabsCollapsed] = useState(() => {
-      try {
-        const saved = localStorage.getItem('settings_subTabsCollapsed');
-        return saved === 'true';
-      } catch {
-        return false;
-      }
-    });
-    
-    // Persist collapse state to localStorage
-    const toggleSubTabsCollapsed = useCallback(() => {
-      setSubTabsCollapsed(prev => {
-        const newValue = !prev;
-        try {
-          localStorage.setItem('settings_subTabsCollapsed', String(newValue));
-        } catch {}
-        return newValue;
-      });
-    }, []);
     
     // Game Settings section collapse states
     const [gameSections, setGameSections] = useState({
@@ -51,13 +31,6 @@ export default function SettingsTabLegacy(props) {
     
     const toggleGameSection = useCallback((section) => {
       setGameSections(prev => ({ ...prev, [section]: !prev[section] }));
-    }, []);
-    
-    // Navigation bar expanded tabs state
-    const [expandedNavTabs, setExpandedNavTabs] = useState({ stats: false, settings: false });
-    
-    const toggleNavTab = useCallback((tabKey) => {
-      setExpandedNavTabs(prev => ({ ...prev, [tabKey]: !prev[tabKey] }));
     }, []);
 
     // Advanced settings: History filter defaults
@@ -710,10 +683,10 @@ function Fold({ title, right, open, onToggle, children }) {
   );
 }
 
-  // ===========================================
-  // RENDER
-  // ===========================================
-  return (
+    // ===========================================
+    // RENDER
+    // ===========================================
+    return (
       <div className="fade-in" style={{ paddingBottom: 20 }}>
         <style>{`
           .tt-seg { display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 14px; }
@@ -1239,398 +1212,65 @@ function Fold({ title, right, open, onToggle, children }) {
 
         `}</style>
 
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            onClick={toggleSubTabsCollapsed}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              flexShrink: 0
-            }}
-            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-          />
-                {subTabsCollapsed ? (
-            <div
-              onClick={toggleSubTabsCollapsed}
-              style={{
-                flex: 1,
-                height: 2,
-                backgroundColor: 'var(--border)',
-                cursor: 'pointer',
-                borderRadius: 1
-              }}
-              title="Expand subtabs"
-            />
-          ) : (
-            <div className="segmented-control tt-seg" style={{ flex: 1 }}>
-              <button className={`sc-btn ${settingsView === "view" ? "active" : ""}`} onClick={() => setSettingsView("view")}>
-                🎨 View
-              </button>
-              <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
-                ⚙️ Logic
-              </button>
-              <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
-                ⚔️ Game
-              </button>
-              <button className={`sc-btn ${settingsView === "cats" ? "active" : ""}`} onClick={() => setSettingsView("cats")}>
-                📁 Cats
-              </button>
-              <button className={`sc-btn ${settingsView === "data" ? "active" : ""}`} onClick={() => setSettingsView("data")}>
-                💾 Data
-              </button>
-            </div>
-          )}
-          <div
-            onClick={toggleSubTabsCollapsed}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: subTabsCollapsed ? 'var(--primary)' : 'var(--text-light)',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              flexShrink: 0
-            }}
-            title={subTabsCollapsed ? 'Expand subtabs' : 'Collapse subtabs'}
-          />
+        <div className="segmented-control tt-seg">
+          <button className={`sc-btn ${settingsView === "view" ? "active" : ""}`} onClick={() => setSettingsView("view")}>
+            🎨 View
+          </button>
+          <button className={`sc-btn ${settingsView === "logic" ? "active" : ""}`} onClick={() => setSettingsView("logic")}>
+            ⚙️ Logic
+          </button>
+          <button className={`sc-btn ${settingsView === "game" ? "active" : ""}`} onClick={() => setSettingsView("game")}>
+            ⚔️ Game
+          </button>
+          <button className={`sc-btn ${settingsView === "cats" ? "active" : ""}`} onClick={() => setSettingsView("cats")}>
+            📁 Cats
+          </button>
+          <button className={`sc-btn ${settingsView === "data" ? "active" : ""}`} onClick={() => setSettingsView("data")}>
+            💾 Data
+          </button>
         </div>
 
         {/* VIEW TAB */}
         {settingsView === "view" && (
           <div className="fade-in-up">
-            <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 20 }}>🎨 Appearance</h3>
-            
-            {/* Theme & Display Settings */}
-            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 20 }}>
-              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, color: "var(--text-light)", fontWeight: 700 }}>Theme & Display</h4>
-              
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text-light)" }}>
-                  Color Theme
-                </label>
-                <select 
-                  className="f-select" 
-                  style={{ width: "100%" }} 
-                  value={settings?.theme || "dark"} 
-                  onChange={(e) => handleChange("theme", e.target.value)}
-                >
-                  <option value="dark">🌙 Dark Default</option>
-                  <option value="light">☀️ Light Theme</option>
-                  <option value="midnight">🌌 Midnight Blue</option>
-                  <option value="forest">🌲 Deep Forest</option>
-                  <option value="synthwave">👾 Synthwave</option>
-                  <option value="coffee">☕ Warm Coffee</option>
-                </select>
-              </div>
+            <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 16 }}>🎨 Appearance</h3>
+            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
+              <select className="f-select" style={{ width: "100%", marginBottom: 12 }} value={settings?.theme || "dark"} onChange={(e) => handleChange("theme", e.target.value)}>
+                <option value="dark">🌙 Dark Default</option>
+                <option value="light">☀️ Light Theme</option>
+                <option value="midnight">🌌 Midnight Blue</option>
+                <option value="forest">🌲 Deep Forest</option>
+                <option value="synthwave">👾 Synthwave</option>
+                <option value="coffee">☕ Warm Coffee</option>
+              </select>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <div>
-                    <span style={{ fontWeight: 500, display: "block", marginBottom: 2 }}>Show Task Times</span>
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Display estimated/actual time on tasks</span>
-                  </div>
-                  <input type="checkbox" checked={!!settings?.showTaskTimes} onChange={() => handleToggle("showTaskTimes")} />
-                </label>
-                
-                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <div>
-                    <span style={{ fontWeight: 500, display: "block", marginBottom: 2 }}>Reduce Motion</span>
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Disable animations and transitions</span>
-                  </div>
-                  <input type="checkbox" checked={!!settings?.reducedMotion} onChange={() => handleToggle("reducedMotion")} />
-                </label>
-              </div>
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span>Show Task Times</span>
+                <input type="checkbox" checked={!!settings?.showTaskTimes} onChange={() => handleToggle("showTaskTimes")} />
+              </label>
             </div>
 
-            {/* Navigation Bar Configuration */}
-            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 20 }}>
-              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, color: "var(--text-light)", fontWeight: 700 }}>Navigation Bar</h4>
-              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 16 }}>
-                Control which items appear in the main navigation bar and their order
-              </p>
-              
-              {/* Nav Bar Visibility */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "var(--text-light)" }}>Visible Items</div>
-                <div style={{ background: "var(--input-bg)", padding: 12, borderRadius: 8 }}>
-                  {(() => {
-                    const mainTabs = [
-                      { key: "spin", icon: "🎰", label: "Spin" },
-                      { key: "tasks", icon: "📋", label: "Tasks" },
-                      { key: "timer", icon: "⏱️", label: "Track" },
-                      { key: "lists", icon: "💡", label: "Ideas" },
-                      { key: "goals", icon: "🎯", label: "Goals" },
-                      { key: "stats", icon: "📊", label: "Data", hasSubtabs: true },
-                      { key: "people", icon: "👥", label: "People" },
-                      { key: "duel", icon: "⚔️", label: "Duel" },
-                      { key: "settings", icon: "⚙️", label: "Settings", hasSubtabs: true },
-                    ];
-                    
-                    const statsSubtabs = [
-                      { key: "stats:overview", icon: "📊", label: "Overview" },
-                      { key: "stats:charts", icon: "📈", label: "Charts" },
-                      { key: "stats:history", icon: "📜", label: "History" },
-                      { key: "stats:people", icon: "👥", label: "People" },
-                      { key: "stats:places", icon: "📍", label: "Places" },
-                    ];
-                    
-                    const settingsSubtabs = [
-                      { key: "settings:view", icon: "👁️", label: "View" },
-                      { key: "settings:logic", icon: "🧠", label: "Logic" },
-                      { key: "settings:game", icon: "🎮", label: "Game" },
-                      { key: "settings:cats", icon: "🏷️", label: "Categories" },
-                      { key: "settings:data", icon: "💾", label: "Data" },
-                    ];
-                    
-                    return (
-                      <div>
-                        {mainTabs.map((item) => {
-                          const isSettings = item.key === "settings";
-                          const isVisible = settings?.navBarVisibleItems?.[item.key] !== false;
-                          const isExpanded = expandedNavTabs[item.key] || false;
-                          
-                          return (
-                            <div key={item.key}>
-                              <label
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                  marginBottom: 8,
-                                  cursor: isSettings ? "default" : "pointer",
-                                  opacity: isSettings ? 0.7 : 1,
-                                }}
-                              >
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                                  {item.hasSubtabs && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleNavTab(item.key);
-                                      }}
-                                      style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        color: "var(--text-light)",
-                                        cursor: "pointer",
-                                        padding: "2px 4px",
-                                        fontSize: 12,
-                                        width: 20,
-                                        textAlign: "left",
-                                      }}
-                                    >
-                                      {isExpanded ? "▼" : "▶"}
-                                    </button>
-                                  )}
-                                  {!item.hasSubtabs && <span style={{ width: 20 }} />}
-                                  <span style={{ fontWeight: 500 }}>
-                                    {item.icon} {item.label}
-                                    {isSettings && <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 6 }}>(Always visible)</span>}
-                                  </span>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isVisible}
-                                  disabled={isSettings}
-                                  onChange={() => {
-                                    if (isSettings) return;
-                                    setSettings((p) => {
-                                      const current = p?.navBarVisibleItems || {};
-                                      return {
-                                        ...p,
-                                        navBarVisibleItems: {
-                                          ...current,
-                                          [item.key]: !isVisible,
-                                        },
-                                      };
-                                    });
-                                  }}
-                                />
-                              </label>
-                              
-                              {/* Show subtabs if expanded */}
-                              {item.hasSubtabs && isExpanded && (
-                                <div style={{ marginLeft: 28, marginBottom: 8 }}>
-                                  {(item.key === "stats" ? statsSubtabs : settingsSubtabs).map((subtab) => {
-                                    const isSubtabVisible = settings?.navBarVisibleItems?.[subtab.key] === true;
-                                    return (
-                                      <label
-                                        key={subtab.key}
-                                        style={{
-                                          display: "flex",
-                                          justifyContent: "space-between",
-                                          alignItems: "center",
-                                          marginBottom: 6,
-                                          cursor: "pointer",
-                                          paddingLeft: 8,
-                                          fontSize: 13,
-                                        }}
-                                      >
-                                        <span style={{ fontWeight: 400, color: "var(--text-light)" }}>
-                                          {subtab.icon} {subtab.label}
-                                        </span>
-                                        <input
-                                          type="checkbox"
-                                          checked={isSubtabVisible}
-                                          onChange={() => {
-                                            setSettings((p) => {
-                                              const current = p?.navBarVisibleItems || {};
-                                              return {
-                                                ...p,
-                                                navBarVisibleItems: {
-                                                  ...current,
-                                                  [subtab.key]: !isSubtabVisible,
-                                                },
-                                              };
-                                            });
-                                          }}
-                                        />
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-              
-              {/* Nav Bar Order */}
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "var(--text-light)" }}>Item Order</div>
-                <div style={{ background: "var(--input-bg)", padding: 12, borderRadius: 8 }}>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
-                    Use arrows to reorder. Only visible items are shown.
-                  </p>
-            
-            {/* Nav Bar Order */}
-            <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, marginTop: 24 }}>Navigation Bar Order</h4>
+            <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12 }}>Visible Tabs</h4>
             <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
-              <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 12 }}>
-                Use arrows to move items up/down. Only visible items are shown.
-              </p>
-              {(() => {
-                const allNavItems = [
-                  { key: "spin", icon: "🎰", label: "Spin", isSubtab: false },
-                  { key: "tasks", icon: "📋", label: "Tasks", isSubtab: false },
-                  { key: "timer", icon: "⏱️", label: "Track", isSubtab: false },
-                  { key: "lists", icon: "💡", label: "Ideas", isSubtab: false },
-                  { key: "goals", icon: "🎯", label: "Goals", isSubtab: false },
-                  { key: "stats", icon: "📊", label: "Data", isSubtab: false },
-                  { key: "stats:overview", icon: "📊", label: "Data: Overview", isSubtab: true },
-                  { key: "stats:charts", icon: "📈", label: "Data: Charts", isSubtab: true },
-                  { key: "stats:history", icon: "📜", label: "Data: History", isSubtab: true },
-                  { key: "stats:people", icon: "👥", label: "Data: People", isSubtab: true },
-                  { key: "stats:places", icon: "📍", label: "Data: Places", isSubtab: true },
-                  { key: "people", icon: "👥", label: "People", isSubtab: false },
-                  { key: "duel", icon: "⚔️", label: "Duel", isSubtab: false },
-                  { key: "settings", icon: "⚙️", label: "Settings", isSubtab: false },
-                  { key: "settings:view", icon: "👁️", label: "Settings: View", isSubtab: true },
-                  { key: "settings:logic", icon: "🧠", label: "Settings: Logic", isSubtab: true },
-                  { key: "settings:game", icon: "🎮", label: "Settings: Game", isSubtab: true },
-                  { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", isSubtab: true },
-                  { key: "settings:data", icon: "💾", label: "Settings: Data", isSubtab: true },
-                ];
-                
-                const currentOrder = settings?.navItemsOrder || allNavItems.map(item => item.key);
-                // Filter to only show visible items
-                const visibleItems = allNavItems.filter((item) => {
-                  if (item.key === "settings") return true;
-                  return settings?.navBarVisibleItems?.[item.key] === true;
-                });
-                const orderedItems = [...visibleItems].sort((a, b) => {
-                  const aIndex = currentOrder.indexOf(a.key);
-                  const bIndex = currentOrder.indexOf(b.key);
-                  if (aIndex === -1 && bIndex === -1) return 0;
-                  if (aIndex === -1) return 1;
-                  if (bIndex === -1) return -1;
-                  return aIndex - bIndex;
-                });
-                
-                return orderedItems.map((item, index) => {
-                  const canMoveUp = index > 0;
-                  const canMoveDown = index < orderedItems.length - 1;
-                  
-                  return (
-                    <div
-                      key={item.key}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px",
-                        marginBottom: 4,
-                        background: "var(--input-bg)",
-                        borderRadius: 6,
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <button
-                          onClick={() => {
-                            if (!canMoveUp) return;
-                            const newOrder = [...currentOrder];
-                            [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-                            setSettings((p) => ({ ...p, navItemsOrder: newOrder }));
-                          }}
-                          disabled={!canMoveUp}
-                          style={{
-                            background: canMoveUp ? "var(--primary)" : "transparent",
-                            border: "none",
-                            color: canMoveUp ? "white" : "var(--text-muted)",
-                            cursor: canMoveUp ? "pointer" : "not-allowed",
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            fontSize: 10,
-                            opacity: canMoveUp ? 1 : 0.3,
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!canMoveDown) return;
-                            const newOrder = [...currentOrder];
-                            [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-                            setSettings((p) => ({ ...p, navItemsOrder: newOrder }));
-                          }}
-                          disabled={!canMoveDown}
-                          style={{
-                            background: canMoveDown ? "var(--primary)" : "transparent",
-                            border: "none",
-                            color: canMoveDown ? "white" : "var(--text-muted)",
-                            cursor: canMoveDown ? "pointer" : "not-allowed",
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            fontSize: 10,
-                            opacity: canMoveDown ? 1 : 0.3,
-                          }}
-                        >
-                          ↓
-                        </button>
-                      </div>
-                      <span style={{ flex: 1, fontSize: 14, fontWeight: item.isSubtab ? 400 : 500, paddingLeft: item.isSubtab ? 16 : 0, color: item.isSubtab ? "var(--text-light)" : "var(--text)" }}>
-                        {item.icon} {item.label}
-                      </span>
-                    </div>
-                  );
-                });
-              })()}
-                </div>
-              </div>
+              {[
+                { id: "tasks", label: "📋 Tasks" },
+                { id: "timer", label: "⏱ Track" },
+                { id: "lists", label: "💡 Ideas" },
+                { id: "goals", label: "🎯 Goals" },
+                { id: "stats", label: "📊 Data" },
+                { id: "duel", label: "⚔️ Duel" },
+              ].map((tab) => (
+                <label key={tab.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, cursor: "pointer" }}>
+                  <span style={{ fontWeight: 500 }}>{tab.label}</span>
+                  <input type="checkbox" checked={settings?.visibleTabs?.[tab.id] !== false} onChange={() => handleTabToggle(tab.id)} />
+                </label>
+              ))}
             </div>
             
             {/* Header Right Mode Configuration */}
+            <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, marginTop: 24 }}>Header Right Mode</h4>
             <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, border: "1px solid var(--border)" }}>
-              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, color: "var(--text-light)", fontWeight: 700 }}>Header Right Mode</h4>
-              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 16 }}>
                 Control what appears on the top right of the header (slot icon always visible on left)
               </p>
               
@@ -1661,58 +1301,43 @@ function Fold({ title, right, open, onToggle, children }) {
                     Quick Nav Items (up to 3)
                   </label>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {(() => {
-                      const quickNavOptions = [
-                        { key: "spin", icon: "🎰", label: "Spin" },
-                        { key: "tasks", icon: "📋", label: "Tasks" },
-                        { key: "timer", icon: "⏱️", label: "Track" },
-                        { key: "lists", icon: "💡", label: "Ideas" },
-                        { key: "goals", icon: "🎯", label: "Goals" },
-                        { key: "stats", icon: "📊", label: "Data" },
-                        { key: "people", icon: "👥", label: "People" },
-                        { key: "duel", icon: "⚔️", label: "Duel" },
-                        { key: "settings", icon: "⚙️", label: "Settings" },
-                        { key: "search", icon: "🔍", label: "Search (Cmd/Ctrl+K)" },
-                      ];
+                    {["spin", "tasks", "timer", "stats", "settings", "search"].map((item) => {
+                      const isSelected = (settings?.headerQuickNavItems || []).includes(item);
+                      const currentItems = settings?.headerQuickNavItems || [];
+                      const canAdd = isSelected || currentItems.length < 3;
                       
-                      return quickNavOptions.map((option) => {
-                        const isSelected = (settings?.headerQuickNavItems || []).includes(option.key);
-                        const currentItems = settings?.headerQuickNavItems || [];
-                        const canAdd = isSelected || currentItems.length < 3;
-                        
-                        return (
-                          <label
-                            key={option.key}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              cursor: canAdd ? "pointer" : "not-allowed",
-                              opacity: canAdd ? 1 : 0.5,
+                      return (
+                        <label
+                          key={item}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            cursor: canAdd ? "pointer" : "not-allowed",
+                            opacity: canAdd ? 1 : 0.5,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={!canAdd && !isSelected}
+                            onChange={(e) => {
+                              setSettings((p) => {
+                                const current = p?.headerQuickNavItems || [];
+                                const newItems = e.target.checked
+                                  ? [...current, item].slice(0, 3)
+                                  : current.filter((i) => i !== item);
+                                return { ...p, headerQuickNavItems: newItems };
+                              });
                             }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              disabled={!canAdd && !isSelected}
-                              onChange={(e) => {
-                                setSettings((p) => {
-                                  const current = p?.headerQuickNavItems || [];
-                                  const newItems = e.target.checked
-                                    ? [...current, option.key].slice(0, 3)
-                                    : current.filter((i) => i !== option.key);
-                                  return { ...p, headerQuickNavItems: newItems };
-                                });
-                              }}
-                              style={{ cursor: canAdd ? "pointer" : "not-allowed" }}
-                            />
-                            <span style={{ fontSize: 14 }}>
-                              {option.icon} {option.label}
-                            </span>
-                          </label>
-                        );
-                      });
-                    })()}
+                            style={{ cursor: canAdd ? "pointer" : "not-allowed" }}
+                          />
+                          <span style={{ fontSize: 14, textTransform: "capitalize" }}>
+                            {item === "search" ? "🔍 Search (Cmd/Ctrl+K)" : `🎯 ${item}`}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
                     Selected: {((settings?.headerQuickNavItems || []).length || 0)} / 3
@@ -3488,5 +3113,15 @@ function Fold({ title, right, open, onToggle, children }) {
         )}
       </div>
     );
+  } catch (error) {
+    console.error('SettingsTabLegacy render error:', error);
+    return (
+      <div style={{ padding: 20, textAlign: 'center' }}>
+        <h3>Settings Error</h3>
+        <p>Something went wrong. Please refresh the page.</p>
+        <p style={{ fontSize: 12, opacity: 0.7 }}>{error?.message || 'Unknown error'}</p>
+      </div>
+    );
+  }
 }
 
