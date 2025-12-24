@@ -146,7 +146,18 @@ const clearInitFlag = () => {
 // Helper to get the primary tab from the URL hash (e.g., #spin or #settings?view=data -> 'settings')
 const initialTab = () => {
   const primaryHash = window.location.hash.slice(1).split("?")[0].toLowerCase();
-  const validTabs = ["tasks", "spin", "timer", "lists", "goals", "stats", "people", "duel", "settings"];
+  const validTabs = ["tasks", "spin", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings"];
+
+  // Handle legacy people/places URLs - redirect to contacts subtabs
+  if (primaryHash === "people") {
+    window.location.hash = "#contacts:people";
+    return "contacts:people";
+  }
+  if (primaryHash === "places") {
+    window.location.hash = "#contacts:places";
+    return "contacts:places";
+  }
+
   return validTabs.includes(primaryHash) ? primaryHash : "spin";
 };
 
@@ -2146,8 +2157,9 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
-    { key: "people", icon: "👥", label: "People", displayLabel: "People" },
-    { key: "places", icon: "📍", label: "Places", displayLabel: "Places" },
+    { key: "contacts", icon: "👥", label: "Contacts", displayLabel: "Contacts", hasDropdown: true, dropdownItems: ["contacts:people", "contacts:places"] },
+    { key: "contacts:people", icon: "👥", label: "People", displayLabel: "People", groupLabel: "Contacts" },
+    { key: "contacts:places", icon: "📍", label: "Places", displayLabel: "Places", groupLabel: "Contacts" },
     { key: "stats", icon: "📊", label: "Data", displayLabel: "Data", hasDropdown: true, dropdownItems: ["stats:overview", "stats:charts", "stats:history"] },
     { key: "stats:overview", icon: "📊", label: "Overview", displayLabel: "Overview", groupLabel: "Data" },
     { key: "stats:charts", icon: "📈", label: "Charts", displayLabel: "Charts", groupLabel: "Data" },
@@ -3292,8 +3304,8 @@ const removeSubCategory = (parentCat, subName) => {
             )}
 
             {tab === "goals" && <GoalsTabComp goals={goals} setGoals={setGoals} tasks={tasks} notify={notify} />}
-            {tab === "people" && <PeopleTabComp people={allPeople} setPeople={setPeople} tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setTasks={setTasks} onViewTask={setViewTask} />}
-            {tab === "places" && <PlacesTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
+            {(tab === "people" || tab === "contacts:people") && <PeopleTabComp people={allPeople} setPeople={setPeople} tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setTasks={setTasks} onViewTask={setViewTask} />}
+            {(tab === "places" || tab === "contacts:places") && <PlacesTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} locations={DM?.locations?.getAll?.() || []} setLocations={(newList) => DM?.locations?.setAll?.(newList)} setPeople={setPeople} setTasks={setTasks} onViewTask={setViewTask} />}
             {tab === "stats" && <StatsTabComp tasks={tasks} history={activities} categories={categories} settings={settings} notify={notify} userStats={userStats} onViewTask={setViewTask} />}
             {tab === "duel" && (
               <DuelTabComp tasks={tasks} onUpdate={updateTask} settings={settings} notify={notify} fireConfetti={window.fireConfetti} addActivity={addActivity} />
@@ -3349,6 +3361,12 @@ const removeSubCategory = (parentCat, subName) => {
                   setSettingsView(subtab);
                   window.location.hash = `#settings?view=${subtab}`;
                   window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
+                } else if (parentTab === "contacts") {
+                  // Handle contacts dropdown - set tab directly to the subtab value
+                  const contactTab = subtab === "people" ? "contacts:people" : "contacts:places";
+                  setTab(contactTab);
+                  window.location.hash = `#${contactTab}`;
+                  window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: contactTab } }));
                 }
               } else {
                 setTab(tabKey);

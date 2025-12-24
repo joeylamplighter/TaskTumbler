@@ -89,6 +89,8 @@ const style = {
             const match = hash.match(/[?&]view=([^&]+)/);
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             active = current === 'settings' && currentSubtab === subtab;
+          } else if (parentTab === 'contacts') {
+            active = current === `contacts:${subtab}`;
           }
         } else {
           active = current === item.key;
@@ -106,6 +108,9 @@ const style = {
             const match = hash.match(/[?&]view=([^&]+)/);
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             return current === 'settings' && currentSubtab === subtab;
+          }
+          if (childKey.startsWith('contacts:')) {
+            return current === childKey;
           }
           return false;
         });
@@ -183,6 +188,8 @@ const style = {
                       const match = hash.match(/[?&]view=([^&]+)/);
                       const currentSubtab = match ? match[1].toLowerCase() : 'view';
                       childActive = current === 'settings' && currentSubtab === subtab;
+                    } else if (childKey.startsWith('contacts:')) {
+                      childActive = current === childKey;
                     }
 
                     return (

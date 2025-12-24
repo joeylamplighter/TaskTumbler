@@ -20,7 +20,7 @@ function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
   }
 
   return (
-    <nav 
+    <nav
       className={`navbar ${hidden ? 'navbar-hidden' : ''}`}
       aria-label="Main navigation"
     >
@@ -36,6 +36,8 @@ function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
             const match = hash.match(/[?&]view=([^&]+)/);
             const currentSubtab = match ? match[1].toLowerCase() : 'view';
             isActive = current === 'settings' && currentSubtab === subtab;
+          } else if (parentTab === 'contacts') {
+            isActive = current === `contacts:${subtab}`;
           }
         } else {
           isActive = current === item.key;
