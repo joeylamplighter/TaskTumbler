@@ -8,7 +8,7 @@
 // ===========================================
 
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import ReactDOM from 'react-dom'
 
 (function () {
   const { useState, useEffect, useMemo, useRef } = React;

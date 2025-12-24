@@ -1,8 +1,9 @@
 // Make React available globally for legacy code
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import * as ReactDOMLegacy from 'react-dom'
 window.React = React
-window.ReactDOM = ReactDOM
+window.ReactDOM = { ...ReactDOM, createPortal: ReactDOMLegacy.createPortal }
 
 // Theme CSS variables are loaded via <link> tags in index.html
 // Import main styles after theme variables are available
