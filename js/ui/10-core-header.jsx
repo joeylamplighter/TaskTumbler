@@ -554,8 +554,8 @@ function AppHeader({
                     </>
                   )}
 
-                  {/* Dev Tools */}
-                  {onToggleDevTools && (
+                  {/* Dev Tools - Only show when searched */}
+                  {onToggleDevTools && searchQuery.trim() && 'dev'.includes(searchQuery.toLowerCase()) && (
                     <button
                       onClick={() => {
                         onToggleDevTools();
@@ -587,7 +587,7 @@ function AppHeader({
                       {showDevTools && <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.7 }}>ON</span>}
                     </button>
                   )}
-                  {onLoadSamples && (
+                  {onLoadSamples && searchQuery.trim() && ('load'.includes(searchQuery.toLowerCase()) || 'sample'.includes(searchQuery.toLowerCase())) && (
                     <button
                       onClick={() => {
                         onLoadSamples();
@@ -618,7 +618,7 @@ function AppHeader({
                       <span>Load Sample Data</span>
                     </button>
                   )}
-                  {onReset && (
+                  {onReset && searchQuery.trim() && 'reset'.includes(searchQuery.toLowerCase()) && (
                     <button
                       onClick={() => {
                         if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
