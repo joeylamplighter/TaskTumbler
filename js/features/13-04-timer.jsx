@@ -432,7 +432,7 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
 
     {/* HERO */}
     <div style={{ marginTop: 12, marginBottom: 32 }}>
-      <ClockHero timerState={timerState} getElapsed={getElapsed} fmt={fmt} />
+      <ClockHero timerState={timerState} getElapsed={getElapsed} fmt={fmt} onToggle={onToggle} />
 
       {/* ACTIVITY NAME (flat) */}
       <div style={{ maxWidth: 620, margin: "24px auto 20px" }}>
@@ -905,7 +905,7 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
 }
 
 /** Smooth hero: updates only itself (not the entire tab) */
-const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt }) {
+const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt, onToggle }) {
   const { useEffect, useState } = React;
 
   const isRunning = !!timerState?.isRunning;
@@ -935,6 +935,7 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt })
   return (
     <div style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%" }}>
       <div
+        onClick={onToggle}
         style={{
           width: "400px",
           maxWidth: "400px",
@@ -947,13 +948,18 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt })
           background: "transparent",
           border: "none",
           animation: isRunning ? "softGlow 8s ease-in-out infinite" : "none",
-          boxShadow: isRunning 
+          boxShadow: isRunning
             ? "0 0 60px rgba(255, 107, 53, 0.3), 0 0 120px rgba(255, 107, 53, 0.2), 0 0 180px rgba(255, 107, 53, 0.1), 0 0 240px rgba(255, 107, 53, 0.05)"
             : "0 0 60px rgba(255, 107, 53, 0), 0 0 120px rgba(255, 107, 53, 0), 0 0 180px rgba(255, 107, 53, 0), 0 0 240px rgba(255, 107, 53, 0)",
           padding: "20px",
           boxSizing: "border-box",
           overflow: "hidden",
+          cursor: "pointer",
+          transition: "transform 0.1s ease",
         }}
+        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.98)"}
+        onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
         <div
           style={{
@@ -971,6 +977,7 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt })
             textAlign: "center",
             whiteSpace: "nowrap",
             overflow: "hidden",
+            userSelect: "none",
           }}
         >
           {fmt(elapsed)}
