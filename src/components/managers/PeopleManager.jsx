@@ -17,7 +17,24 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   const [isEditing, setIsEditing] = useState(false);
   const [viewingId, setViewingId] = useState(null);
   const [editId, setEditId] = useState(null);
-  
+
+  // View mode state - 'cards', 'list', 'table', 'compact'
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('peopleViewMode') || 'cards';
+    } catch {
+      return 'cards';
+    }
+  });
+
+  // Function to change view mode
+  const changeViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('peopleViewMode', mode);
+    } catch {}
+  };
+
   // Refs for form fields to enable Enter key navigation
   const fieldRefs = {
     firstName: useRef(null),
@@ -747,6 +764,38 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSelectedPersonName, safePeople.length]);
 
+  // Helper function to get stats for a person
+  const getPersonStats = (person) => {
+    const personTasks = (tasks || []).filter(t => {
+      const assignedPeople = t.assignedPeople || t.people || [];
+      return assignedPeople.includes(person.name) ||
+             assignedPeople.includes(getDisplayName(person));
+    });
+
+    const personHistory = safeHistory.filter(h => {
+      const hp = h.people || [];
+      return hp.includes(person.name) || hp.includes(getDisplayName(person));
+    });
+
+    const totalTime = personHistory.reduce((sum, h) => sum + (h.duration || 0), 0);
+    const hours = Math.floor(totalTime / 60);
+    const minutes = totalTime % 60;
+
+    let timeStr = '';
+    if (hours > 0) {
+      timeStr = hours + 'h';
+    } else if (minutes > 0) {
+      timeStr = minutes + 'm';
+    } else {
+      timeStr = '0m';
+    }
+
+    return {
+      taskCount: personTasks.length,
+      timeDisplay: timeStr
+    };
+  };
+
   return (
     <div
       className="modal-overlay"
@@ -766,104 +815,293 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
         }}
       >
         {/* HEADER */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Top Row: Title and Actions */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Top Row: Title, View Modes, and Add Button */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div 
-              onClick={toggleColumnCollapse}
-              style={{ 
-                fontSize: 14, 
-                fontWeight: 900, 
-                letterSpacing: 1, 
-                color: 'var(--text)',
-                cursor: 'pointer',
-                userSelect: 'none',
-                transition: 'opacity 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.opacity = 0.7}
-              onMouseLeave={(e) => e.target.style.opacity = 1}
-              title={isColumnCollapsed ? "Expand Column" : "Collapse Column to Letters"}
-            >
-              PEOPLE
+            <div style={{
+              fontSize: 15,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              color: 'var(--text-light)',
+              textTransform: 'uppercase'
+            }}>
+              MY PEOPLE ({filtered.length})
             </div>
+
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {!isColumnCollapsed && (
+              {/* View Mode Buttons */}
+              <div style={{ display: 'flex', gap: 4, background: 'var(--input-bg)', padding: 4, borderRadius: 8, border: '1px solid var(--border)' }}>
                 <button
-                  onClick={startAdd}
-                  title="Add person"
-                  style={{ 
-                    background: 'var(--primary)', 
-                    color: 'white', 
+                  onClick={() => changeViewMode('cards')}
+                  title="Cards View"
+                  style={{
+                    background: viewMode === 'cards' ? '#FF6B35' : 'transparent',
+                    color: viewMode === 'cards' ? 'white' : 'var(--text)',
                     border: 'none',
-                    padding: '8px 16px', 
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 700,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    transition: 'background 0.2s'
+                    fontSize: 18,
+                    padding: 0,
+                    transition: 'all 0.2s'
                   }}
-                  onMouseEnter={(e) => e.target.style.background = 'var(--primary-hover)'}
-                  onMouseLeave={(e) => e.target.style.background = 'var(--primary)'}
                 >
-                  + Add
+                  🎴
                 </button>
-              )}
+                <button
+                  onClick={() => changeViewMode('list')}
+                  title="List View"
+                  style={{
+                    background: viewMode === 'list' ? '#FF6B35' : 'transparent',
+                    color: viewMode === 'list' ? 'white' : 'var(--text)',
+                    border: 'none',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    padding: 0,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📄
+                </button>
+                <button
+                  onClick={() => changeViewMode('table')}
+                  title="Table View"
+                  style={{
+                    background: viewMode === 'table' ? '#FF6B35' : 'transparent',
+                    color: viewMode === 'table' ? 'white' : 'var(--text)',
+                    border: 'none',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    padding: 0,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📊
+                </button>
+                <button
+                  onClick={() => changeViewMode('compact')}
+                  title="Compact View"
+                  style={{
+                    background: viewMode === 'compact' ? '#FF6B35' : 'transparent',
+                    color: viewMode === 'compact' ? 'white' : 'var(--text)',
+                    border: 'none',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    padding: 0,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  ⚡
+                </button>
+              </div>
+
               <button
-                onClick={() => onClose?.()}
-                title="Close"
-                style={{ 
-                  background: 'transparent',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                  width: 36,
-                  height: 36,
+                onClick={startAdd}
+                title="Add person"
+                style={{
+                  background: '#FF6B35',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 18px',
                   borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: 14,
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  fontSize: 18,
-                  padding: 0,
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(255, 107, 53, 0.3)'
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--input-bg)';
-                  e.target.style.borderColor = 'var(--primary)';
+                  e.target.style.background = '#FF8555';
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(255, 107, 53, 0.4)';
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                  e.target.style.borderColor = 'var(--border)';
+                  e.target.style.background = '#FF6B35';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(255, 107, 53, 0.3)';
                 }}
               >
-                ✕
+                + Add New
               </button>
             </div>
           </div>
+
           {/* Search Row */}
-          {!isColumnCollapsed && (
-            <input
-              className="f-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search people…"
-              style={{ marginBottom: 0 }}
-            />
-          )}
+          <input
+            className="f-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search people…"
+            style={{ marginBottom: 0, background: 'var(--input-bg)', fontSize: 15 }}
+          />
         </div>
 
         {/* BODY */}
-        <div style={{ display: 'flex', minHeight: 0, flex: 1 }}>
-          {/* LIST - Collapsible Column */}
-          <div style={{ 
-            width: isColumnCollapsed ? 60 : '30%',
-            minWidth: isColumnCollapsed ? 60 : 200,
-            maxWidth: isColumnCollapsed ? 60 : 350,
-            borderRight: '1px solid var(--border)', 
-            overflowY: 'auto',
-            transition: 'width 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
+        {viewMode === 'cards' ? (
+          // Cards Grid View
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-light)', opacity: 0.7 }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>No people yet</div>
+                <div style={{ fontSize: 13, marginTop: 8 }}>Click "+ Add New" to create your first contact</div>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                gap: '16px',
+                maxWidth: '1400px',
+                margin: '0 auto'
+              }}>
+                {filtered.map(p => {
+                  const displayName = getDisplayName(p);
+                  const initials = getInitials(p);
+                  const stats = getPersonStats(p);
+                  const type = (p.type || 'client');
+
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => startView(p)}
+                      style={{
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 16,
+                        padding: '20px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        position: 'relative'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                      }}
+                    >
+                      {/* Initials Circle */}
+                      <div style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: '50%',
+                        background: 'var(--input-bg)',
+                        border: '2px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        fontSize: 24,
+                        color: 'var(--text)',
+                        marginBottom: 12
+                      }}>
+                        {initials}
+                      </div>
+
+                      {/* Name */}
+                      <div style={{
+                        fontWeight: 700,
+                        fontSize: 16,
+                        color: 'var(--text)',
+                        marginBottom: 4,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        width: '100%'
+                      }}>
+                        {displayName}
+                      </div>
+
+                      {/* Type */}
+                      <div style={{
+                        fontSize: 12,
+                        color: 'var(--text-light)',
+                        fontWeight: 600,
+                        textTransform: 'capitalize',
+                        marginBottom: 12
+                      }}>
+                        {type}
+                      </div>
+
+                      {/* Stats */}
+                      <div style={{
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 13,
+                          color: 'var(--text)'
+                        }}>
+                          <span style={{ fontSize: 14 }}>📋</span>
+                          <span style={{ fontWeight: 600 }}>{stats.taskCount}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 13,
+                          color: '#FF6B35'
+                        }}>
+                          <span style={{ fontSize: 14 }}>⏱️</span>
+                          <span style={{ fontWeight: 600 }}>{stats.timeDisplay}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          // Original Split Layout (for list, table, compact views)
+          <div style={{ display: 'flex', minHeight: 0, flex: 1 }}>
+            {/* LIST - Collapsible Column */}
+            <div style={{
+              width: isColumnCollapsed ? 60 : '30%',
+              minWidth: isColumnCollapsed ? 60 : 200,
+              maxWidth: isColumnCollapsed ? 60 : 350,
+              borderRight: '1px solid var(--border)',
+              overflowY: 'auto',
+              transition: 'width 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
             {/* Column Header - Only show when expanded */}
             {!isColumnCollapsed && (
               <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-light)', fontWeight: 700 }}>
@@ -1322,7 +1560,8 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
               </div>
             )}
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
