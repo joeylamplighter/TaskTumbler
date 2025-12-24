@@ -427,8 +427,18 @@ const removeSubCategory = (parentCat, subName) => {
   // UI shell
   const [isDockVisible, setDockVisible] = React.useState(true);
   const [tab, setTab] = React.useState(initialTab());
-  const [settingsView] = React.useState(initialSettingsView);
-  
+  const [settingsView, setSettingsView] = React.useState(initialSettingsView);
+
+  // Update settingsView when hash changes (for dropdown navigation)
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const newView = initialSettingsView();
+      setSettingsView(newView);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Handle brand click - toggle dock visibility
   const handleBrandClick = React.useCallback(() => {
     setDockVisible((v) => !v);
@@ -3336,6 +3346,7 @@ const removeSubCategory = (parentCat, subName) => {
                   window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'stats' } }));
                 } else if (parentTab === "settings") {
                   setTab("settings");
+                  setSettingsView(subtab);
                   window.location.hash = `#settings?view=${subtab}`;
                   window.dispatchEvent(new CustomEvent('tab-change', { detail: { tab: 'settings' } }));
                 }

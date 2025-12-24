@@ -168,6 +168,12 @@ export default function SettingsTabLegacy(props) {
 
     const [settingsView, setSettingsView] = useState(normalizeView(initialView) || "view");
 
+    // Sync with initialView prop when it changes (for navigation from dropdown)
+    useEffect(() => {
+      const normalized = normalizeView(initialView) || "view";
+      setSettingsView(normalized);
+    }, [initialView, normalizeView]);
+
     // Sync state with localStorage when component mounts or when settingsView changes to 'data'
     useEffect(() => {
       if (settingsView === 'data') {
