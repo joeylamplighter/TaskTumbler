@@ -178,47 +178,42 @@ function AppHeader({
   }, [userStats]);
 
   // Get all nav items sorted alphabetically for dropdown, filtered by search
-  // Exclude parent tabs that have subtabs (like "Settings" and "Data/Stats")
-  // Only show: main tabs with no subtabs + all subtabs (but not their parent tabs)
+  // All items are now independent tabs (no parent/child relationships)
   const sortedNavItems = React.useMemo(() => {
     if (!Array.isArray(allNavItems) || allNavItems.length === 0) {
       console.warn('AppHeader: allNavItems is empty or not an array', allNavItems);
       return [];
     }
-    
-    // Find parent tabs that have subtabs
-    const parentTabsWithSubtabs = new Set();
-    allNavItems.forEach(item => {
-      if (item.isSubtab && item.parentTab) {
-        parentTabsWithSubtabs.add(item.parentTab);
-      }
-    });
-    
-    // Filter: exclude parent tabs that have subtabs, but include all subtabs and main tabs without subtabs
-    let items = allNavItems.filter(item => {
-      // If it's a subtab, include it
-      if (item.isSubtab) return true;
-      // If it's a main tab but has subtabs, exclude it
-      if (parentTabsWithSubtabs.has(item.key)) return false;
-      // Otherwise include it (main tab with no subtabs)
-      return true;
-    });
-    
+
+    let items = [...allNavItems];
+
     // Filter by search query if present
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       items = items.filter(item => {
         const label = (item.displayLabel || item.label || '').toLowerCase();
         const key = item.key.toLowerCase();
-        return label.includes(query) || key.includes(query);
+        const group = (item.groupLabel || '').toLowerCase();
+        return label.includes(query) || key.includes(query) || group.includes(query);
       });
     }
-    
-    // Sort alphabetically
+
+    // Sort: Group by groupLabel, then alphabetically
     return items.sort((a, b) => {
-      const labelA = (a.displayLabel || a.label || '').toLowerCase();
-      const labelB = (b.displayLabel || b.label || '').toLowerCase();
-      return labelA.localeCompare(labelB);
+      const groupA = a.groupLabel || '';
+      const groupB = b.groupLabel || '';
+
+      // If both have same group, sort by label
+      if (groupA === groupB) {
+        const labelA = (a.displayLabel || a.label || '').toLowerCase();
+        const labelB = (b.displayLabel || b.label || '').toLowerCase();
+        return labelA.localeCompare(labelB);
+      }
+
+      // Items without groups come first, then alphabetically by group
+      if (!groupA) return -1;
+      if (!groupB) return 1;
+      return groupA.localeCompare(groupB);
     });
   }, [allNavItems, searchQuery]);
 
@@ -374,43 +369,65 @@ function AppHeader({
                   {/* Navigation items */}
                   <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                     {sortedNavItems.length > 0 ? (
-                      sortedNavItems.map((item) => {
-                        const isActive = item.key.includes(':')
-                          ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
-                          || (item.key.startsWith('settings:') && currentTab === 'settings')
-                          : item.key === currentTab;
-                        
-                        return (
-                          <button
-                            key={item.key}
-                            onClick={() => handleNavClick(item)}
-                            style={{
-                              width: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 12px',
-                              background: isActive ? 'var(--primary-light)' : 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              textAlign: 'left',
-                              color: 'var(--text)',
-                              transition: 'background 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isActive) e.currentTarget.style.background = 'var(--input-bg)';
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isActive) e.currentTarget.style.background = 'transparent';
-                            }}
-                            title={item.label}
-                          >
-                            <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                            <span>{item.displayLabel || item.label}</span>
-                          </button>
-                        );
-                      })
+                      (() => {
+                        let lastGroup = null;
+                        return sortedNavItems.map((item, index) => {
+                          const isActive = item.key.includes(':')
+                            ? (item.key.startsWith('stats:') && currentTab === 'stats' && getCurrentSubtab() === item.key.split(':')[1])
+                            || (item.key.startsWith('settings:') && currentTab === 'settings')
+                            : item.key === currentTab;
+
+                          const showGroupHeader = item.groupLabel && item.groupLabel !== lastGroup;
+                          if (item.groupLabel) lastGroup = item.groupLabel;
+
+                          return (
+                            <React.Fragment key={item.key}>
+                              {showGroupHeader && (
+                                <div style={{
+                                  padding: '8px 12px 4px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  color: 'var(--text-light)',
+                                  opacity: 0.7,
+                                  letterSpacing: 0.8,
+                                  marginTop: index > 0 ? '8px' : 0
+                                }}>
+                                  {item.groupLabel}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => handleNavClick(item)}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 12px',
+                                  paddingLeft: item.groupLabel ? '20px' : '12px',
+                                  background: isActive ? 'var(--primary-light)' : 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  textAlign: 'left',
+                                  color: 'var(--text)',
+                                  transition: 'background 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isActive) e.currentTarget.style.background = 'var(--input-bg)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                                }}
+                                title={item.label}
+                              >
+                                <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                                <span>{item.displayLabel || item.label}</span>
+                              </button>
+                            </React.Fragment>
+                          );
+                        });
+                      })()
                     ) : (
                       <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
                         No items found
