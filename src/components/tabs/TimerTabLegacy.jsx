@@ -622,36 +622,7 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
 
     {/* HERO */}
     <div style={{ marginTop: 0, marginBottom: 4 }}>
-      <ClockHero timerState={timerState} getElapsed={getElapsed} fmt={fmt} />
-
-      {/* ACTIVITY NAME (flat) */}
-      <div style={{ maxWidth: "100%", margin: "6px auto 6px", boxSizing: "border-box" }}>
-        <input
-          type="text"
-          placeholder="What are you doing?"
-          value={timerState?.activityName || ""}
-          onChange={(e) => updateTimer({ activityName: e.target.value })}
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            fontSize: "clamp(14px, 3.5vw, 18px)",
-            fontWeight: 800,
-            textAlign: "center",
-            border: "none",
-            background: "transparent",
-            color: "var(--text)",
-            outline: "none",
-            padding: "4px 4px",
-            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-            fontFamily: "'Fredoka', sans-serif",
-            transition: "opacity 0.2s ease",
-            boxSizing: "border-box",
-            letterSpacing: "0.3px",
-          }}
-          onFocus={(e) => e.target.style.opacity = "1"}
-          onBlur={(e) => e.target.style.opacity = "1"}
-        />
-      </div>
+      
 
       {/* CATEGORY (sleek inline) */}
       <div style={{ maxWidth: "100%", margin: "0 auto 6px", boxSizing: "border-box" }}>

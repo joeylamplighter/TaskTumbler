@@ -254,7 +254,9 @@ export function DateSelect({
 
   useEffect(() => {
       if (open && value) {
-          const [y, m, d] = value.split('-').map(Number);
+          // Convert UTC date string to local date for display
+          const localDateStr = window.dateUtils?.utcToLocalDateStr?.(value) || value;
+          const [y, m, d] = localDateStr.split('-').map(Number);
           // Fix month index (0-based)
           setViewDate(new Date(y, m - 1, d));
       }
@@ -297,7 +299,10 @@ export function DateSelect({
       const y = viewDate.getFullYear();
       const m = String(viewDate.getMonth() + 1).padStart(2, '0');
       const d = String(day).padStart(2, '0');
-      setValue(`${y}-${m}-${d}`);
+      const localDateStr = `${y}-${m}-${d}`;
+      // Convert local date string to UTC for storage
+      const utcDateStr = window.dateUtils?.localToUtcDateStr?.(localDateStr) || localDateStr;
+      setValue(utcDateStr);
       setOpen(false);
   };
 

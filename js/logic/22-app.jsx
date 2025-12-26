@@ -411,6 +411,7 @@ const initialSettingsView = () => {
     logic: "logic",
     ai: "ai",
     game: "game",
+    calendar: "calendar",
     cats: "cats",
     data: "data",
     general: "view",
@@ -1395,6 +1396,24 @@ const removeSubCategory = (parentCat, subName) => {
   };
 
   // Actions
+  // Calendar sync helper
+  const syncTaskToCalendar = async (task) => {
+    if (!settings?.calendarSync?.autoSync) return;
+    if (!window.CalendarSync?.isAuthenticated?.()) return;
+    
+    try {
+      const event = await window.CalendarSync.syncTaskToCalendar(task, settings);
+      if (event && event.id && !task.calendarEventId) {
+        // Update task with calendar event ID
+        setTasks((p) => p.map(t => 
+          t.id === task.id ? { ...t, calendarEventId: event.id } : t
+        ));
+      }
+    } catch (error) {
+      console.warn('[CalendarSync] Failed to sync task:', error);
+    }
+  };
+
   const addTask = (t) => {
     const newTask = {
       ...t,
@@ -1415,6 +1434,11 @@ const removeSubCategory = (parentCat, subName) => {
       duration: 0,
       createdAt: new Date().toISOString(),
     });
+    
+    // Sync to calendar if task has start date/time
+    if (newTask.startDate && settings?.calendarSync?.autoSync) {
+      setTimeout(() => syncTaskToCalendar(newTask), 500);
+    }
     
     notify("Task Added", "✅");
   };
@@ -1449,6 +1473,11 @@ const removeSubCategory = (parentCat, subName) => {
             });
           }, 0);
         }
+        
+        // Sync to calendar if task has start date/time and auto-sync is enabled
+        if (newTask.startDate && settings?.calendarSync?.autoSync) {
+          setTimeout(() => syncTaskToCalendar(newTask), 500);
+        }
       }
       
       return updated;
@@ -1456,7 +1485,20 @@ const removeSubCategory = (parentCat, subName) => {
   };
 
   const deleteTask = (id) => {
+    const taskToDelete = tasks.find(t => t.id === id);
     setTasks((p) => p.filter((t) => t.id !== id));
+    
+    // Delete from calendar if synced
+    if (taskToDelete?.calendarEventId && settings?.calendarSync?.autoSync && window.CalendarSync?.isAuthenticated?.()) {
+      setTimeout(async () => {
+        try {
+          await window.CalendarSync.deleteTaskFromCalendar(taskToDelete, settings);
+        } catch (error) {
+          console.warn('[CalendarSync] Failed to delete calendar event:', error);
+        }
+      }, 500);
+    }
+    
     notify("Task Deleted", "🗑️");
   };
 
@@ -2906,11 +2948,12 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "stats:charts", icon: "📈", label: "Charts", displayLabel: "Charts", groupLabel: "Data" },
     { key: "stats:history", icon: "📜", label: "History", displayLabel: "History", groupLabel: "Data" },
     { key: "duel", icon: "⚔️", label: "Duel", displayLabel: "Duel" },
-    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", hasDropdown: true, dropdownItems: ["settings:view", "settings:logic", "settings:ai", "settings:game", "settings:cats", "settings:data"] },
+    { key: "settings", icon: "⚙️", label: "Settings", displayLabel: "Settings", hasDropdown: true, dropdownItems: ["settings:view", "settings:logic", "settings:ai", "settings:game", "settings:calendar", "settings:cats", "settings:data"] },
     { key: "settings:view", icon: "👁️", label: "View", displayLabel: "View", groupLabel: "Settings" },
     { key: "settings:logic", icon: "⚙️", label: "Logic", displayLabel: "Logic", groupLabel: "Settings" },
     { key: "settings:ai", icon: "🧠", label: "AI", displayLabel: "AI", groupLabel: "Settings" },
     { key: "settings:game", icon: "🎮", label: "Game", displayLabel: "Game", groupLabel: "Settings" },
+    { key: "settings:calendar", icon: "📅", label: "Calendar", displayLabel: "Calendar", groupLabel: "Settings" },
     { key: "settings:cats", icon: "🏷️", label: "Categories", displayLabel: "Cats", groupLabel: "Settings" },
     { key: "settings:data", icon: "💾", label: "Data Settings", displayLabel: "Data", groupLabel: "Settings" },
   ];
@@ -3191,6 +3234,9 @@ const removeSubCategory = (parentCat, subName) => {
     setSettings={setSettings}
     categories={categories}
     setCategories={setCategories}
+    tasks={tasks}
+    updateTask={updateTask}
+    addTask={addTask}
     onExport={handleExportBackup}
 	notify={notify}
     onImport={(e) => {

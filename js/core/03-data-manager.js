@@ -690,15 +690,45 @@
             completed: Boolean(t.completed),
             estimatedTime: t.estimatedTime || '',
             estimatedTimeUnit: t.estimatedTimeUnit || 'min',
-            startDate: t.startDate || '',
+            startDate: (() => {
+                const date = t.startDate;
+                if (!date || date === '') return '';
+                if (typeof date === 'string') {
+                    // If already in YYYY-MM-DD format, ensure it's treated as UTC
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                        // Validate and return as UTC date string
+                        const parsed = new Date(date + 'T00:00:00Z');
+                        if (!isNaN(parsed.getTime())) {
+                            return parsed.toISOString().split('T')[0];
+                        }
+                    } else {
+                        // Parse other formats and convert to UTC
+                        const parsed = new Date(date);
+                        if (!isNaN(parsed.getTime())) {
+                            return parsed.toISOString().split('T')[0];
+                        }
+                    }
+                }
+                return '';
+            })(),
             startTime: t.startTime || '',
             dueDate: (() => {
                 const date = t.dueDate;
                 if (!date || date === '') return '';
                 if (typeof date === 'string') {
-                    const parsed = new Date(date);
-                    if (!isNaN(parsed.getTime())) {
-                        return parsed.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    // If already in YYYY-MM-DD format, ensure it's treated as UTC
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                        // Validate and return as UTC date string
+                        const parsed = new Date(date + 'T00:00:00Z');
+                        if (!isNaN(parsed.getTime())) {
+                            return parsed.toISOString().split('T')[0];
+                        }
+                    } else {
+                        // Parse other formats and convert to UTC
+                        const parsed = new Date(date);
+                        if (!isNaN(parsed.getTime())) {
+                            return parsed.toISOString().split('T')[0];
+                        }
                     }
                 }
                 return '';
@@ -718,10 +748,26 @@
             location: t.location || '',
             locationCoords: t.locationCoords || null,
             percentComplete,
-            createdAt: t.createdAt || new Date().toISOString(),
-            completedAt: t.completedAt || null,
+            createdAt: (() => {
+                if (t.createdAt) {
+                    const parsed = new Date(t.createdAt);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
+            completedAt: (() => {
+                if (!t.completedAt) return null;
+                const parsed = new Date(t.completedAt);
+                return !isNaN(parsed.getTime()) ? parsed.toISOString() : null;
+            })(),
             actualTime: Number(t.actualTime) || 0,
-            lastModified: t.lastModified || new Date().toISOString(),
+            lastModified: (() => {
+                if (t.lastModified) {
+                    const parsed = new Date(t.lastModified);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
             subtype: t.subtype || null,
             description: t.description || '',
             images: Array.isArray(t.images) ? t.images.filter(Boolean) : []
@@ -739,7 +785,13 @@
             category: g.category || 'General',
             target: Number(g.target) || 0,
             progress: Number(g.progress) || 0,
-            createdAt: g.createdAt || new Date().toISOString(),
+            createdAt: (() => {
+                if (g.createdAt) {
+                    const parsed = new Date(g.createdAt);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
         };
     };
 
@@ -771,7 +823,14 @@
             locationLabel: a.locationLabel || a.location || '',
             locationCoords: a.locationCoords || null,
             locationId: a.locationId || null,
-            createdAt: a.createdAt || a.timestamp || new Date().toISOString(),
+            createdAt: (() => {
+                const dateStr = a.createdAt || a.timestamp;
+                if (dateStr) {
+                    const parsed = new Date(dateStr);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
         };
     };
 
@@ -782,7 +841,13 @@
         return {
             id: n.id || makeId(),
             text,
-            createdAt: n.createdAt || new Date().toISOString(),
+            createdAt: (() => {
+                if (n.createdAt) {
+                    const parsed = new Date(n.createdAt);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
         };
     };
 
@@ -853,8 +918,21 @@
             // Profile picture (DP) - same as profilePicture - preserve if exists
             profilePicture: p.profilePicture || p.dp || '',
             profilePictureType: p.profilePictureType || 'initials',
-            createdAt: p.createdAt || new Date().toISOString(),
-            updatedAt: p.updatedAt || p.createdAt || new Date().toISOString(),
+            createdAt: (() => {
+                if (p.createdAt) {
+                    const parsed = new Date(p.createdAt);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
+            updatedAt: (() => {
+                const dateStr = p.updatedAt || p.createdAt;
+                if (dateStr) {
+                    const parsed = new Date(dateStr);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
         };
     };
 
@@ -870,7 +948,13 @@
             address: String(loc.address || '').trim(),
             type: String(loc.type || 'client').trim(),
             notes: String(loc.notes || '').trim(),
-            createdAt: loc.createdAt || new Date().toISOString()
+            createdAt: (() => {
+                if (loc.createdAt) {
+                    const parsed = new Date(loc.createdAt);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })()
         };
     };
 
@@ -878,7 +962,14 @@
         if (!evt || typeof evt !== 'object') return null;
         return {
             id: evt.id || makeId(),
-            ts: evt.ts || evt.timestamp || new Date().toISOString(),
+            ts: (() => {
+                const dateStr = evt.ts || evt.timestamp;
+                if (dateStr) {
+                    const parsed = new Date(dateStr);
+                    return !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                }
+                return new Date().toISOString();
+            })(),
             type: String(evt.type || 'log').trim(),
             taskId: evt.taskId || null,
             title: String(evt.title || '').trim(),
@@ -1300,7 +1391,7 @@
             const now = new Date();
             const entry = {
                 id: makeId(),
-                ts: now.toISOString(),
+                ts: new Date().toISOString(),
                 type: String(type || 'log').trim(),
                 taskId,
                 title: String(t.title || meta.title || '').trim(),

@@ -805,10 +805,10 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
             <div style={{ marginBottom: 15 }}>
               <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 140px", gap: 10, alignItems: "center" }}>
                 <div style={{ fontSize: 13, fontWeight: 800 }}>Start</div>
-                <input type="date" className="f-input" style={{ margin: 0 }} value={data.startDate} onChange={(e) => setData({ ...data, startDate: e.target.value })} />
+                <input type="date" className="f-input" style={{ margin: 0 }} value={window.dateUtils?.utcToLocalDateStr?.(data.startDate) || data.startDate || ""} onChange={(e) => setData({ ...data, startDate: window.dateUtils?.localToUtcDateStr?.(e.target.value) || e.target.value })} />
                 <input type="time" className="f-input" style={{ margin: 0, textAlign: "center" }} value={data.startTime} onChange={(e) => setData({ ...data, startTime: e.target.value })} />
                 <div style={{ fontSize: 13, fontWeight: 800 }}>Due</div>
-                <input type="date" className="f-input" style={{ margin: 0 }} value={data.dueDate} onChange={(e) => setData({ ...data, dueDate: e.target.value })} />
+                <input type="date" className="f-input" style={{ margin: 0 }} value={window.dateUtils?.utcToLocalDateStr?.(data.dueDate) || data.dueDate || ""} onChange={(e) => setData({ ...data, dueDate: window.dateUtils?.localToUtcDateStr?.(e.target.value) || e.target.value })} />
                 <input type="time" className="f-input" style={{ margin: 0, textAlign: "center" }} value={data.dueTime} onChange={(e) => setData({ ...data, dueTime: e.target.value })} />
               </div>
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-light)" }}>

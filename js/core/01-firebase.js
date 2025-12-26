@@ -107,19 +107,10 @@ if (isFirebaseConfigured()) {
 }
 
 // ===========================================
-// FIX #81: Safe Haptics Helper
+// NOTE: Safe Haptics Helper moved to Haptics module (js/logic/11-haptics.js)
 // ===========================================
-const safeHaptics = (pattern = [50]) => {
-    try {
-        if (window.navigator && typeof window.navigator.vibrate === 'function') {
-            window.navigator.vibrate(pattern);
-            return true;
-        }
-    } catch (e) {
-        // Silently fail on desktop or unsupported devices
-    }
-    return false;
-};
+// The Haptics module provides safeHaptics for backward compatibility
+// and includes proper settings integration
 
 // 📖 SECTION 2: CLOUD SYNC MANAGER (Exposed Globally)
 const CloudSync = {
@@ -194,6 +185,6 @@ const CloudSync = {
 // Expose core variables globally for other script files
 window.isFirebaseConfigured = isFirebaseConfigured;
 window.CloudSync = CloudSync;
-window.safeHaptics = safeHaptics;
+// safeHaptics is provided by Haptics module (js/logic/11-haptics.js)
 
 console.log('✅ Firebase loaded (Roadmap Fixes: #77, #81)');

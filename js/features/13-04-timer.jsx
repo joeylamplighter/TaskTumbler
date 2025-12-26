@@ -523,22 +523,32 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* Actions */}
-      <div style={{ maxWidth: "90%", margin: "0 auto", width: "90%", boxSizing: "border-box", padding: "0", display: "flex", justifyContent: "center" }}>
+      <div style={{ 
+        maxWidth: "90%", 
+        margin: "0 auto", 
+        width: "90%", 
+        boxSizing: "border-box", 
+        padding: "0", 
+        display: "flex", 
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12,
+      }}>
         <div style={{ 
           display: "flex",
           flexDirection: "column",
-          gap: 4, 
-          width: "auto",
-          maxWidth: "90px",
-          minWidth: 0,
+          gap: 8, 
+          width: "100%",
+          maxWidth: "100px",
+          alignItems: "center",
           boxSizing: "border-box",
         }}>
           <button
             onClick={onToggle}
             title={isRunning ? "Pause" : (getElapsed() || 0) > 0 ? "Resume" : "Start"}
             style={{
-              height: "clamp(36px, 8vw, 48px)",
-              width: "clamp(60px, 15vw, 100px)",
+              height: "45px",
+              width: "100px",
               borderRadius: 3,
               fontSize: "clamp(18px, 4.5vw, 22px)",
               fontWeight: 900,
@@ -561,8 +571,8 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
               onClick={handleFinish}
               title="Finish"
               style={{
-                height: "clamp(36px, 8vw, 48px)",
-                width: "clamp(60px, 15vw, 100px)",
+                height: "45px",
+                width: "100px",
                 borderRadius: 3,
                 fontSize: "clamp(18px, 4.5vw, 22px)",
                 fontWeight: 900,
@@ -584,8 +594,8 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
         </div>
 
         {(getElapsed() || 0) > 0 && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-              <button
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <button
               onClick={onReset}
               className="btn-white-outline"
               style={{ 
@@ -917,8 +927,8 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt, o
       <div
         onClick={onToggle}
         style={{
-          width: "400px",
-          maxWidth: "400px",
+          width: "300px",
+          maxWidth: "300px",
           height: 200,
           borderRadius: 4,
           position: "relative",
@@ -943,8 +953,8 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt, o
       >
         <div
           style={{
-            fontSize: "clamp(88px, 14.5vw, 130px)",
-            fontWeight: 900,
+            fontSize: "75px",
+            fontWeight: 800,
             fontFamily: "monospace",
             color: "var(--text)",
             fontVariantNumeric: "tabular-nums",
@@ -953,7 +963,8 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt, o
             textShadow: "none",
             position: "relative",
             zIndex: 2,
-            width: "100%",
+            width: "300px",
+            minWidth: "300px",
             textAlign: "center",
             whiteSpace: "nowrap",
             overflow: "hidden",

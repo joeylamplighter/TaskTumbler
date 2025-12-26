@@ -1,5 +1,6 @@
 
 import React from "react";
+import CalendarSyncSettings from "../calendar/CalendarSyncSettings";
 
 export default function SettingsTabLegacy(props) {
   try {
@@ -8,6 +9,8 @@ export default function SettingsTabLegacy(props) {
       setSettings,
       categories,
       setCategories,
+      tasks = [],
+      updateTask = () => {},
       onExport,
       onImport,
       onLoadSamples,
@@ -1669,7 +1672,7 @@ function Fold({ title, right, open, onToggle, children }) {
                         const allNavItems = [
                           "spin", "tasks", "timer", "lists", "goals", "people", "places", "stats",
                           "stats:overview", "stats:charts", "stats:history", "duel", "settings",
-                          "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"
+                          "settings:view", "settings:logic", "settings:game", "settings:calendar", "settings:cats", "settings:data"
                         ];
                         const allSelected = {};
                         allNavItems.forEach(key => {
@@ -1757,6 +1760,7 @@ function Fold({ title, right, open, onToggle, children }) {
                       { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true },
                       { key: "settings:logic", icon: "🧠", label: "Settings: Logic", displayLabel: "Logic", isSubtab: true },
                       { key: "settings:game", icon: "🎮", label: "Settings: Game", displayLabel: "Game", isSubtab: true },
+                      { key: "settings:calendar", icon: "📅", label: "Settings: Calendar", displayLabel: "Calendar", isSubtab: true },
                       { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", displayLabel: "Categories", isSubtab: true },
                       { key: "settings:data", icon: "💾", label: "Settings: Data", displayLabel: "Data", isSubtab: true },
                     ];
@@ -1841,6 +1845,7 @@ function Fold({ title, right, open, onToggle, children }) {
                       { key: "settings:view", icon: "👁️", label: "Settings: View", displayLabel: "View", isSubtab: true },
                       { key: "settings:logic", icon: "🧠", label: "Settings: Logic", displayLabel: "Logic", isSubtab: true },
                       { key: "settings:game", icon: "🎮", label: "Settings: Game", displayLabel: "Game", isSubtab: true },
+                      { key: "settings:calendar", icon: "📅", label: "Settings: Calendar", displayLabel: "Calendar", isSubtab: true },
                       { key: "settings:cats", icon: "🏷️", label: "Settings: Categories", displayLabel: "Categories", isSubtab: true },
                       { key: "settings:data", icon: "💾", label: "Settings: Data", displayLabel: "Data", isSubtab: true },
                     ];
@@ -2589,6 +2594,19 @@ function Fold({ title, right, open, onToggle, children }) {
                 Enable only the features you need to optimize performance and costs.
               </div>
             </div>
+          </div>
+        )}
+
+        {settingsView === "calendar" && (
+          <div className="fade-in-up">
+            <CalendarSyncSettings
+              settings={settings}
+              setSettings={setSettings}
+              tasks={tasks}
+              updateTask={updateTask}
+              addTask={addTask}
+              notify={safeNotify}
+            />
           </div>
         )}
 

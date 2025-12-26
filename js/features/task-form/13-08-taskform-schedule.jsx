@@ -149,10 +149,10 @@
       <div style={{ background: "var(--card)", padding: 10, borderRadius: 12, border: "1px solid var(--border)", marginBottom: 15, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "52px minmax(0, 170px) minmax(0, 150px)", gap: 8, alignItems: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-light)" }}>Start</div>
-          <input type="date" className="f-input" style={{ margin: 0, width: "100%", minWidth: 0 }} value={data.startDate} onChange={(e)=>setData({ ...data, startDate: e.target.value })} />
+          <input type="date" className="f-input" style={{ margin: 0, width: "100%", minWidth: 0 }} value={window.dateUtils?.utcToLocalDateStr?.(data.startDate) || data.startDate || ""} onChange={(e)=>setData({ ...data, startDate: window.dateUtils?.localToUtcDateStr?.(e.target.value) || e.target.value })} />
           <input type="time" className="f-input" style={{ margin: 0, width: "90%", minWidth: 0, textAlign: "center", paddingRight: 14, fontVariantNumeric: "tabular-nums" }} value={data.startTime} onChange={(e)=>setData({ ...data, startTime: e.target.value })} />
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-light)" }}>Due</div>
-          <input type="date" className="f-input" style={{ margin: 0, width: "100%", minWidth: 0 }} value={data.dueDate} onChange={(e)=>setData({ ...data, dueDate: e.target.value })} />
+          <input type="date" className="f-input" style={{ margin: 0, width: "100%", minWidth: 0 }} value={window.dateUtils?.utcToLocalDateStr?.(data.dueDate) || data.dueDate || ""} onChange={(e)=>setData({ ...data, dueDate: window.dateUtils?.localToUtcDateStr?.(e.target.value) || e.target.value })} />
           <input type="time" className="f-input" style={{ margin: 0, width: "90%", minWidth: 0, textAlign: "center", paddingRight: 14, fontVariantNumeric: "tabular-nums" }} value={data.dueTime} onChange={(e)=>setData({ ...data, dueTime: e.target.value })} />
         </div>
 

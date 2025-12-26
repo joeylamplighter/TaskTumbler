@@ -1,0 +1,544 @@
+// js/logic/10-system-access.js
+// ===========================================
+// 🔋 SYSTEM ACCESS: Battery, DND, Device State
+// ===========================================
+
+(function () {
+    'use strict';
+
+    /**
+     * System Access Manager
+     * Provides battery level monitoring, Do Not Disturb detection, and device state monitoring
+     */
+    const SystemAccess = {
+        // State
+        battery: null,
+        isMonitoring: false,
+        listeners: {
+            battery: [],
+            dnd: [],
+            deviceState: [],
+            online: [],
+            visibility: []
+        },
+        
+        // Internal state
+        _batteryManager: null,
+        _lastBatteryLevel: null,
+        _lastDNDState: null,
+        _lastDeviceState: null,
+        
+        /**
+         * Initialize system access monitoring
+         * @returns {Promise<boolean>} True if successfully initialized
+         */
+        async init() {
+            if (this.isMonitoring) {
+                return true;
+            }
+            
+            try {
+                // Initialize battery monitoring
+                await this._initBattery();
+                
+                // Initialize visibility monitoring (for DND detection)
+                this._initVisibility();
+                
+                // Initialize online/offline monitoring
+                this._initOnlineStatus();
+                
+                // Initialize focus monitoring
+                this._initFocus();
+                
+                this.isMonitoring = true;
+                return true;
+            } catch (error) {
+                console.error('SystemAccess init error:', error);
+                return false;
+            }
+        },
+        
+        /**
+         * Initialize battery API monitoring
+         * @private
+         */
+        async _initBattery() {
+            if (!navigator.getBattery) {
+                console.log('Battery API not supported');
+                return;
+            }
+            
+            try {
+                this._batteryManager = await navigator.getBattery();
+                this.battery = {
+                    level: this._batteryManager.level,
+                    charging: this._batteryManager.charging,
+                    chargingTime: this._batteryManager.chargingTime,
+                    dischargingTime: this._batteryManager.dischargingTime,
+                    supported: true
+                };
+                
+                // Listen to battery events
+                this._batteryManager.addEventListener('chargingchange', () => this._onBatteryChange());
+                this._batteryManager.addEventListener('chargingtimechange', () => this._onBatteryChange());
+                this._batteryManager.addEventListener('dischargingtimechange', () => this._onBatteryChange());
+                this._batteryManager.addEventListener('levelchange', () => this._onBatteryChange());
+                
+                this._onBatteryChange();
+            } catch (error) {
+                console.error('Battery API error:', error);
+                this.battery = { supported: false, error: error.message };
+            }
+        },
+        
+        /**
+         * Handle battery state changes
+         * @private
+         */
+        _onBatteryChange() {
+            if (!this._batteryManager) return;
+            
+            const newState = {
+                level: this._batteryManager.level,
+                charging: this._batteryManager.charging,
+                chargingTime: this._batteryManager.chargingTime,
+                dischargingTime: this._batteryManager.dischargingTime,
+                supported: true,
+                timestamp: Date.now()
+            };
+            
+            const changed = !this._lastBatteryLevel || 
+                this._lastBatteryLevel.level !== newState.level ||
+                this._lastBatteryLevel.charging !== newState.charging;
+            
+            this.battery = newState;
+            this._lastBatteryLevel = { ...newState };
+            
+            if (changed) {
+                this._notifyListeners('battery', newState);
+            }
+        },
+        
+        /**
+         * Initialize visibility API monitoring (for DND detection)
+         * @private
+         */
+        _initVisibility() {
+            if (!document) return;
+            
+            const self = this;
+            const handleVisibilityChange = function() {
+                const isVisible = !document.hidden;
+                const dndState = self.getDNDState();
+                const dndActive = dndState.active;
+                
+                if (!self._lastDNDState || self._lastDNDState.active !== dndActive) {
+                    self._lastDNDState = dndState;
+                    self._notifyListeners('dnd', dndState);
+                    self._notifyListeners('visibility', { visible: isVisible, dnd: dndState });
+                }
+            };
+            
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            // Initial check
+            handleVisibilityChange();
+        },
+        
+        /**
+         * Initialize online/offline monitoring
+         * @private
+         */
+        _initOnlineStatus() {
+            if (!window) return;
+            
+            const handleOnlineChange = () => {
+                const isOnline = navigator.onLine;
+                const deviceState = this.getDeviceState();
+                this._notifyListeners('online', { online: isOnline, deviceState });
+            };
+            
+            window.addEventListener('online', handleOnlineChange);
+            window.addEventListener('offline', handleOnlineChange);
+            
+            // Initial state
+            handleOnlineChange();
+        },
+        
+        /**
+         * Initialize focus monitoring
+         * @private
+         */
+        _initFocus() {
+            if (!window) return;
+            
+            const self = this;
+            const handleFocusChange = function() {
+                const dndState = self.getDNDState();
+                const dndActive = dndState.active;
+                
+                if (!self._lastDNDState || self._lastDNDState.active !== dndActive) {
+                    self._lastDNDState = dndState;
+                    self._notifyListeners('dnd', dndState);
+                }
+                
+                const deviceState = self.getDeviceState();
+                const deviceStateStr = JSON.stringify(deviceState);
+                const lastDeviceStateStr = self._lastDeviceState ? JSON.stringify(self._lastDeviceState) : null;
+                
+                if (deviceStateStr !== lastDeviceStateStr) {
+                    self._lastDeviceState = {};
+                    for (var key in deviceState) {
+                        if (deviceState.hasOwnProperty(key)) {
+                            self._lastDeviceState[key] = deviceState[key];
+                        }
+                    }
+                    self._notifyListeners('deviceState', deviceState);
+                }
+            };
+            
+            window.addEventListener('focus', handleFocusChange);
+            window.addEventListener('blur', handleFocusChange);
+            
+            // Initial check
+            handleFocusChange();
+        },
+        
+        /**
+         * Get current battery information
+         * @returns {object} Battery state object
+         */
+        getBattery() {
+            if (!this.battery) {
+                return {
+                    supported: false,
+                    level: null,
+                    charging: null,
+                    chargingTime: null,
+                    dischargingTime: null
+                };
+            }
+            
+            return { ...this.battery };
+        },
+        
+        /**
+         * Get battery level as percentage (0-100)
+         * @returns {number|null} Battery percentage or null if not available
+         */
+        getBatteryLevel() {
+            if (!this.battery || !this.battery.supported) {
+                return null;
+            }
+            return Math.round(this.battery.level * 100);
+        },
+        
+        /**
+         * Check if device is charging
+         * @returns {boolean|null} True if charging, false if not, null if unknown
+         */
+        isCharging() {
+            if (!this.battery || !this.battery.supported) {
+                return null;
+            }
+            return this.battery.charging;
+        },
+        
+        /**
+         * Get estimated time until fully charged (in seconds)
+         * @returns {number|null} Time in seconds or null if not available
+         */
+        getChargingTime() {
+            if (!this.battery || !this.battery.supported || !this.battery.charging) {
+                return null;
+            }
+            return this.battery.chargingTime === Infinity ? null : this.battery.chargingTime;
+        },
+        
+        /**
+         * Get estimated time until battery depleted (in seconds)
+         * @returns {number|null} Time in seconds or null if not available
+         */
+        getDischargingTime() {
+            if (!this.battery || !this.battery.supported || this.battery.charging) {
+                return null;
+            }
+            return this.battery.dischargingTime === Infinity ? null : this.battery.dischargingTime;
+        },
+        
+        /**
+         * Get Do Not Disturb state
+         * Uses visibility and focus as indicators
+         * @returns {object} DND state { active: boolean, reason: string, details: object }
+         */
+        getDNDState() {
+            const state = {
+                active: false,
+                reason: 'none',
+                details: {}
+            };
+            
+            if (!document || !window) {
+                return state;
+            }
+            
+            const isHidden = document.hidden;
+            const isFocused = document.hasFocus();
+            const visibilityState = document.visibilityState;
+            
+            // DND is active if:
+            // 1. Page is hidden (user switched tabs/apps)
+            // 2. Page is not focused (user is in another window)
+            // 3. Visibility state is 'hidden'
+            
+            if (isHidden || !isFocused || visibilityState === 'hidden') {
+                state.active = true;
+                
+                if (visibilityState === 'hidden') {
+                    state.reason = 'hidden';
+                    state.details = { visibilityState, isFocused };
+                } else if (!isFocused) {
+                    state.reason = 'unfocused';
+                    state.details = { visibilityState, isFocused, isHidden };
+                } else {
+                    state.reason = 'background';
+                    state.details = { visibilityState, isFocused, isHidden };
+                }
+            } else {
+                state.active = false;
+                state.reason = 'active';
+                state.details = { visibilityState, isFocused, isHidden };
+            }
+            
+            return state;
+        },
+        
+        /**
+         * Check if Do Not Disturb mode is active
+         * @returns {boolean} True if DND is active
+         */
+        isDNDActive() {
+            return this.getDNDState().active;
+        },
+        
+        /**
+         * Get comprehensive device state
+         * @returns {object} Device state object
+         */
+        getDeviceState() {
+            const state = {
+                online: navigator.onLine || false,
+                visibility: (document && document.visibilityState) ? document.visibilityState : 'unknown',
+                isVisible: !(document && document.hidden),
+                isFocused: (document && document.hasFocus) ? document.hasFocus() : false,
+                dnd: this.getDNDState(),
+                battery: this.getBattery(),
+                connection: this.getConnectionInfo(),
+                timestamp: Date.now()
+            };
+            
+            return state;
+        },
+        
+        /**
+         * Get network connection information
+         * @returns {object} Connection info
+         */
+        getConnectionInfo() {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            
+            if (!conn) {
+                return {
+                    supported: false,
+                    effectiveType: null,
+                    downlink: null,
+                    rtt: null,
+                    saveData: null
+                };
+            }
+            
+            return {
+                supported: true,
+                effectiveType: (conn.effectiveType !== undefined) ? conn.effectiveType : null,
+                downlink: (conn.downlink !== undefined) ? conn.downlink : null,
+                rtt: (conn.rtt !== undefined) ? conn.rtt : null,
+                saveData: (conn.saveData !== undefined) ? conn.saveData : false,
+                type: (conn.type !== undefined) ? conn.type : null
+            };
+        },
+        
+        /**
+         * Subscribe to battery changes
+         * @param {Function} callback - Callback function(batteryState)
+         * @returns {Function} Unsubscribe function
+         */
+        onBatteryChange(callback) {
+            if (typeof callback !== 'function') {
+                console.error('SystemAccess.onBatteryChange: callback must be a function');
+                return function() {};
+            }
+            
+            this.listeners.battery.push(callback);
+            
+            // Immediately call with current state
+            if (this.battery) {
+                callback(this.getBattery());
+            }
+            
+            const self = this;
+            return function() {
+                const index = self.listeners.battery.indexOf(callback);
+                if (index > -1) {
+                    self.listeners.battery.splice(index, 1);
+                }
+            };
+        },
+        
+        /**
+         * Subscribe to DND state changes
+         * @param {Function} callback - Callback function(dndState)
+         * @returns {Function} Unsubscribe function
+         */
+        onDNDChange(callback) {
+            if (typeof callback !== 'function') {
+                console.error('SystemAccess.onDNDChange: callback must be a function');
+                return function() {};
+            }
+            
+            this.listeners.dnd.push(callback);
+            
+            // Immediately call with current state
+            callback(this.getDNDState());
+            
+            const self = this;
+            return function() {
+                const index = self.listeners.dnd.indexOf(callback);
+                if (index > -1) {
+                    self.listeners.dnd.splice(index, 1);
+                }
+            };
+        },
+        
+        /**
+         * Subscribe to device state changes
+         * @param {Function} callback - Callback function(deviceState)
+         * @returns {Function} Unsubscribe function
+         */
+        onDeviceStateChange(callback) {
+            if (typeof callback !== 'function') {
+                console.error('SystemAccess.onDeviceStateChange: callback must be a function');
+                return function() {};
+            }
+            
+            this.listeners.deviceState.push(callback);
+            
+            // Immediately call with current state
+            callback(this.getDeviceState());
+            
+            const self = this;
+            return function() {
+                const index = self.listeners.deviceState.indexOf(callback);
+                if (index > -1) {
+                    self.listeners.deviceState.splice(index, 1);
+                }
+            };
+        },
+        
+        /**
+         * Subscribe to online/offline changes
+         * @param {Function} callback - Callback function({ online: boolean, deviceState })
+         * @returns {Function} Unsubscribe function
+         */
+        onOnlineChange(callback) {
+            if (typeof callback !== 'function') {
+                console.error('SystemAccess.onOnlineChange: callback must be a function');
+                return function() {};
+            }
+            
+            this.listeners.online.push(callback);
+            
+            // Immediately call with current state
+            callback({ online: navigator.onLine, deviceState: this.getDeviceState() });
+            
+            const self = this;
+            return function() {
+                const index = self.listeners.online.indexOf(callback);
+                if (index > -1) {
+                    self.listeners.online.splice(index, 1);
+                }
+            };
+        },
+        
+        /**
+         * Subscribe to visibility changes
+         * @param {Function} callback - Callback function({ visible: boolean, dnd })
+         * @returns {Function} Unsubscribe function
+         */
+        onVisibilityChange(callback) {
+            if (typeof callback !== 'function') {
+                console.error('SystemAccess.onVisibilityChange: callback must be a function');
+                return function() {};
+            }
+            
+            this.listeners.visibility.push(callback);
+            
+            // Immediately call with current state
+            const isVisible = !(document && document.hidden);
+            callback({ visible: isVisible, dnd: this.getDNDState() });
+            
+            const self = this;
+            return function() {
+                const index = self.listeners.visibility.indexOf(callback);
+                if (index > -1) {
+                    self.listeners.visibility.splice(index, 1);
+                }
+            };
+        },
+        
+        /**
+         * Notify all listeners of a specific type
+         * @private
+         */
+        _notifyListeners(type, data) {
+            if (!this.listeners[type]) return;
+            
+            const self = this;
+            this.listeners[type].forEach(function(callback) {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error('SystemAccess listener error (' + type + '):', error);
+                }
+            });
+        },
+        
+        /**
+         * Clean up and stop monitoring
+         */
+        destroy() {
+            this.isMonitoring = false;
+            
+            // Clear all listeners
+            Object.keys(this.listeners).forEach(function(key) {
+                this.listeners[key] = [];
+            }.bind(this));
+            
+            // Note: Battery API listeners are automatically cleaned up
+            // when the battery manager is garbage collected
+            
+            this._batteryManager = null;
+            this.battery = null;
+            this._lastBatteryLevel = null;
+            this._lastDNDState = null;
+            this._lastDeviceState = null;
+        }
+    };
+
+    // ==========================================
+    // EXPOSE GLOBALS
+    // ==========================================
+    window.SystemAccess = SystemAccess;
+
+    console.log('✅ System Access loaded');
+})();
+

@@ -113,17 +113,8 @@ const initializeFirebase = () => {
 // Start initialization
 initializeFirebase();
 
-const safeHaptics = (pattern = [50]) => {
-    try {
-        if (window.navigator && typeof window.navigator.vibrate === 'function') {
-            window.navigator.vibrate(pattern);
-            return true;
-        }
-    } catch (e) {
-        // Silently fail on desktop or unsupported devices
-    }
-    return false;
-};
+// Note: safeHaptics is now provided by the Haptics module (src/utils/haptics.js)
+// This avoids duplication and ensures proper settings integration
 
 const CloudSync = {
     signIn: async () => {
@@ -193,7 +184,7 @@ const CloudSync = {
 
 window.isFirebaseConfigured = isFirebaseConfigured;
 window.CloudSync = CloudSync;
-window.safeHaptics = safeHaptics;
+// safeHaptics is provided by Haptics module (src/utils/haptics.js)
 
 console.log('✅ Firebase loaded');
 

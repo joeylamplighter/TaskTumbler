@@ -60,7 +60,7 @@ import React from 'react'
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label className="f-label">Target Date</label>
-              <input type="date" className="f-input" value={data.dueDate} onChange={(e) => setData({ ...data, dueDate: e.target.value })} style={{ colorScheme: "dark" }} />
+              <input type="date" className="f-input" value={window.dateUtils?.utcToLocalDateStr?.(data.dueDate) || data.dueDate || ""} onChange={(e) => setData({ ...data, dueDate: window.dateUtils?.localToUtcDateStr?.(e.target.value) || e.target.value })} style={{ colorScheme: "dark" }} />
             </div>
           </div>
 

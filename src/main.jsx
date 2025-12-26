@@ -22,6 +22,7 @@ import '../js/features/contact/13-11-view-contact-modal.jsx'
 // Import tab components to ensure they're available on window
 import './components/tabs/PeopleTab'
 import './components/tabs/PlacesTab'
+import './components/tabs/OCRTab'
 // Import core infrastructure FIRST (must load before other modules)
 import './core/constants'
 import './core/dataManager'
@@ -34,6 +35,10 @@ import './utils/confetti'
 import './utils/ai'
 import './utils/coreUtils'
 import './utils/notifications'
+import './utils/systemAccess'
+import './utils/haptics'
+// Import OCR utilities
+import './utils/ocr'
 
 // Import the helper function from App.jsx
 import { completeTask } from './App'

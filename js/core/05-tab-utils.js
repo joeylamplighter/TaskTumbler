@@ -18,14 +18,22 @@
     // ===========================================
 
     /**
-     * Get start of day for a date
-     * @param {Date} d - Date object
-     * @returns {Date} Start of day
+     * Get start of day for a date (UTC)
+     * @param {Date|string} d - Date object or UTC date string
+     * @returns {Date} Start of day in UTC
      */
     const dayStart = (d) => {
-        if (!d) return new Date();
+        if (!d) {
+            const now = new Date();
+            return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        }
         const date = d instanceof Date ? d : new Date(d);
-        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        if (isNaN(date.getTime())) {
+            const now = new Date();
+            return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        }
+        // Return UTC start of day
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
     };
 
     /**
@@ -41,8 +49,9 @@
 
     /**
      * Parse due date from task object (handles multiple field names)
+     * Returns UTC date object
      * @param {object} task - Task object
-     * @returns {Date|null} Parsed date or null
+     * @returns {Date|null} Parsed UTC date or null
      */
     const parseDueDate = (task) => {
         if (!task) return null;
@@ -52,7 +61,8 @@
             if (!raw) return null;
             
             if (typeof raw === 'number') {
-                return isValidDate(new Date(raw)) ? new Date(raw) : null;
+                const date = new Date(raw);
+                return isValidDate(date) ? date : null;
             }
             
             if (typeof raw === 'string') {
@@ -61,9 +71,17 @@
                 // Handle timestamp strings
                 if (/^\d+$/.test(s)) {
                     const n = parseInt(s, 10);
-                    return isValidDate(new Date(n)) ? new Date(n) : null;
+                    const date = new Date(n);
+                    return isValidDate(date) ? date : null;
                 }
-                return isValidDate(new Date(s)) ? new Date(s) : null;
+                // Handle YYYY-MM-DD format as UTC
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                    const date = new Date(s + 'T00:00:00Z');
+                    return isValidDate(date) ? date : null;
+                }
+                // Handle ISO strings
+                const date = new Date(s);
+                return isValidDate(date) ? date : null;
             }
             
             return null;
@@ -73,7 +91,7 @@
     };
 
     /**
-     * Check if task matches due date filter
+     * Check if task matches due date filter (works with UTC dates)
      * @param {object} task - Task object
      * @param {string} filterDue - Filter value ("Any", "Overdue", "Today", etc.)
      * @returns {boolean} True if matches filter
@@ -104,21 +122,32 @@
                 return diffDays > 7 && diffDays <= 14;
             case 'This Month':
             case 'Month':
-                return due.getMonth() === now.getMonth() && due.getFullYear() === now.getFullYear();
+                // Compare UTC months and years
+                return due.getUTCMonth() === now.getUTCMonth() && due.getUTCFullYear() === now.getUTCFullYear();
             default:
                 return true;
         }
     };
 
     /**
-     * Get days difference from today
-     * @param {string|Date} dateStr - Date string or Date object
+     * Get days difference from today (works with UTC dates)
+     * @param {string|Date} dateStr - UTC date string or Date object
      * @returns {number|null} Days difference (negative = past, positive = future)
      */
     const getDaysDiff = (dateStr) => {
         if (!dateStr) return null;
         try {
-            const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+            let date;
+            if (typeof dateStr === 'string') {
+                // Handle YYYY-MM-DD format as UTC
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    date = new Date(dateStr + 'T00:00:00Z');
+                } else {
+                    date = new Date(dateStr);
+                }
+            } else {
+                date = dateStr;
+            }
             if (!isValidDate(date)) return null;
             const today = dayStart(new Date());
             const target = dayStart(date);
