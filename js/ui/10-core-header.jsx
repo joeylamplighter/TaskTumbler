@@ -370,9 +370,62 @@ function AppHeader({
             <div style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
               <input
                 type="text"
-                placeholder="Search tabs and contacts..."
+                placeholder="Search tabs and contacts... (or type 'ai' to open assistant)"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchQuery(value);
+                  
+                  // Note: Chatbot trigger is now shown as a button in the dropdown
+                  // No auto-open on typing - user can press Enter or click the button
+                }}
+                onKeyDown={(e) => {
+                  // If Enter is pressed and search matches chatbot trigger, open chatbot or toggle bot
+                  if (e.key === 'Enter') {
+                    const normalized = searchQuery.trim().toLowerCase();
+                    
+                    // Special handling for "bot" - toggle the setting
+                    if (normalized === 'bot') {
+                      e.preventDefault();
+                      const DM = window.DataManager;
+                      if (DM?.settings) {
+                        const settings = DM.settings.get() || {};
+                        const chatbotEnabled = settings?.chatbotEnabled !== false;
+                        const newValue = !chatbotEnabled;
+                        DM.settings.set({ ...settings, chatbotEnabled: newValue });
+                        window.dispatchEvent(new CustomEvent('settings-updated'));
+                        setDropdownOpen(false);
+                        setSearchQuery('');
+                      }
+                      return;
+                    }
+                    
+                    const chatbotTriggers = ['ai', 'assistant', 'chatbot', 'chat', 'help'];
+                    
+                    // Match if exact match or starts with trigger followed by space
+                    const matchesTrigger = chatbotTriggers.some(trigger => {
+                      return normalized === trigger || 
+                             normalized.startsWith(trigger + ' ');
+                    });
+                    
+                    if (matchesTrigger) {
+                      e.preventDefault();
+                      const DM = window.DataManager;
+                      const settings = DM?.settings?.get?.() || {};
+                      const chatbotEnabled = settings?.chatbotEnabled !== false;
+                      
+                      if (chatbotEnabled) {
+                        if (window.openChatbot) {
+                          window.openChatbot();
+                        } else {
+                          window.dispatchEvent(new CustomEvent('open-chatbot'));
+                        }
+                        setDropdownOpen(false);
+                        setSearchQuery('');
+                      }
+                    }
+                  }
+                }}
                 autoFocus
                 style={{
                   width: '100%',
@@ -386,6 +439,215 @@ function AppHeader({
                 }}
               />
             </div>
+
+            {/* Bot toggle option - show when user types "bot" exactly */}
+            {(() => {
+              if (!searchQuery.trim()) return null;
+              
+              const normalized = searchQuery.trim().toLowerCase();
+              
+              // Only show for exact "bot" match
+              if (normalized !== 'bot') return null;
+              
+              const DM = window.DataManager;
+              if (!DM?.settings) return null;
+              
+              const settings = DM.settings.get() || {};
+              const chatbotEnabled = settings?.chatbotEnabled !== false;
+              
+              const handleToggleBot = () => {
+                const currentSettings = DM.settings.get() || {};
+                const newValue = !chatbotEnabled;
+                DM.settings.set({ ...currentSettings, chatbotEnabled: newValue });
+                
+                // Dispatch event for UI updates
+                window.dispatchEvent(new CustomEvent('settings-updated'));
+                
+                // Close dropdown after a brief delay to show the change
+                setTimeout(() => {
+                  setDropdownOpen(false);
+                  setSearchQuery('');
+                }, 200);
+              };
+              
+              return (
+                <div style={{ 
+                  padding: '12px', 
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  <button
+                    onClick={handleToggleBot}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      padding: '12px',
+                      background: chatbotEnabled ? 'var(--primary-light)' : 'var(--input-bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--border-radius-sm, 8px)',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      color: 'var(--text)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = chatbotEnabled ? 'var(--primary)' : 'var(--input-bg)';
+                      e.currentTarget.style.color = chatbotEnabled ? 'white' : 'var(--text)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = chatbotEnabled ? 'var(--primary-light)' : 'var(--input-bg)';
+                      e.currentTarget.style.color = 'var(--text)';
+                    }}
+                    title={`Click to ${chatbotEnabled ? 'disable' : 'enable'} AI Chatbot`}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>🤖</span>
+                      <span>Bot</span>
+                    </div>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      color: chatbotEnabled ? 'var(--primary)' : 'var(--text-light)',
+                      fontWeight: 600 
+                    }}>
+                      {chatbotEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Chatbot trigger result - show when user types a trigger keyword */}
+            {(() => {
+              if (!searchQuery.trim()) return null;
+              
+              const normalized = searchQuery.trim().toLowerCase();
+              const chatbotTriggers = ['ai', 'assistant', 'chatbot', 'chat', 'help'];
+              
+              // Exclude "bot" from chatbot triggers since it has its own toggle option
+              // Check if it's an exact match or starts with trigger + space
+              const isExactMatch = chatbotTriggers.includes(normalized);
+              const startsWithTrigger = chatbotTriggers.some(trigger => 
+                normalized.startsWith(trigger + ' ')
+              );
+              
+              const matchesTrigger = isExactMatch || startsWithTrigger;
+              
+              // Debug: uncomment to see what's happening
+              // console.log('Search query:', searchQuery, 'Normalized:', normalized, 'Matches:', matchesTrigger);
+              
+              if (!matchesTrigger) return null;
+              
+              const DM = window.DataManager;
+              if (!DM?.settings) return null;
+              
+              const settings = DM.settings.get() || {};
+              const chatbotEnabled = settings?.chatbotEnabled !== false;
+              
+              if (!chatbotEnabled) return null;
+              
+              return (
+                <div style={{ 
+                  padding: '12px', 
+                  borderBottom: '1px solid var(--border)',
+                  background: 'var(--primary-light)'
+                }}>
+                  <button
+                    onClick={() => {
+                      if (window.openChatbot) {
+                        window.openChatbot();
+                      } else {
+                        window.dispatchEvent(new CustomEvent('open-chatbot'));
+                      }
+                      setDropdownOpen(false);
+                      setSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      background: 'var(--primary)',
+                      border: 'none',
+                      borderRadius: 'var(--border-radius-sm, 8px)',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      color: 'white',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '0.9';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    title="Press Enter or click to open AI Assistant"
+                  >
+                    <span style={{ fontSize: '18px' }}>🤖</span>
+                    <span>Open AI Assistant</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '11px', opacity: 0.9 }}>Enter</span>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* AI Chatbot button - always visible at top when no search */}
+            {!searchQuery.trim() && (() => {
+              const DM = window.DataManager;
+              const settings = DM?.settings?.get?.() || {};
+              const chatbotEnabled = settings?.chatbotEnabled !== false;
+              
+              if (!chatbotEnabled) return null;
+              
+              return (
+                <button
+                  onClick={() => {
+                    if (window.openChatbot) {
+                      window.openChatbot();
+                    } else {
+                      window.dispatchEvent(new CustomEvent('open-chatbot'));
+                    }
+                    setDropdownOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    background: 'var(--primary-light)',
+                    border: 'none',
+                    borderBottom: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    color: 'var(--text)',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--primary)';
+                    e.currentTarget.style.color = 'var(--primary-text, white)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-light)';
+                    e.currentTarget.style.color = 'var(--text)';
+                  }}
+                  title="Open AI Assistant"
+                >
+                  <span style={{ fontSize: '18px' }}>🤖</span>
+                  <span>AI Assistant</span>
+                </button>
+              );
+            })()}
 
             {/* Contact results (shown first if search query exists) */}
             {searchQuery.trim() && filteredContacts.length > 0 && (
@@ -947,7 +1209,7 @@ function AppHeader({
 
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
           <div style={{ fontFamily: 'Fredoka', fontSize: 18, fontWeight: 900 }}>TaskTumbler</div>
-          <div style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 700, marginTop: 2 }}>
+          <div className="brand-subtitle" style={{ fontSize: 9, color: 'var(--text-light)', fontWeight: 700, marginTop: 2 }}>
             Tap to {dockVisible ? 'hide' : 'show'} dock
           </div>
         </div>

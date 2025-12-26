@@ -1211,6 +1211,154 @@
     });
 
     // ===========================================
+    // TAGS AGGREGATION SYSTEM
+    // Aggregates tags from tasks and people
+    // ===========================================
+    const TagsAggregator = (() => {
+        let _cache = null;
+        let _taskUnsubscribe = null;
+        let _peopleUnsubscribe = null;
+
+        const aggregateTags = () => {
+            const allTags = new Set();
+            
+            // Collect tags from tasks
+            const tasks = Tasks.getAll();
+            tasks.forEach(task => {
+                if (Array.isArray(task.tags)) {
+                    task.tags.forEach(tag => {
+                        const normalized = String(tag || '').trim();
+                        if (normalized) {
+                            allTags.add(normalized);
+                        }
+                    });
+                }
+            });
+            
+            // Collect tags from people
+            const people = People.getAll();
+            people.forEach(person => {
+                if (Array.isArray(person.tags)) {
+                    person.tags.forEach(tag => {
+                        const normalized = String(tag || '').trim();
+                        if (normalized) {
+                            allTags.add(normalized);
+                        }
+                    });
+                }
+            });
+            
+            return Array.from(allTags).sort();
+        };
+
+        const invalidateCache = () => {
+            _cache = null;
+            EventBus.emit('tags-updated', getAll());
+        };
+
+        const getAll = () => {
+            if (_cache === null) {
+                _cache = aggregateTags();
+            }
+            return _cache;
+        };
+
+        const add = (tag) => {
+            const normalized = String(tag || '').trim();
+            if (!normalized) return null;
+            
+            // Add tag to a temporary task or person to persist it
+            // For now, we'll just invalidate cache - tags will be added through tasks/people
+            invalidateCache();
+            return normalized;
+        };
+
+        const remove = (tag) => {
+            const normalized = String(tag || '').trim();
+            if (!normalized) return false;
+            
+            // Remove tag from all tasks and people that have it
+            let removed = false;
+            
+            // Remove from tasks
+            const tasks = Tasks.getAll();
+            const updatedTasks = tasks.map(task => {
+                if (Array.isArray(task.tags) && task.tags.includes(normalized)) {
+                    removed = true;
+                    return {
+                        ...task,
+                        tags: task.tags.filter(t => t !== normalized)
+                    };
+                }
+                return task;
+            });
+            if (removed) {
+                Tasks.setAll(updatedTasks);
+            }
+            
+            // Remove from people
+            const people = People.getAll();
+            const updatedPeople = people.map(person => {
+                if (Array.isArray(person.tags) && person.tags.includes(normalized)) {
+                    removed = true;
+                    return {
+                        ...person,
+                        tags: person.tags.filter(t => t !== normalized)
+                    };
+                }
+                return person;
+            });
+            if (removed) {
+                People.setAll(updatedPeople);
+            }
+            
+            invalidateCache();
+            return removed;
+        };
+
+        const search = (query) => {
+            const q = String(query || '').toLowerCase().trim();
+            if (!q) return getAll();
+            
+            return getAll().filter(tag => 
+                tag.toLowerCase().includes(q)
+            );
+        };
+
+        const subscribe = (callback) => {
+            return EventBus.subscribe('tags-updated', callback);
+        };
+
+        // Subscribe to tasks and people changes to auto-update tags
+        const initialize = () => {
+            if (_taskUnsubscribe) _taskUnsubscribe();
+            if (_peopleUnsubscribe) _peopleUnsubscribe();
+            
+            _taskUnsubscribe = EventBus.subscribe('tasks-updated', () => {
+                invalidateCache();
+            });
+            
+            _peopleUnsubscribe = EventBus.subscribe('people-updated', () => {
+                invalidateCache();
+            });
+        };
+
+        // Initialize subscriptions
+        initialize();
+
+        return {
+            getAll,
+            add,
+            remove,
+            search,
+            subscribe,
+            invalidate: invalidateCache,
+            EVENT_NAME: 'tags-updated',
+            STORAGE_KEY: 'tags_aggregated'
+        };
+    })();
+
+    // ===========================================
     // SINGLETON STORES
     // ===========================================
 
@@ -1320,6 +1468,7 @@
         timerState: TimerState,
         scratchpad: Scratchpad,
         people: People,
+        tags: TagsAggregator,
         locations: Locations,
         history: History,
         events: EventBus,

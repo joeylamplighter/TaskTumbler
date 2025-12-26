@@ -90,6 +90,28 @@
 
     // --- Integrations ---
     geminiApiKey: "",
+    
+    // --- AI Chatbot ---
+    chatbotEnabled: true,
+    chatbotAppearance: {
+      buttonSize: 56, // pixels
+      buttonShape: 'circle', // 'circle' | 'square' | 'rounded'
+      buttonColor: 'gradient', // 'gradient' | 'primary' | 'custom'
+      buttonCustomColor: '#667eea',
+      buttonPosition: 'bottom-right', // 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+      buttonX: null, // Custom X position (pixels from left, null = use buttonPosition)
+      buttonY: null, // Custom Y position (pixels from top, null = use buttonPosition)
+      panelWidth: 280,
+      panelHeight: 500,
+      panelX: null, // Custom X position (pixels from left, null = use buttonPosition)
+      panelY: null, // Custom Y position (pixels from top, null = use buttonPosition)
+    },
+    // UI Element Visibility
+    uiElements: {
+      showProgressSliders: true,
+      showTaskTimes: true,
+      showGoalProgress: true,
+    },
   };
 
   // ===========================================

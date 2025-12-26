@@ -52,6 +52,17 @@
 
 .brand { font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
 
+/* Brand subtitle - hide on narrow screens (iPhones) */
+.brand-subtitle {
+    display: block;
+}
+
+@media (max-width: 360px) {
+    .brand-subtitle {
+        display: none;
+    }
+}
+
 /* Desktop: Larger brand text */
 @media (min-width: 768px) {
     .brand {

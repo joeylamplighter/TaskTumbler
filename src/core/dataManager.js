@@ -532,6 +532,8 @@ const normalizePerson = (p) => {
         type: p.type || 'contact',
         phone: String(p.phone || '').trim(),
         email: String(p.email || '').trim(),
+        organization: String(p.organization || p.company || '').trim(), // Support both 'organization' and legacy 'company'
+        jobTitle: String(p.jobTitle || '').trim(),
         notes: String(p.notes || '').trim(),
         links: links,
         tags: tags,
@@ -542,7 +544,7 @@ const normalizePerson = (p) => {
         lastContactDate: String(p.lastContactDate || '').trim(),
         groups: Array.isArray(p.groups) ? p.groups.filter(Boolean) : [],
         relationships: Array.isArray(p.relationships) ? p.relationships.filter(Boolean) : [],
-        notesHistory: Array.isArray(p.notesHistory) ? p.notesHistory : [],
+        notesHistory: Array.isArray(p.notesHistory) ? p.notesHistory.slice(-10) : [], // Keep only last 10 entries
         externalId: String(p.externalId || '').trim(), // Compass CRM personId
         // Profile picture (DP) - same as profilePicture - preserve if exists
         profilePicture: p.profilePicture || p.dp || '',
@@ -643,6 +645,246 @@ const People = createCollection({
     }
 });
 
+// ===========================================
+// INTERACTION LOGGING SYSTEM
+// Automatically logs activities to people's notesHistory
+// ===========================================
+const logInteractionToContacts = (activity) => {
+    if (!activity) return;
+    
+    try {
+        const allPeople = People.getAll();
+        const activityPeople = Array.isArray(activity.people) ? activity.people : (activity.people ? [String(activity.people)] : []);
+        if (activityPeople.length === 0) return;
+        
+        const updatedPeople = allPeople.map(person => {
+            // Check if this person is associated with the activity
+            const personName = person.name || [person.firstName, person.lastName].filter(Boolean).join(' ');
+            const isAssociated = activityPeople.some(ap => {
+                const apName = String(ap || '').trim().toLowerCase();
+                const pName = personName.toLowerCase();
+                return apName === pName || pName.includes(apName) || apName.includes(pName);
+            });
+            
+            if (!isAssociated) return person;
+            
+            // Format activity note
+            const formatActivityNote = (act) => {
+                const parts = [];
+                if (act.title) parts.push(act.title);
+                if (act.duration && act.duration > 0) {
+                    const hours = Math.floor(act.duration / 3600);
+                    const minutes = Math.floor((act.duration % 3600) / 60);
+                    const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    parts.push(`(${durationText})`);
+                }
+                if (act.locationLabel) parts.push(`📍 ${act.locationLabel}`);
+                const timestamp = act.createdAt || new Date().toISOString();
+                const dateStr = new Date(timestamp).toLocaleString();
+                return `${parts.join(' ')} - ${dateStr}`;
+            };
+            
+            const activityNote = formatActivityNote(activity);
+            const currentHistory = Array.isArray(person.notesHistory) ? person.notesHistory : [];
+            const updatedHistory = [activityNote, ...currentHistory].slice(0, 10); // Keep last 10
+            
+            return {
+                ...person,
+                notesHistory: updatedHistory,
+                updatedAt: new Date().toISOString()
+            };
+        });
+        
+        // Only update if there were changes
+        const hasChanges = updatedPeople.some((updated, index) => {
+            const original = allPeople[index];
+            return JSON.stringify(original.notesHistory) !== JSON.stringify(updated.notesHistory);
+        });
+        
+        if (hasChanges) {
+            People.setAll(updatedPeople);
+        }
+    } catch (e) {
+        console.error('[DataManager] Error logging interaction to contacts:', e);
+    }
+};
+
+// Hook interaction logging into Activities collection
+// When activities are added or updated, log interactions to associated contacts
+let lastActivityCount = 0;
+try {
+    lastActivityCount = Activities.getAll().length;
+} catch (e) {
+    lastActivityCount = 0;
+}
+
+Activities.subscribe((activities) => {
+    try {
+        const currentCount = Array.isArray(activities) ? activities.length : 0;
+        // Only process if new activities were added
+        if (currentCount > lastActivityCount) {
+            const newActivities = activities.slice(0, currentCount - lastActivityCount);
+            newActivities.forEach(activity => {
+                // Only log completed tasks or timer sessions
+                if (activity && (activity.type === 'task_completed' || activity.type === 'timer')) {
+                    logInteractionToContacts(activity);
+                }
+            });
+        }
+        lastActivityCount = currentCount;
+    } catch (e) {
+        console.error('[DataManager] Error in activity subscription:', e);
+    }
+});
+
+// ===========================================
+// TAGS AGGREGATION SYSTEM
+// Aggregates tags from tasks and people
+// ===========================================
+const TagsAggregator = (() => {
+    let _cache = null;
+    let _taskUnsubscribe = null;
+    let _peopleUnsubscribe = null;
+
+    const aggregateTags = () => {
+        const allTags = new Set();
+        
+        // Collect tags from tasks
+        const tasks = Tasks.getAll();
+        tasks.forEach(task => {
+            if (Array.isArray(task.tags)) {
+                task.tags.forEach(tag => {
+                    const normalized = String(tag || '').trim();
+                    if (normalized) {
+                        allTags.add(normalized);
+                    }
+                });
+            }
+        });
+        
+        // Collect tags from people
+        const people = People.getAll();
+        people.forEach(person => {
+            if (Array.isArray(person.tags)) {
+                person.tags.forEach(tag => {
+                    const normalized = String(tag || '').trim();
+                    if (normalized) {
+                        allTags.add(normalized);
+                    }
+                });
+            }
+        });
+        
+        return Array.from(allTags).sort();
+    };
+
+    const invalidateCache = () => {
+        _cache = null;
+        EventBus.emit('tags-updated', getAll());
+    };
+
+    const getAll = () => {
+        if (_cache === null) {
+            _cache = aggregateTags();
+        }
+        return _cache;
+    };
+
+    const add = (tag) => {
+        const normalized = String(tag || '').trim();
+        if (!normalized) return null;
+        
+        // Add tag to a temporary task or person to persist it
+        // For now, we'll just invalidate cache - tags will be added through tasks/people
+        invalidateCache();
+        return normalized;
+    };
+
+    const remove = (tag) => {
+        const normalized = String(tag || '').trim();
+        if (!normalized) return false;
+        
+        // Remove tag from all tasks and people that have it
+        let removed = false;
+        
+        // Remove from tasks
+        const tasks = Tasks.getAll();
+        const updatedTasks = tasks.map(task => {
+            if (Array.isArray(task.tags) && task.tags.includes(normalized)) {
+                removed = true;
+                return {
+                    ...task,
+                    tags: task.tags.filter(t => t !== normalized)
+                };
+            }
+            return task;
+        });
+        if (removed) {
+            Tasks.setAll(updatedTasks);
+        }
+        
+        // Remove from people
+        const people = People.getAll();
+        const updatedPeople = people.map(person => {
+            if (Array.isArray(person.tags) && person.tags.includes(normalized)) {
+                removed = true;
+                return {
+                    ...person,
+                    tags: person.tags.filter(t => t !== normalized)
+                };
+            }
+            return person;
+        });
+        if (removed) {
+            People.setAll(updatedPeople);
+        }
+        
+        invalidateCache();
+        return removed;
+    };
+
+    const search = (query) => {
+        const q = String(query || '').toLowerCase().trim();
+        if (!q) return getAll();
+        
+        return getAll().filter(tag => 
+            tag.toLowerCase().includes(q)
+        );
+    };
+
+    const subscribe = (callback) => {
+        return EventBus.subscribe('tags-updated', callback);
+    };
+
+    // Subscribe to tasks and people changes to auto-update tags
+    const initialize = () => {
+        if (_taskUnsubscribe) _taskUnsubscribe();
+        if (_peopleUnsubscribe) _peopleUnsubscribe();
+        
+        _taskUnsubscribe = EventBus.subscribe('tasks-updated', () => {
+            invalidateCache();
+        });
+        
+        _peopleUnsubscribe = EventBus.subscribe('people-updated', () => {
+            invalidateCache();
+        });
+    };
+
+    // Initialize subscriptions
+    initialize();
+
+    return {
+        getAll,
+        add,
+        remove,
+        search,
+        subscribe,
+        invalidate: invalidateCache,
+        EVENT_NAME: 'tags-updated',
+        STORAGE_KEY: 'tags_aggregated'
+    };
+})();
+
 const DataManager = {
     tasks: Tasks,
     goals: Goals,
@@ -654,11 +896,13 @@ const DataManager = {
     timerState: TimerState,
     scratchpad: Scratchpad,
     people: People,
+    tags: TagsAggregator,
     events: EventBus,
     makeId,
     version: DATA_VERSION,
     getDataVersion,
-    restoreBackup: (key) => restoreBackup(key)
+    restoreBackup: (key) => restoreBackup(key),
+    logInteractionToContacts: logInteractionToContacts
 };
 
 const batchUpdate = (updates) => {

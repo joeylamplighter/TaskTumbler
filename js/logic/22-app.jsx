@@ -10,6 +10,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import AIChatbot from '../../src/components/chatbot/AIChatbot'
 
 /** Defensive wrapper: prevents React #130 when a window component is missing */
 const SafeComponent = (Comp, name = "Component") => {
@@ -385,7 +386,7 @@ const clearInitFlag = () => {
 // Helper to get the primary tab from the URL hash (e.g., #spin or #settings?view=data -> 'settings')
 const initialTab = () => {
   const primaryHash = window.location.hash.slice(1).split("?")[0].toLowerCase();
-  const validTabs = ["tasks", "spin", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings"];
+  const validTabs = ["tasks", "kanban", "calendar", "spin", "timer", "lists", "goals", "stats", "people", "places", "duel", "settings"];
   
   // Handle person routes: #person/name or #people/name -> don't switch tab, just open modal
   // (The modal will be opened by the useEffect that watches for contact permalinks)
@@ -664,6 +665,8 @@ const removeSubCategory = (parentCat, subName) => {
 
   const SpinTab = window.SpinTab;
   const TasksTab = window.TasksTab;
+  const KanbanTab = window.KanbanTab;
+  const CalendarTab = window.CalendarTab;
   const TimerTab = window.TimerTab;
   const IdeasTab = window.IdeasTab;
   const GoalsTab = window.GoalsTab;
@@ -679,6 +682,8 @@ const removeSubCategory = (parentCat, subName) => {
   const ToastManagerComp = SafeComponent(ToastManager, "ToastManager");
   const SpinTabComp = SafeComponent(SpinTab, "SpinTab");
   const TasksTabComp = SafeComponent(TasksTab, "TasksTab");
+  const KanbanTabComp = SafeComponent(KanbanTab, "KanbanTab");
+  const CalendarTabComp = SafeComponent(CalendarTab, "CalendarTab");
   const TimerTabComp = SafeComponent(TimerTab, "TimerTab");
   const IdeasTabComp = SafeComponent(IdeasTab, "IdeasTab");
   const GoalsTabComp = SafeComponent(GoalsTab, "GoalsTab");
@@ -1215,22 +1220,28 @@ const removeSubCategory = (parentCat, subName) => {
       }
     }
     
-    const metaThemeColor = document.querySelector("meta[name=theme-color]");
-    if (metaThemeColor) {
-      const colors = {
-        dark: "#ff6b35",
-        light: "#ff6b35",
-        midnight: "#38bdf8",
-        forest: "#4ade80",
-        synthwave: "#d946ef",
-        coffee: "#d4a373",
-      };
-      // Use custom theme primary color if available
-      const customTheme = customThemes[theme];
+      // UI Element Visibility
+      const uiElements = settings?.uiElements || {};
+      document.documentElement.setAttribute("data-hide-progress-sliders", (!uiElements.showProgressSliders).toString());
+      document.documentElement.setAttribute("data-hide-task-times", (!uiElements.showTaskTimes).toString());
+      document.documentElement.setAttribute("data-hide-goal-progress", (!uiElements.showGoalProgress).toString());
+
+      const metaThemeColor = document.querySelector("meta[name=theme-color]");
+      if (metaThemeColor) {
+        const colors = {
+          dark: "#ff6b35",
+          light: "#ff6b35",
+          midnight: "#38bdf8",
+          forest: "#4ade80",
+          synthwave: "#d946ef",
+          coffee: "#d4a373",
+        };
+        // Use custom theme primary color if available
+        const customTheme = customThemes[theme];
       const primaryColor = customTheme?.cssVariables?.['--primary'] || colors[theme] || "#ff6b35";
       metaThemeColor.setAttribute("content", primaryColor);
     }
-  }, [settings?.theme, settings?.customThemes]);
+  }, [settings?.theme, settings?.customThemes, settings?.uiElements]);
 
   // Error tracking for debug info (persisted across crashes)
   React.useEffect(() => {
@@ -1331,6 +1342,14 @@ const removeSubCategory = (parentCat, subName) => {
     setToasts((prev) => [...prev, { id, msg, icon }].slice(-3));
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
   };
+
+  // Expose notify globally for chatbot and other components
+  React.useEffect(() => {
+    window.notify = notify;
+    return () => {
+      delete window.notify;
+    };
+  }, []);
 
   // Activity helper (keeps local state + DM + task activities)
   const addActivity = (act) => {
@@ -2937,6 +2956,8 @@ const removeSubCategory = (parentCat, subName) => {
   const allNavItems = [
     { key: "spin", icon: "🎰", label: "Spin", displayLabel: "Spin" },
     { key: "tasks", icon: "📋", label: "Tasks", displayLabel: "Tasks" },
+    { key: "kanban", icon: "📊", label: "Kanban", displayLabel: "Kanban" },
+    { key: "calendar", icon: "📅", label: "Calendar", displayLabel: "Calendar" },
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
@@ -2953,7 +2974,7 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "settings:logic", icon: "⚙️", label: "Logic", displayLabel: "Logic", groupLabel: "Settings" },
     { key: "settings:ai", icon: "🧠", label: "AI", displayLabel: "AI", groupLabel: "Settings" },
     { key: "settings:game", icon: "🎮", label: "Game", displayLabel: "Game", groupLabel: "Settings" },
-    { key: "settings:calendar", icon: "📅", label: "Calendar", displayLabel: "Calendar", groupLabel: "Settings" },
+    { key: "settings:calendar", icon: "📅", label: "Calendar Settings", displayLabel: "Calendar Settings", groupLabel: "Settings" },
     { key: "settings:cats", icon: "🏷️", label: "Categories", displayLabel: "Cats", groupLabel: "Settings" },
     { key: "settings:data", icon: "💾", label: "Data Settings", displayLabel: "Data", groupLabel: "Settings" },
   ];
@@ -3192,6 +3213,25 @@ const removeSubCategory = (parentCat, subName) => {
                 onAdd={addTask}
                 settings={settings}
                 openAdd={() => setIsAdding(true)}
+              />
+            )}
+
+            {tab === "kanban" && (
+              <KanbanTabComp
+                tasks={tasks}
+                onView={setViewTask}
+                onUpdate={updateTask}
+                categories={categories}
+                settings={settings}
+              />
+            )}
+
+            {tab === "calendar" && (
+              <CalendarTabComp
+                tasks={tasks}
+                onView={setViewTask}
+                categories={categories}
+                settings={settings}
               />
             )}
 
@@ -3518,6 +3558,9 @@ const removeSubCategory = (parentCat, subName) => {
         
         return null;
       })}
+
+      {/* AI Chatbot - Global Assistant */}
+      <AIChatbot />
     </div>
   );
 }

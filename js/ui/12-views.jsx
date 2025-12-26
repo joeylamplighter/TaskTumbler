@@ -4,7 +4,16 @@
 // ===========================================
 
 (function() {
-    const { useState, useEffect, useRef } = React;
+    // Wait for React to be available (main.jsx sets window.React after imports are processed)
+    function initViews() {
+        if (typeof window === 'undefined' || !window.React) {
+            // Retry after a short delay
+            setTimeout(initViews, 50);
+            return;
+        }
+        
+        const React = window.React;
+        const { useState, useEffect, useRef } = React;
 
     // ==========================================
     // VIEW TASK MODAL (Focus + Logging + Subtasks)
@@ -497,44 +506,566 @@
     window.ViewTaskModal = ViewTaskModal;
 
     // ==========================================
-    // CALENDAR VIEW (Unchanged)
+    // CALENDAR VIEW
     // ==========================================
     function CalendarView({ tasks, onView }) {
         const [date, setDate] = useState(new Date());
-        const getDays = () => {
+        const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'day'
+        
+        const today = new Date();
+        const formatDate = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const getTasksForDate = (dateStr) => {
+            return tasks.filter(t => t.dueDate === dateStr && !t.completed);
+        };
+        
+        const isToday = (d) => {
+            return formatDate(d) === formatDate(today);
+        };
+        
+        // Month view
+        const getMonthDays = () => {
             const year = date.getFullYear();
             const month = date.getMonth();
-            const firstDay = new Date(year, month, 1).getDay();
+            const firstDay = new Date(year, month, 1);
+            const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday
             const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
             const days = [];
-            for (let i = 0; i < firstDay; i++) days.push(null);
+            // Add empty cells for days before the first day of the month
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                days.push(null);
+            }
+            // Add all days of the month
             for (let i = 1; i <= daysInMonth; i++) {
-                const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                days.push({ day: i, tasks: tasks.filter(t => t.dueDate === dStr) });
+                const d = new Date(year, month, i);
+                const dateStr = formatDate(d);
+                days.push({
+                    date: d,
+                    day: i,
+                    tasks: getTasksForDate(dateStr),
+                    isToday: isToday(d),
+                    dateStr: dateStr
+                });
             }
             return days;
         };
-        const days = getDays();
-        const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-        return (
-            <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
-                    <button className="btn-white-outline" style={{padding:'4px 12px'}} onClick={() => setDate(new Date(date.getFullYear(), date.getMonth()-1, 1))}>◀</button>
-                    <div style={{fontWeight:700, fontSize:16}}>{monthName}</div>
-                    <button className="btn-white-outline" style={{padding:'4px 12px'}} onClick={() => setDate(new Date(date.getFullYear(), date.getMonth()+1, 1))}>▶</button>
-                </div>
-                <div className="cal-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4}}>
-                    {days.map((d, i) => (
-                        <div key={i} className={`cal-day ${d?.tasks.length ? 'has-tasks' : ''}`} style={{minHeight: '60px', border: '1px solid var(--border)', padding: 4}} onClick={() => d?.tasks[0] && onView(d.tasks[0])}>
-                            <div style={{fontSize: 11, color: 'var(--text-light)'}}>{d?.day}</div>
-                            <div style={{display: 'flex', gap: 2, marginTop: 4, flexWrap: 'wrap'}}>
-                                {d?.tasks.slice(0, 4).map(t => (
-                                    <div key={t.id} style={{width: 4, height: 4, borderRadius: '50%', background: t.priority === 'Urgent' ? 'var(--danger)' : 'var(--primary)'}} />
+        
+        // Week view
+        const getWeekDays = () => {
+            const startOfWeek = new Date(date);
+            const day = startOfWeek.getDay();
+            const diff = startOfWeek.getDate() - day; // Get Sunday of this week
+            startOfWeek.setDate(diff);
+            
+            const weekDays = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const dateStr = formatDate(d);
+                weekDays.push({
+                    date: d,
+                    day: d.getDate(),
+                    dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                    tasks: getTasksForDate(dateStr),
+                    isToday: isToday(d),
+                    dateStr: dateStr
+                });
+            }
+            return weekDays;
+        };
+        
+        // Day view
+        const getDayData = () => {
+            const dateStr = formatDate(date);
+            return {
+                date: date,
+                day: date.getDate(),
+                dayName: date.toLocaleDateString('en-US', { weekday: 'long' }),
+                tasks: getTasksForDate(dateStr),
+                isToday: isToday(date),
+                dateStr: dateStr
+            };
+        };
+        
+        const navigate = (delta) => {
+            if (viewMode === 'month') {
+                setDate(new Date(date.getFullYear(), date.getMonth() + delta, 1));
+            } else if (viewMode === 'week') {
+                const newDate = new Date(date);
+                newDate.setDate(date.getDate() + (delta * 7));
+                setDate(newDate);
+            } else { // day
+                const newDate = new Date(date);
+                newDate.setDate(date.getDate() + delta);
+                setDate(newDate);
+            }
+        };
+        
+        const goToToday = () => {
+            setDate(new Date());
+        };
+        
+        const renderMonthView = () => {
+            const days = getMonthDays();
+            const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            return (
+                <>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(7, 1fr)',
+                        gap: 0,
+                        borderBottom: '1px solid var(--border)',
+                        marginBottom: 0
+                    }}>
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                            <div key={idx} style={{
+                                textAlign: 'center',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: 'var(--text-light)',
+                                padding: '12px 8px',
+                                borderRight: idx < 6 ? '1px solid var(--border)' : 'none'
+                            }}>
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(7, 1fr)',
+                        gap: 0
+                    }}>
+                        {days.map((d, i) => {
+                            if (!d) {
+                                return (
+                                    <div key={`empty-${i}`} style={{
+                                        minHeight: '100px',
+                                        borderRight: (i % 7) < 6 ? '1px solid var(--border)' : 'none',
+                                        borderBottom: '1px solid var(--border)'
+                                    }} />
+                                );
+                            }
+                            
+                            const col = i % 7;
+                            return (
+                                <div
+                                    key={i}
+                                    onClick={() => d.tasks.length > 0 && d.tasks[0] && onView(d.tasks[0])}
+                                    style={{
+                                        minHeight: '100px',
+                                        padding: '8px',
+                                        borderRight: col < 6 ? '1px solid var(--border)' : 'none',
+                                        borderBottom: '1px solid var(--border)',
+                                        background: d.isToday ? 'rgba(255, 107, 53, 0.1)' : 'transparent',
+                                        cursor: d.tasks.length > 0 ? 'pointer' : 'default',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (d.tasks.length > 0) {
+                                            e.currentTarget.style.background = d.isToday 
+                                                ? 'rgba(255, 107, 53, 0.15)' 
+                                                : 'var(--input-bg)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = d.isToday 
+                                            ? 'rgba(255, 107, 53, 0.1)' 
+                                            : 'transparent';
+                                    }}
+                                >
+                                    <div style={{
+                                        fontSize: 14,
+                                        fontWeight: d.isToday ? 800 : 600,
+                                        color: d.isToday ? 'var(--primary)' : 'var(--text)',
+                                        marginBottom: '6px'
+                                    }}>
+                                        {d.day}
+                                    </div>
+                                    {d.tasks.length > 0 && (
+                                        <div style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {d.tasks.slice(0, 3).map(t => (
+                                                <div
+                                                    key={t.id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onView(t);
+                                                    }}
+                                                    style={{
+                                                        fontSize: 10,
+                                                        padding: '4px 6px',
+                                                        borderRadius: '4px',
+                                                        background: t.priority === 'Urgent' 
+                                                            ? 'rgba(255, 118, 117, 0.2)' 
+                                                            : t.priority === 'High'
+                                                            ? 'rgba(255, 159, 67, 0.2)'
+                                                            : 'var(--input-bg)',
+                                                        color: 'var(--text)',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        cursor: 'pointer',
+                                                        border: `1px solid ${t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.3)' : 'var(--border-light)'}`
+                                                    }}
+                                                    title={t.title}
+                                                >
+                                                    {t.title}
+                                                </div>
+                                            ))}
+                                            {d.tasks.length > 3 && (
+                                                <div style={{
+                                                    fontSize: 9,
+                                                    color: 'var(--text-light)',
+                                                    textAlign: 'center',
+                                                    padding: '2px'
+                                                }}>
+                                                    +{d.tasks.length - 3}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            );
+        };
+        
+        const renderWeekView = () => {
+            const weekDays = getWeekDays();
+            const weekRange = `${weekDays[0].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekDays[6].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            
+            return (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: '12px',
+                    height: 'calc(100vh - 250px)'
+                }}>
+                    {weekDays.map((d, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                border: `2px solid ${d.isToday ? 'var(--primary)' : 'var(--border)'}`,
+                                borderRadius: '8px',
+                                padding: '12px',
+                                background: d.isToday ? 'rgba(255, 107, 53, 0.1)' : 'var(--card)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <div style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: 'var(--text-light)',
+                                marginBottom: '4px'
+                            }}>
+                                {d.dayName}
+                            </div>
+                            <div style={{
+                                fontSize: 18,
+                                fontWeight: d.isToday ? 800 : 600,
+                                color: d.isToday ? 'var(--primary)' : 'var(--text)',
+                                marginBottom: '12px'
+                            }}>
+                                {d.day}
+                            </div>
+                            <div style={{
+                                flex: 1,
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px'
+                            }}>
+                                {d.tasks.map(t => (
+                                    <div
+                                        key={t.id}
+                                        onClick={() => onView(t)}
+                                        style={{
+                                            fontSize: 11,
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            background: t.priority === 'Urgent' 
+                                                ? 'rgba(255, 118, 117, 0.2)' 
+                                                : t.priority === 'High'
+                                                ? 'rgba(255, 159, 67, 0.2)'
+                                                : 'var(--input-bg)',
+                                            color: 'var(--text)',
+                                            cursor: 'pointer',
+                                            border: `1px solid ${t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.3)' : 'var(--border-light)'}`
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: 600, marginBottom: '4px' }}>{t.title}</div>
+                                        {t.category && (
+                                            <div style={{ fontSize: 9, color: 'var(--text-light)' }}>{t.category}</div>
+                                        )}
+                                    </div>
                                 ))}
+                                {d.tasks.length === 0 && (
+                                    <div style={{
+                                        fontSize: 11,
+                                        color: 'var(--text-light)',
+                                        textAlign: 'center',
+                                        padding: '20px 0',
+                                        opacity: 0.5
+                                    }}>
+                                        No tasks
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
+                </div>
+            );
+        };
+        
+        const renderDayView = () => {
+            const dayData = getDayData();
+            const dayName = dayData.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            
+            return (
+                <div style={{
+                    padding: '20px',
+                    height: 'calc(100vh - 250px)',
+                    overflowY: 'auto'
+                }}>
+                    <div style={{
+                        fontSize: 24,
+                        fontWeight: 700,
+                        color: 'var(--text)',
+                        marginBottom: '20px'
+                    }}>
+                        {dayName}
+                    </div>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                    }}>
+                        {dayData.tasks.map(t => (
+                            <div
+                                key={t.id}
+                                onClick={() => onView(t)}
+                                style={{
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    background: t.priority === 'Urgent' 
+                                        ? 'rgba(255, 118, 117, 0.15)' 
+                                        : t.priority === 'High'
+                                        ? 'rgba(255, 159, 67, 0.15)'
+                                        : 'var(--card)',
+                                    border: `1px solid ${t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.3)' : 'var(--border)'}`,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateX(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <div style={{
+                                    fontSize: 16,
+                                    fontWeight: 600,
+                                    color: 'var(--text)',
+                                    marginBottom: '8px'
+                                }}>
+                                    {t.title}
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '8px',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    {t.category && (
+                                        <span style={{
+                                            fontSize: 11,
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            background: 'var(--input-bg)',
+                                            color: 'var(--text-light)'
+                                        }}>
+                                            {t.category}
+                                        </span>
+                                    )}
+                                    {t.priority && (
+                                        <span style={{
+                                            fontSize: 11,
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            background: t.priority === 'Urgent' 
+                                                ? 'rgba(255, 118, 117, 0.2)' 
+                                                : 'rgba(255, 159, 67, 0.2)',
+                                            color: t.priority === 'Urgent' ? '#ff7675' : '#ff9f43',
+                                            fontWeight: 600
+                                        }}>
+                                            {t.priority}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {dayData.tasks.length === 0 && (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '40px',
+                                color: 'var(--text-light)',
+                                opacity: 0.5
+                            }}>
+                                No tasks for this day
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+        
+        const getTitle = () => {
+            if (viewMode === 'month') {
+                return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            } else if (viewMode === 'week') {
+                const weekDays = getWeekDays();
+                return `${weekDays[0].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekDays[6].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            } else {
+                return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            }
+        };
+
+        return (
+            <div style={{
+                padding: '20px',
+                background: 'var(--bg)',
+                minHeight: 'calc(100vh - 120px)'
+            }}>
+                {/* Header */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 24,
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button 
+                            onClick={() => navigate(-1)}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: 'var(--card)',
+                                color: 'var(--text)',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                fontWeight: 600
+                            }}
+                        >
+                            ←
+                        </button>
+                        <h2 style={{
+                            margin: 0,
+                            fontSize: 20,
+                            fontWeight: 700,
+                            color: 'var(--text)',
+                            minWidth: '200px',
+                            textAlign: 'center'
+                        }}>
+                            {getTitle()}
+                        </h2>
+                        <button 
+                            onClick={() => navigate(1)}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: 'var(--card)',
+                                color: 'var(--text)',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                fontWeight: 600
+                            }}
+                        >
+                            →
+                        </button>
+                    </div>
+                    
+                    {/* View switcher */}
+                    <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        background: 'var(--input-bg)',
+                        padding: '4px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)'
+                    }}>
+                        {['day', 'week', 'month'].map(mode => (
+                            <button
+                                key={mode}
+                                onClick={() => setViewMode(mode)}
+                                style={{
+                                    padding: '6px 16px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: viewMode === mode ? 'var(--primary)' : 'transparent',
+                                    color: viewMode === mode ? '#fff' : 'var(--text)',
+                                    cursor: 'pointer',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {mode}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <button 
+                        onClick={goToToday}
+                        style={{
+                            padding: '8px 16px',
+                            borderRadius: 6,
+                            border: '1px solid var(--border)',
+                            background: 'var(--card)',
+                            color: 'var(--text)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 600
+                        }}
+                    >
+                        Today
+                    </button>
+                </div>
+
+                {/* Calendar content */}
+                <div style={{
+                    background: 'var(--card)',
+                    borderRadius: 12,
+                    border: '1px solid var(--border)',
+                    overflow: 'hidden'
+                }}>
+                    {viewMode === 'month' && renderMonthView()}
+                    {viewMode === 'week' && renderWeekView()}
+                    {viewMode === 'day' && renderDayView()}
                 </div>
             </div>
         );
@@ -542,12 +1073,140 @@
     window.CalendarView = CalendarView;
 
     // ==========================================
-    // BOARD VIEW (Unchanged)
+    // KANBAN VIEW (Status-based columns)
+    // ==========================================
+    function KanbanView({ tasks, onView, onUpdate }) {
+        const cols = [
+            { id: 'todo', label: 'To Do', status: null },
+            { id: 'inprogress', label: 'In Progress', status: 'inprogress' },
+            { id: 'done', label: 'Done', status: 'done' }
+        ];
+
+        const getTasksForColumn = (col) => {
+            if (col.id === 'done') {
+                return tasks.filter(t => t.completed);
+            } else if (col.id === 'inprogress') {
+                return tasks.filter(t => !t.completed && (t.status === 'inprogress' || t.percentComplete > 0 && t.percentComplete < 100));
+            } else {
+                return tasks.filter(t => !t.completed && t.status !== 'inprogress' && (!t.percentComplete || t.percentComplete === 0));
+            }
+        };
+
+        const handleDragStart = (e, task) => {
+            e.dataTransfer.setData('taskId', task.id);
+            e.dataTransfer.effectAllowed = 'move';
+        };
+
+        const handleDragOver = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        };
+
+        const handleDrop = (e, targetCol) => {
+            e.preventDefault();
+            const taskId = e.dataTransfer.getData('taskId');
+            const task = tasks.find(t => t.id === taskId);
+            if (!task || !onUpdate) return;
+
+            if (targetCol.id === 'done') {
+                onUpdate(taskId, { completed: true });
+            } else if (targetCol.id === 'inprogress') {
+                onUpdate(taskId, { completed: false, status: 'inprogress', percentComplete: 50 });
+            } else {
+                onUpdate(taskId, { completed: false, status: null, percentComplete: 0 });
+            }
+        };
+
+        return (
+            <div style={{display:'flex', gap:12, overflowX:'auto', paddingBottom:10, height:'calc(100vh - 220px)', alignItems:'flex-start', padding: '12px'}}>
+                {cols.map(col => {
+                    const colTasks = getTasksForColumn(col);
+                    return (
+                        <div 
+                            key={col.id} 
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, col)}
+                            style={{
+                                minWidth: '280px', 
+                                flex: 1, 
+                                background: 'var(--card)', 
+                                padding: 12, 
+                                borderRadius: 16, 
+                                border: '1px solid var(--border)',
+                                maxHeight: '100%',
+                                overflowY: 'auto'
+                            }}
+                        >
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12}}>
+                                <h4 style={{fontSize: 13, color: 'var(--text)', fontWeight: 800, letterSpacing: 0.5, margin: 0}}>{col.label}</h4>
+                                <span style={{fontSize: 11, color: 'var(--text-light)', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: 12}}>{colTasks.length}</span>
+                            </div>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                                {colTasks.map(t => (
+                                    <div 
+                                        key={t.id} 
+                                        draggable={!!onUpdate}
+                                        onDragStart={(e) => handleDragStart(e, t)}
+                                        onClick={() => onView(t)} 
+                                        style={{
+                                            background: 'var(--input-bg)', 
+                                            padding: 12, 
+                                            borderRadius: 10, 
+                                            cursor: 'pointer', 
+                                            fontSize: 13, 
+                                            border: '1px solid var(--border-light)', 
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                        }}
+                                    >
+                                        <div style={{fontWeight: 600, color: 'var(--text)', marginBottom: 6}}>{t.title}</div>
+                                        {t.category && (
+                                            <div style={{fontSize: 10, color: 'var(--text-light)', marginBottom: 4, display: 'flex', gap: 4, flexWrap: 'wrap'}}>
+                                                <span style={{background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4}}>{t.category}</span>
+                                                {t.priority && (
+                                                    <span style={{
+                                                        background: t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.2)' : 'rgba(255, 159, 67, 0.2)',
+                                                        color: t.priority === 'Urgent' ? '#ff7675' : '#ff9f43',
+                                                        padding: '2px 6px', 
+                                                        borderRadius: 4,
+                                                        fontSize: 9,
+                                                        fontWeight: 700
+                                                    }}>{t.priority}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        {t.dueDate && (
+                                            <div style={{fontSize: 10, color: 'var(--text-light)', marginTop: 4}}>📅 {t.dueDate}</div>
+                                        )}
+                                    </div>
+                                ))}
+                                {colTasks.length === 0 && (
+                                    <div style={{fontSize: 11, color: 'var(--text-light)', textAlign: 'center', padding: 20, opacity: 0.5}}>No tasks</div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+    window.KanbanView = KanbanView;
+
+    // ==========================================
+    // BOARD VIEW (Priority-based - kept for backward compatibility)
     // ==========================================
     function BoardView({ tasks, onView }) {
         const cols = ['Urgent', 'High', 'Medium', 'Low'];
         return (
-            <div style={{display:'flex', gap:12, overflowX:'auto', paddingBottom:10, height:'calc(100vh - 220px)', alignItems:'flex-start'}}>
+            <div style={{display:'flex', gap:12, overflowX:'auto', paddingBottom:10, height:'calc(100vh - 220px)', alignItems:'flex-start', padding: '12px'}}>
                 {cols.map(c => (
                     <div key={c} style={{minWidth: '220px', flex: 1, background: 'var(--card)', padding: 12, borderRadius: 16, border: '1px solid var(--border)'}}>
                         <h4 style={{fontSize: 12, marginBottom: 12, color: 'var(--text-light)', fontWeight: 800, letterSpacing: 0.5}}>{c.toUpperCase()}</h4>
@@ -565,4 +1224,8 @@
     window.BoardView = BoardView;
 
     console.log('✅ Views loaded: Subtasks update instant delete (no warn) & clean focus');
+    } // End of initViews function
+    
+    // Start initialization (will retry if React not ready)
+    initViews();
 })();

@@ -51,6 +51,7 @@ import '../js/ui/10-core-header.jsx'
 import '../js/ui/10-core-navbar.jsx'
 import '../js/ui/10-core-toast.jsx'
 import '../js/ui/11-sync.jsx'
+import '../js/ui/12-views.jsx' // Views (KanbanView, CalendarView) - must load before kanban/calendar tabs
 
 // Import legacy feature tabs (they export to window)
 // Spin tab dependencies first
@@ -58,6 +59,8 @@ import '../js/features/13-03a-spin-ui.jsx'
 import '../js/features/13-03b-spin-winner-popup.jsx'
 import '../js/features/13-03-spin.jsx'
 import '../js/features/13-02-tasks.jsx'
+import '../js/features/13-02-kanban.jsx'
+import '../js/features/13-02-calendar.jsx'
 import '../js/features/13-04-timer.jsx'
 import '../js/features/13-05-ideas.jsx'
 import '../js/features/13-06-goals.jsx'

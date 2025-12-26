@@ -2366,6 +2366,28 @@ function Fold({ title, right, open, onToggle, children }) {
               </button>
             </div>
 
+            {/* Chatbot Settings */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>🤖 AI Chatbot</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Enable the AI assistant chatbot that can help you manage tasks, navigate the app, and adjust settings.
+              </p>
+              
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Enable AI Chatbot</span>
+                  <span style={{ fontSize: 11, color: "var(--text-light)" }}>
+                    Show the floating chatbot button in the bottom-right corner
+                  </span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={settings?.chatbotEnabled !== false} 
+                  onChange={() => handleToggle("chatbotEnabled")} 
+                />
+              </label>
+            </div>
+
             {/* Model Settings */}
             <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
               <h4 style={{ fontFamily: "Fredoka", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>⚙️ Model Settings</h4>

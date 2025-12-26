@@ -102,15 +102,42 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     return { firstName, lastName };
   };
 
+  // Fuzzy matching helper - checks if search term appears in any part of the searchable fields
+  const fuzzyMatch = (person, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase().trim();
+    const searchableFields = [
+      person?.firstName || '',
+      person?.lastName || '',
+      person?.name || '',
+      person?.organization || person?.company || '',
+      person?.email || '',
+      person?.phone || '',
+      person?.jobTitle || '',
+      person?.notes || ''
+    ].filter(Boolean).map(f => String(f).toLowerCase());
+    
+    // Check exact substring matches first (fastest)
+    const haystack = searchableFields.join(' ');
+    if (haystack.includes(q)) return true;
+    
+    // Fuzzy match: check if query words appear in any order
+    const queryWords = q.split(/\s+/).filter(Boolean);
+    if (queryWords.length === 1) {
+      // Single word: check if it appears anywhere
+      return searchableFields.some(field => field.includes(queryWords[0]));
+    } else {
+      // Multiple words: all must appear somewhere
+      return queryWords.every(word => 
+        searchableFields.some(field => field.includes(word))
+      );
+    }
+  };
+
   const filtered = useMemo(() => {
-    const q = (searchTerm || '').trim().toLowerCase();
+    const q = (searchTerm || '').trim();
     if (!q) return safePeople;
-    return safePeople.filter(p => {
-      const hay = [
-        p?.name, p?.type, p?.phone, p?.email, p?.notes
-      ].filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
+    return safePeople.filter(p => fuzzyMatch(p, q));
   }, [safePeople, searchTerm]);
 
   const resetForm = () => {
@@ -2650,7 +2677,18 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                   📧 EMAIL
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                  <a href={`mailto:${person.email}`} style={{ color: 'var(--primary)', textDecoration: 'none', wordBreak: 'break-word' }}>
+                  <a 
+                    href={`mailto:${person.email}`}
+                    onClick={(e) => {
+                      // Safety check: prevent default on mobile if email client might not be available
+                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                      if (isMobile && !person.email.includes('@')) {
+                        e.preventDefault();
+                        notify?.('Invalid email address', '⚠️');
+                      }
+                    }}
+                    style={{ color: 'var(--primary)', textDecoration: 'none', wordBreak: 'break-word' }}
+                  >
                     {person.email}
                   </a>
                 </div>
@@ -2663,20 +2701,42 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                   📞 PHONE
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)' }}>
-                  <a href={`tel:${person.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                  <a 
+                    href={`tel:${person.phone}`}
+                    onClick={(e) => {
+                      // Safety check: ensure phone number is valid for tel: links
+                      const cleanPhone = person.phone.replace(/\D/g, '');
+                      if (cleanPhone.length < 10) {
+                        e.preventDefault();
+                        notify?.('Invalid phone number', '⚠️');
+                      }
+                    }}
+                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                  >
                     {person.phone}
                   </a>
                 </div>
               </div>
             )}
 
-            {person.company && (
+            {(person.organization || person.company) && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                  🏢 COMPANY
+                  🏢 ORGANIZATION
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
-                  {person.company}
+                  {person.organization || person.company}
+                </div>
+              </div>
+            )}
+
+            {person.jobTitle && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  💼 JOB TITLE
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
+                  {person.jobTitle}
                 </div>
               </div>
             )}
@@ -2776,6 +2836,54 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
             )}
           </div>
         </div>
+
+        {/* Recent Activity Section */}
+        {notesHistory && notesHistory.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-light)', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              📋 RECENT ACTIVITY
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 8,
+              maxHeight: 300,
+              overflowY: 'auto',
+              padding: '8px 0'
+            }}>
+              {notesHistory.slice(0, 10).map((activity, idx) => {
+                // Handle both string format and object format
+                const activityText = typeof activity === 'string' ? activity : (activity.text || activity.note || activity);
+                const activityDate = typeof activity === 'object' && activity.timestamp 
+                  ? activity.timestamp 
+                  : (typeof activity === 'object' && activity.createdAt ? activity.createdAt : null);
+                
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: 10,
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      lineHeight: 1.5
+                    }}
+                  >
+                    <div style={{ color: 'var(--text)', marginBottom: 4 }}>
+                      {activityText}
+                    </div>
+                    {activityDate && (
+                      <div style={{ fontSize: 11, color: 'var(--text-light)', opacity: 0.7 }}>
+                        {new Date(activityDate).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Name Breakdown */}
         {(person.firstName || person.lastName) && (

@@ -439,9 +439,6 @@ import ReactDOM from 'react-dom'
   // --- TASKS TAB MAIN ---
   function TasksTab({ tasks, onView, onComplete, onDelete, onUpdate, categories, onAdd, openAdd, notify, settings }) {
     const [viewMode, setViewMode] = useState('active'); // Filter mode: active, done, all
-    const [displayView, setDisplayView] = useState(() => {
-      try { return localStorage.getItem('tasksDisplayView') || 'list'; } catch { return 'list'; }
-    }); // Display view: list, kanban, calendar
     const [searchText, setSearchText] = useState('');
     
     // Command Bar State
@@ -1136,20 +1133,12 @@ import ReactDOM from 'react-dom'
         )}
 
         {/* VIEW CONTENT */}
-        {displayView === 'list' && (
-          <div className="task-list">
-            {displayTasks.map(t => (
-                <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} settings={settings} />
-            ))}
-            {displayTasks.length === 0 && <div style={{textAlign:'center', padding:20, opacity:0.5}}>No tasks found.</div>}
-          </div>
-        )}
-        {displayView === 'kanban' && window.BoardView && (
-          <window.BoardView tasks={displayTasks} onView={onView} />
-        )}
-        {displayView === 'calendar' && window.CalendarView && (
-          <window.CalendarView tasks={displayTasks} onView={onView} />
-        )}
+        <div className="task-list">
+          {displayTasks.map(t => (
+              <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} settings={settings} />
+          ))}
+          {displayTasks.length === 0 && <div style={{textAlign:'center', padding:20, opacity:0.5}}>No tasks found.</div>}
+        </div>
       </div>
     );
   }

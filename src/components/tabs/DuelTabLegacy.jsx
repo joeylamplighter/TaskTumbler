@@ -133,6 +133,18 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     return 0.95 + (normalizedWeight * 0.1);
   }, [settings?.weightMax]);
 
+  // Clean title to remove tags and extra formatting
+  const cleanTitle = useCallback((title) => {
+    if (!title) return '';
+    // Remove tag patterns like "#tag tag" or just "#tag"
+    let cleaned = String(title).trim();
+    // Remove patterns like "#word word" or "#word"
+    cleaned = cleaned.replace(/#\w+(\s+\w+)?/gi, '').trim();
+    // Clean up extra spaces
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    return cleaned;
+  }, []);
+
   const handleChoice = (winnerIndex) => {
     // Prevent multiple clicks during animation
     if (animState && animState !== 'complete') return;
@@ -148,8 +160,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
     setScreenShake(true);
     setTimeout(() => setScreenShake(false), 300);
 
-    // Set initial attack/defend states briefly, then immediately set win/lose
-    // This gives a brief moment before the main animations
+    // Enhanced fighting animations - make them actually fight!
     if (winnerIndex === 0) {
       setFighter1Anim('attacking');
       setFighter2Anim('defending');
@@ -160,8 +171,20 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
 
     setAnimState(winnerIndex === 0 ? 'left' : 'right');
     
-    // Set win/lose animations immediately for snappy fidget-toy feel (ultra-fast for rapid-fire)
+    // Enhanced fight sequence: attack/defend → clash → win/lose
     setTimeout(() => {
+      // Clash animation (both fighters attacking)
+      if (winnerIndex === 0) {
+        setFighter1Anim('clash');
+        setFighter2Anim('clash');
+      } else {
+        setFighter1Anim('clash');
+        setFighter2Anim('clash');
+      }
+    }, 50);
+    
+    setTimeout(() => {
+      // Win/lose after clash
       if (winnerIndex === 0) {
         setFighter1Anim('win');
         setFighter2Anim('lose');
@@ -169,7 +192,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
         setFighter1Anim('lose');
         setFighter2Anim('win');
       }
-    }, 50); // Ultra-brief moment for attack/defend, then quick win/lose
+    }, 150); // Longer clash moment for more dramatic fight
 
     try {
       if (typeof SoundFX !== 'undefined' && settings?.sound !== false) {
@@ -405,7 +428,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
 
         <div style={{ flex: '1 1 0', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
-            {pair[0].title}
+            {cleanTitle(pair[0].title)}
           </div>
           <div style={{ display: 'flex', gap: 3, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
             <span
@@ -523,7 +546,7 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
 
         <div style={{ flex: '1 1 0', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
-            {pair[1].title}
+            {cleanTitle(pair[1].title)}
           </div>
           <div style={{ display: 'flex', gap: 3, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
             <span

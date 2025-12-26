@@ -622,7 +622,36 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
 
     {/* HERO */}
     <div style={{ marginTop: 0, marginBottom: 4 }}>
-      
+      <ClockHero timerState={timerState} getElapsed={getElapsed} fmt={fmt} />
+
+      {/* ACTIVITY NAME (flat) */}
+      <div style={{ maxWidth: "100%", margin: "6px auto 6px", boxSizing: "border-box" }}>
+        <input
+          type="text"
+          placeholder="What are you doing?"
+          value={timerState?.activityName || ""}
+          onChange={(e) => updateTimer({ activityName: e.target.value })}
+          style={{
+            width: "100%",
+            maxWidth: "100%",
+            fontSize: "clamp(14px, 3.5vw, 18px)",
+            fontWeight: 300,
+            textAlign: "center",
+            border: "none",
+            background: "transparent",
+            color: "var(--text)",
+            outline: "none",
+            padding: "4px 4px",
+            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+            fontFamily: "'Fredoka', sans-serif",
+            transition: "opacity 0.2s ease",
+            boxSizing: "border-box",
+            letterSpacing: "0.3px",
+          }}
+          onFocus={(e) => e.target.style.opacity = "1"}
+          onBlur={(e) => e.target.style.opacity = "1"}
+        />
+      </div>
 
       {/* CATEGORY (sleek inline) */}
       <div style={{ maxWidth: "100%", margin: "0 auto 6px", boxSizing: "border-box" }}>
@@ -768,8 +797,8 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
         </div>
 
         {(getElapsed() || 0) > 0 && (
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
-              <button
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
+            <button
               onClick={onReset}
               className="btn-white-outline"
               style={{ 
@@ -783,6 +812,101 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
             >
               ↺ Reset Timer
             </button>
+            
+            {/* Log to Compass Button - Only show when paused/finished and contact is selected */}
+            {!isRunning && window.openCompass && (() => {
+              const timerPeople = Array.isArray(timerState?.people) ? timerState.people : [];
+              const primaryPerson = timerPeople.length > 0 ? timerPeople[0] : null;
+              
+              if (!primaryPerson) return null;
+              
+              // Get person record from allPeople
+              const getPersonRecord = (name) => {
+                try {
+                  return allPeople.find((p) => {
+                    const pName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+                    return pName && pName.toLowerCase() === String(name || '').toLowerCase();
+                  }) || null;
+                } catch {
+                  return null;
+                }
+              };
+              
+              const personRecord = getPersonRecord(primaryPerson);
+              
+              const handleLogToCompass = () => {
+                const elapsed = getElapsed();
+                const hours = Math.floor(elapsed / 3600);
+                const minutes = Math.floor((elapsed % 3600) / 60);
+                const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                
+                // Format professional summary
+                const summaryParts = [
+                  `Session: ${timerState?.activityName || 'Tracked Session'}`,
+                  `Duration: ${durationText}`,
+                  timerState?.location ? `Location: ${timerState.location}` : '',
+                  timerState?.notes ? `Notes: ${timerState.notes}` : '',
+                  `Timestamp: ${new Date().toLocaleString()}`
+                ];
+                const summary = summaryParts.filter(Boolean).join('\n');
+                
+                // Copy to clipboard
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(summary).then(() => {
+                    notify?.('Summary copied to clipboard', '📋');
+                  }).catch(() => {
+                    // Fallback: select text in a temporary textarea
+                    const textarea = document.createElement('textarea');
+                    textarea.value = summary;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                      document.execCommand('copy');
+                      notify?.('Summary copied to clipboard', '📋');
+                    } catch (e) {
+                      console.warn('Copy failed', e);
+                      notify?.('Failed to copy to clipboard', '⚠️');
+                    }
+                    document.body.removeChild(textarea);
+                  });
+                } else {
+                  notify?.('Clipboard not available', '⚠️');
+                }
+                
+                // Open Compass CRM link with person's externalId
+                if (window.openCompass) {
+                  if (personRecord && personRecord.externalId) {
+                    window.openCompass(personRecord.externalId, 'notes', primaryPerson);
+                  } else if (personRecord) {
+                    window.openCompass(personRecord, 'notes', primaryPerson);
+                  } else {
+                    window.openCompass(primaryPerson, 'notes', primaryPerson);
+                  }
+                }
+              };
+              
+              return (
+                <button
+                  onClick={handleLogToCompass}
+                  className="btn-white-outline"
+                  style={{ 
+                    padding: "10px 18px", 
+                    borderRadius: 4, 
+                    fontWeight: 900, 
+                    opacity: 0.85,
+                    fontSize: 13,
+                    background: "rgba(255, 107, 53, 0.1)",
+                    borderColor: "rgba(255, 107, 53, 0.3)",
+                    color: "var(--primary)"
+                  }}
+                  title="Copy session summary and open in Compass CRM"
+                >
+                  🧭 Log to Compass
+                </button>
+              );
+            })()}
           </div>
         )}
       </div>

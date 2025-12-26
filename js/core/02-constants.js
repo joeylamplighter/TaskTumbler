@@ -29,10 +29,12 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "timer", "lists", "goals", "crm", "crm:people", "crm:places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:ai", "settings:game", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "kanban", "calendar", "timer", "lists", "goals", "crm", "crm:people", "crm:places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:ai", "settings:game", "settings:calendar", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
+      kanban: false,
+      calendar: false,
       timer: true,
       lists: false,
       goals: false,
@@ -49,6 +51,7 @@
       "settings:logic": false,
       "settings:ai": false,
       "settings:game": false,
+      "settings:calendar": false,
       "settings:cats": false,
       "settings:data": false,
     },
