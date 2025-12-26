@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, memo } from "react";
 import { createPortal } from "react-dom";
+import { getPersonId } from "../../utils/personUtils";
 
 function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTimer, goals, settings, tasks, updateTask, onRespin }) {
   const [subtaskInput, setSubtaskInput] = useState('');
@@ -396,8 +397,9 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
                           e.preventDefault();
                           e.stopPropagation();
                           if (displayName && personRecord) {
-                            // Use global openModal to open contact
-                            const personId = personRecord.id || personRecord.name || displayName;
+                            // Use global openModal to open contact with consistent ID
+                            const personId = getPersonId(personRecord);
+                            console.log('[ViewTaskModal] Opening contact:', personId, personRecord);
                             if (window.openModal) {
                               window.openModal('contact', personId, { person: personRecord });
                             }
@@ -1053,20 +1055,75 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
                     alignItems: 'center',
                     fontSize: 12
                   }}>
-                    <span 
+                    <span
                       onClick={() => {
                         if (updateTask) {
                           const newSubtasks = [...subtasks];
+                          // Capture OLD state BEFORE toggle
+                          const oldCompleted = newSubtasks[i].completed;
+                          const subtaskTitle = newSubtasks[i].title || newSubtasks[i].text || 'Untitled';
+
+                          // Toggle the subtask
                           newSubtasks[i] = { ...newSubtasks[i], completed: !newSubtasks[i].completed };
+
                           // Calculate progress based on completed subtasks
                           const completedCount = newSubtasks.filter(s => s.completed).length;
                           const newProgress = newSubtasks.length === 0 ? 0 : Math.round((completedCount / newSubtasks.length) * 100);
-                          // Update both progress and percentComplete for compatibility
-                          updateTask(task.id, { 
+
+                          // Check if all subtasks are now completed
+                          const allSubtasksCompleted = newSubtasks.length > 0 && completedCount === newSubtasks.length;
+
+                          // Check if auto-complete setting is enabled (defaults to true if not set)
+                          const autoCompleteEnabled = settings?.autoCompleteSubtask !== false;
+
+                          // Auto-complete main task when all subtasks are done (only if setting is enabled)
+                          const taskUpdates = {
                             subtasks: newSubtasks,
                             progress: newProgress,
                             percentComplete: newProgress
-                          });
+                          };
+
+                          // If all subtasks completed and task isn't already complete, complete it (only if setting enabled)
+                          if (allSubtasksCompleted && !task.completed && autoCompleteEnabled) {
+                            taskUpdates.completed = true;
+                            taskUpdates.completedAt = new Date().toISOString();
+                            console.log('[ViewTaskModal] Auto-completing task - all subtasks done');
+
+                            // Trigger task completion handlers
+                            if (onComplete) {
+                              setTimeout(() => onComplete(task.id), 100);
+                            }
+                          }
+                          // If any subtask is incomplete but task is marked complete, uncomplete it (only if setting enabled)
+                          else if (!allSubtasksCompleted && task.completed && newProgress < 100 && autoCompleteEnabled) {
+                            taskUpdates.completed = false;
+                            taskUpdates.completedAt = null;
+                            console.log('[ViewTaskModal] Auto-uncompleting task - not all subtasks done');
+                          }
+
+                          // Update both progress and percentComplete for compatibility
+                          updateTask(task.id, taskUpdates);
+
+                          // Log subtask activity using OLD state to determine action
+                          try {
+                            const addActivity = window.addActivity || (() => {});
+                            if (typeof addActivity === 'function') {
+                              // If it WAS completed (oldCompleted=true), we just uncompleted it
+                              // If it WAS NOT completed (oldCompleted=false), we just completed it
+                              const verb = oldCompleted ? 'uncompleted' : 'completed';
+                              const activityType = oldCompleted ? 'subtask_uncompleted' : 'subtask_completed';
+                              addActivity({
+                                type: activityType,
+                                title: `${verb} subtask: ${subtaskTitle}`,
+                                taskId: task.id,
+                                people: Array.isArray(task.people) ? task.people : [],
+                                category: task.category || 'General',
+                                createdAt: new Date().toISOString()
+                              });
+                            }
+                          } catch (e) {
+                            console.warn('Failed to log subtask activity:', e);
+                          }
                         }
                       }}
                       style={{ 
@@ -1116,7 +1173,8 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && subtaskInput.trim()) {
-                  const newSubtasks = [...subtasks, { title: subtaskInput.trim(), completed: false }];
+                  const newSubtaskText = subtaskInput.trim();
+                  const newSubtasks = [...subtasks, { title: newSubtaskText, text: newSubtaskText, completed: false }];
                   if (updateTask) {
                     // Calculate progress when adding a new subtask
                     const completedCount = newSubtasks.filter(s => s.completed).length;
@@ -1126,6 +1184,23 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
                       progress: newProgress,
                       percentComplete: newProgress
                     });
+                    
+                    // Log subtask activity
+                    try {
+                      const addActivity = window.addActivity || (() => {});
+                      if (typeof addActivity === 'function') {
+                        addActivity({
+                          type: 'subtask_added',
+                          title: `added subtask: ${newSubtaskText}`,
+                          taskId: task.id,
+                          people: Array.isArray(task.people) ? task.people : [],
+                          category: task.category || 'General',
+                          createdAt: new Date().toISOString()
+                        });
+                      }
+                    } catch (e) {
+                      console.warn('Failed to log subtask activity:', e);
+                    }
                   }
                   setSubtaskInput('');
                 }

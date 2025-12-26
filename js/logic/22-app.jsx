@@ -11,6 +11,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AIChatbot from '../../src/components/chatbot/AIChatbot'
+import { ModalRenderer } from '../../src/App'
 
 /** Defensive wrapper: prevents React #130 when a window component is missing */
 const SafeComponent = (Comp, name = "Component") => {
@@ -374,13 +375,17 @@ const isInitialized = () => {
 const markInitialized = () => {
   try {
     localStorage.setItem(TT_INIT_FLAG, "1");
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to mark app as initialized:', err);
+  }
 };
 
 const clearInitFlag = () => {
   try {
     localStorage.removeItem(TT_INIT_FLAG);
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to clear init flag:', err);
+  }
 };
 
 // Helper to get the primary tab from the URL hash (e.g., #spin or #settings?view=data -> 'settings')
@@ -632,22 +637,33 @@ const setCategoryXpAdjust = (cat, val) => {
 const addSubCategory = (parentCat) => {
   const name = (newSubCatByParent[parentCat] || "").trim();
   if (!name) return;
-  
-  const all = JSON.parse(localStorage.getItem('subCategories') || '{}');
-  const existing = all[parentCat] || [];
-  if (existing.includes(name)) return;
-  
-  all[parentCat] = [...existing, name];
-  localStorage.setItem('subCategories', JSON.stringify(all));
-  setNewSubCatByParent(p => ({ ...p, [parentCat]: "" }));
-  window.dispatchEvent(new Event('categories-updated'));
+
+  try {
+    const all = JSON.parse(localStorage.getItem('subCategories') || '{}');
+    const existing = all[parentCat] || [];
+    if (existing.includes(name)) return;
+
+    all[parentCat] = [...existing, name];
+    localStorage.setItem('subCategories', JSON.stringify(all));
+    setNewSubCatByParent(p => ({ ...p, [parentCat]: "" }));
+    window.dispatchEvent(new Event('categories-updated'));
+  } catch (err) {
+    console.error('Failed to add subcategory:', err);
+    // Reset corrupted data
+    localStorage.setItem('subCategories', JSON.stringify({ [parentCat]: [name] }));
+    window.dispatchEvent(new Event('categories-updated'));
+  }
 };
 
 const removeSubCategory = (parentCat, subName) => {
-  const all = JSON.parse(localStorage.getItem('subCategories') || '{}');
-  all[parentCat] = (all[parentCat] || []).filter(s => s !== subName);
-  localStorage.setItem('subCategories', JSON.stringify(all));
-  window.dispatchEvent(new Event('categories-updated'));
+  try {
+    const all = JSON.parse(localStorage.getItem('subCategories') || '{}');
+    all[parentCat] = (all[parentCat] || []).filter(s => s !== subName);
+    localStorage.setItem('subCategories', JSON.stringify(all));
+    window.dispatchEvent(new Event('categories-updated'));
+  } catch (err) {
+    console.error('Failed to remove subcategory:', err);
+  }
 };
   // --- Global Components (loaded in other files) ---
   const TaskFormModal = window.TaskFormModal;
@@ -1413,6 +1429,11 @@ const removeSubCategory = (parentCat, subName) => {
     }
     markInitialized();
   };
+  
+  // Expose addActivity to window for use in ViewTaskModal and other components
+  if (typeof window !== 'undefined') {
+    window.addActivity = addActivity;
+  }
 
   // Actions
   // Calendar sync helper
@@ -1497,6 +1518,26 @@ const removeSubCategory = (parentCat, subName) => {
         if (newTask.startDate && settings?.calendarSync?.autoSync) {
           setTimeout(() => syncTaskToCalendar(newTask), 500);
         }
+        
+        // Atomic Goal Sync: If task has goalId, recalculate goal progress
+        if (newTask.goalId && DM?.goals?.getById && DM?.goals?.update) {
+          try {
+            const goal = DM.goals.getById(newTask.goalId);
+            if (goal && goal.id) {
+              const allTasksForGoal = updated.filter(t => t.goalId === goal.id);
+              const completedTasksCount = allTasksForGoal.filter(t => t.completed).length;
+              const totalTasksForGoal = allTasksForGoal.length;
+              const percentComplete = totalTasksForGoal > 0 
+                ? Math.round((completedTasksCount / totalTasksForGoal) * 100) 
+                : 0;
+              
+              // Update goal in the same execution block
+              DM.goals.update(goal.id, { percentComplete });
+            }
+          } catch (e) {
+            console.error("Error syncing goal progress:", e);
+          }
+        }
       }
       
       return updated;
@@ -1522,8 +1563,8 @@ const removeSubCategory = (parentCat, subName) => {
   };
 
   const completeTask = (id) => {
-    setTasks((p) =>
-      p.map((t) => {
+    setTasks((p) => {
+      const updated = p.map((t) => {
         if (t.id !== id) return t;
         const isNowCompleted = !t.completed;
         if (isNowCompleted) {
@@ -1545,8 +1586,31 @@ const removeSubCategory = (parentCat, subName) => {
           notify("Task Restored", "↩️");
         }
         return { ...t, completed: isNowCompleted, completedAt: isNowCompleted ? new Date().toISOString() : null };
-      })
-    );
+      });
+      
+      // Atomic Goal Sync: If completed task has goalId, recalculate goal progress
+      const completedTask = updated.find(t => t.id === id);
+      if (completedTask?.goalId && DM?.goals?.getById && DM?.goals?.update) {
+        try {
+          const goal = DM.goals.getById(completedTask.goalId);
+          if (goal && goal.id) {
+            const allTasksForGoal = updated.filter(t => t.goalId === goal.id);
+            const completedTasksCount = allTasksForGoal.filter(t => t.completed).length;
+            const totalTasksForGoal = allTasksForGoal.length;
+            const percentComplete = totalTasksForGoal > 0 
+              ? Math.round((completedTasksCount / totalTasksForGoal) * 100) 
+              : 0;
+            
+            // Update goal in the same execution block
+            DM.goals.update(goal.id, { percentComplete });
+          }
+        } catch (e) {
+          console.error("Error syncing goal progress:", e);
+        }
+      }
+      
+      return updated;
+    });
   };
 
   // ✅ SHARED FOCUS HANDLER (Spin + View Modal)
@@ -3496,41 +3560,23 @@ const removeSubCategory = (parentCat, subName) => {
               <ViewContactModal
                 person={person}
                 onClose={() => {
-                  // Set flag to prevent reopening loop
-                  window.__closingContactModal = true;
-                  
-                  // Remove modal from stack
                   setModalStack(prev => prev.filter((_, i) => i !== index));
-                  
-                  // Clear contact permalink from hash if present
-                  const hash = window.location.hash;
-                  if (hash.match(/#(?:people|person)\//)) {
-                    // Get current tab (without contact permalink)
-                    const currentTab = initialTab();
-                    // Clear the hash or go back to the tab
-                    if (currentTab === 'spin') {
-                      window.location.hash = '';
-                    } else {
-                      window.location.hash = `#${currentTab}`;
-                    }
-                  }
-                  
-                  // Clear flag after a short delay to allow hash change to complete
-                  setTimeout(() => {
-                    window.__closingContactModal = false;
-                  }, 100);
                 }}
                 onEdit={(p) => {
-                  // Open PeopleManager in edit mode for this person
-                  pushModal({ type: 'peopleManager', data: { editPerson: p } });
+                  setModalStack(prev => {
+                    const newStack = [...prev];
+                    newStack[index] = { type: 'editContact', data: p };
+                    return newStack;
+                  });
                 }}
                 tasks={tasks}
                 history={activities}
                 locations={DM?.locations?.getAll?.() || []}
                 people={allPeople}
                 setPeople={setPeople}
-                onViewTask={setViewTask}
+                onViewTask={(task) => window.openModal('task', task.id, { task })}
                 onComplete={completeTask}
+                ignoreHash={true}
               />
             </div>
           );
@@ -3562,6 +3608,37 @@ const removeSubCategory = (parentCat, subName) => {
 
       {/* AI Chatbot - Global Assistant */}
       <AIChatbot />
+
+      {/* URL-based Modal Renderer for task and contact modals */}
+      <ModalRenderer
+        getTaskById={(id) => tasks.find(t => t.id === id)}
+        getPersonById={(id) => allPeople.find(p => p.id === id || p.name === id)}
+        tasks={tasks}
+        people={allPeople}
+        locations={DM?.locations?.getAll?.() || []}
+        onEditTask={(task) => {
+          pushModal({ type: 'editTask', data: task });
+        }}
+        onCompleteTask={completeTask}
+        onFocusTask={(task) => {
+          pushModal({ type: 'focus', data: task });
+        }}
+        onStartTimer={(task) => {
+          if (task) {
+            startTimer(task);
+          }
+        }}
+        goals={goals}
+        settings={settings}
+        updateTask={(task) => {
+          setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+        }}
+        onRespin={() => {
+          // Trigger respin
+          window.dispatchEvent(new Event('respin-triggered'));
+        }}
+        history={activities}
+      />
     </div>
   );
 }

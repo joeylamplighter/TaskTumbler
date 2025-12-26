@@ -42,6 +42,22 @@ export const getInitials = (person) => {
 };
 
 /**
+ * Get a consistent ID for a person object
+ * This ensures the same person always gets the same ID regardless of where it's accessed
+ */
+export const getPersonId = (person) => {
+  if (!person) return null;
+  // Priority: id > name > firstName+lastName > displayName
+  if (person.id) return String(person.id);
+  if (person.name) return String(person.name);
+  if (person.firstName || person.lastName) {
+    const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
+    if (fullName) return fullName;
+  }
+  return getDisplayName(person);
+};
+
+/**
  * Get person record by name (case-insensitive)
  */
 export const getPersonRecordByName = (name, allPeople = []) => {
@@ -206,9 +222,13 @@ export const PersonLink = ({ person, onClick, style = {}, compact = false }) => 
 export default {
   getDisplayName,
   getInitials,
+  getPersonId,
   getPersonRecordByName,
   PersonAvatar,
   PersonBadge,
   PersonLink
 };
+
+
+
 

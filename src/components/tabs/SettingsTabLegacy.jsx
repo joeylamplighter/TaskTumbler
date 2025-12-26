@@ -223,7 +223,10 @@ export default function SettingsTabLegacy(props) {
     const handleToggle = useCallback(
       (key) => {
         setSettings?.((p) => {
-          const newSettings = { ...p, [key]: !p?.[key] };
+          // Handle default values properly - if undefined, treat as false for toggling
+          const currentValue = p?.[key];
+          const newValue = currentValue === undefined ? true : !currentValue;
+          const newSettings = { ...p, [key]: newValue };
           // Dispatch event for NavBar to update in real-time
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('settings-updated'));
@@ -1455,6 +1458,259 @@ function Fold({ title, right, open, onToggle, children }) {
               <p style={{ fontSize: 11, color: "var(--text-light)", marginTop: 4, marginBottom: 0 }}>
                 Remove rounded corners from buttons, cards, and other UI elements
               </p>
+            </div>
+
+            {/* Preloaded Theme Library */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #10b981" }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 8, fontWeight: 600 }}>✨ Theme Library</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Choose from our collection of professionally designed themes - no AI needed!
+              </p>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: 8,
+                marginBottom: 12
+              }}>
+                {window.PRELOADED_THEMES && Object.entries(window.PRELOADED_THEMES).map(([themeKey, themeData]) => {
+                  const isActive = settings?.theme === `preloaded_${themeKey}`;
+                  return (
+                    <button
+                      key={themeKey}
+                      onClick={() => {
+                        // Save theme to custom themes
+                        const customThemes = settings?.customThemes || {};
+                        const newCustomThemes = {
+                          ...customThemes,
+                          [`preloaded_${themeKey}`]: themeData
+                        };
+                        handleChange('customThemes', newCustomThemes);
+                        handleChange('theme', `preloaded_${themeKey}`);
+                        safeNotify(`Applied ${themeData.displayName}!`, "✨");
+                      }}
+                      style={{
+                        padding: 10,
+                        background: isActive ? 'var(--primary)' : 'var(--input-bg)',
+                        color: isActive ? '#fff' : 'var(--text)',
+                        border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: isActive ? 700 : 500,
+                        textAlign: 'center',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 60
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'var(--border)';
+                          e.currentTarget.style.transform = 'scale(1.02)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'var(--input-bg)';
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        gap: 4,
+                        marginBottom: 4,
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                      }}>
+                        <div style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: 3,
+                          background: themeData.cssVariables['--primary'],
+                          border: '1px solid rgba(255,255,255,0.2)'
+                        }}></div>
+                        <div style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: 3,
+                          background: themeData.cssVariables['--accent'],
+                          border: '1px solid rgba(255,255,255,0.2)'
+                        }}></div>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 12 }}>{themeData.displayName}</div>
+                      {isActive && <div style={{ fontSize: 9, opacity: 0.9 }}>✓ Active</div>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 10, color: "var(--text-light)", fontStyle: 'italic', margin: 0 }}>
+                💡 Tip: These themes are ready to use instantly. For custom colors, try the AI Theme Creator below!
+              </p>
+            </div>
+
+            {/* Advanced UI/UX Settings */}
+            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #f59e0b" }}>
+              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 8, fontWeight: 600 }}>⚙️ Advanced UI/UX</h4>
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
+                Fine-tune the look and feel of the app
+              </p>
+
+              {/* Font Settings */}
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label" style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Font Family</label>
+                <select
+                  className="f-select"
+                  style={{ width: '100%' }}
+                  value={settings?.advancedUI?.fontFamily || 'system'}
+                  onChange={(e) => {
+                    const advancedUI = { ...(settings?.advancedUI || {}), fontFamily: e.target.value };
+                    handleChange('advancedUI', advancedUI);
+                  }}
+                >
+                  <option value="system">System Default</option>
+                  <option value="fredoka">Fredoka (Playful)</option>
+                  <option value="inter">Inter (Modern)</option>
+                  <option value="roboto">Roboto (Clean)</option>
+                  <option value="poppins">Poppins (Rounded)</option>
+                  <option value="comic-sans">Comic Sans (Fun)</option>
+                </select>
+              </div>
+
+              {/* Font Size */}
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label" style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Font Size</label>
+                <select
+                  className="f-select"
+                  style={{ width: '100%' }}
+                  value={settings?.advancedUI?.fontSize || 'medium'}
+                  onChange={(e) => {
+                    const advancedUI = { ...(settings?.advancedUI || {}), fontSize: e.target.value };
+                    handleChange('advancedUI', advancedUI);
+                  }}
+                >
+                  <option value="small">Small (Compact)</option>
+                  <option value="medium">Medium (Default)</option>
+                  <option value="large">Large (Comfortable)</option>
+                  <option value="xlarge">Extra Large (Accessible)</option>
+                </select>
+              </div>
+
+              {/* Border Radius */}
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label" style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Border Radius</label>
+                <select
+                  className="f-select"
+                  style={{ width: '100%' }}
+                  value={settings?.advancedUI?.borderRadius || 'normal'}
+                  onChange={(e) => {
+                    const advancedUI = { ...(settings?.advancedUI || {}), borderRadius: e.target.value };
+                    handleChange('advancedUI', advancedUI);
+                  }}
+                >
+                  <option value="sharp">Sharp (No Rounding)</option>
+                  <option value="normal">Normal (Subtle)</option>
+                  <option value="rounded">Rounded (Smooth)</option>
+                  <option value="pill">Pill (Maximum)</option>
+                </select>
+              </div>
+
+              {/* Animation Speed */}
+              <div style={{ marginBottom: 12 }}>
+                <label className="f-label" style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Animation Speed</label>
+                <select
+                  className="f-select"
+                  style={{ width: '100%' }}
+                  value={settings?.advancedUI?.animationSpeed || 'normal'}
+                  onChange={(e) => {
+                    const advancedUI = { ...(settings?.advancedUI || {}), animationSpeed: e.target.value };
+                    handleChange('advancedUI', advancedUI);
+                  }}
+                >
+                  <option value="instant">Instant (No Animation)</option>
+                  <option value="fast">Fast (Snappy)</option>
+                  <option value="normal">Normal (Balanced)</option>
+                  <option value="slow">Slow (Smooth)</option>
+                </select>
+              </div>
+
+              {/* Visual Effects Toggles */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600 }}>Glass Effect</span>
+                    <input
+                      type="checkbox"
+                      checked={!!settings?.advancedUI?.glassEffect}
+                      onChange={() => {
+                        const advancedUI = { ...(settings?.advancedUI || {}), glassEffect: !settings?.advancedUI?.glassEffect };
+                        handleChange('advancedUI', advancedUI);
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 9, color: 'var(--text-light)', marginTop: 2 }}>Frosted glass blur</span>
+                </label>
+
+                <label style={{ display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600 }}>Gradients</span>
+                    <input
+                      type="checkbox"
+                      checked={!!settings?.advancedUI?.gradients}
+                      onChange={() => {
+                        const advancedUI = { ...(settings?.advancedUI || {}), gradients: !settings?.advancedUI?.gradients };
+                        handleChange('advancedUI', advancedUI);
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 9, color: 'var(--text-light)', marginTop: 2 }}>Color gradients</span>
+                </label>
+
+                <label style={{ display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600 }}>Compact Mode</span>
+                    <input
+                      type="checkbox"
+                      checked={!!settings?.advancedUI?.compactMode}
+                      onChange={() => {
+                        const advancedUI = { ...(settings?.advancedUI || {}), compactMode: !settings?.advancedUI?.compactMode };
+                        handleChange('advancedUI', advancedUI);
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 9, color: 'var(--text-light)', marginTop: 2 }}>Tighter spacing</span>
+                </label>
+
+                <label style={{ display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600 }}>Reduced Motion</span>
+                    <input
+                      type="checkbox"
+                      checked={!!settings?.advancedUI?.reducedMotion}
+                      onChange={() => {
+                        const advancedUI = { ...(settings?.advancedUI || {}), reducedMotion: !settings?.advancedUI?.reducedMotion };
+                        handleChange('advancedUI', advancedUI);
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 9, color: 'var(--text-light)', marginTop: 2 }}>Accessibility</span>
+                </label>
+              </div>
+
+              {/* Reset to Defaults */}
+              <button
+                className="btn-white-outline"
+                onClick={() => {
+                  handleChange('advancedUI', window.ADVANCED_UI_DEFAULTS || {});
+                  safeNotify("Reset to defaults", "🔄");
+                }}
+                style={{ width: '100%', marginTop: 12, fontSize: 11, padding: '8px 12px' }}
+              >
+                🔄 Reset to Defaults
+              </button>
             </div>
 
             {/* AI Theme Creator */}

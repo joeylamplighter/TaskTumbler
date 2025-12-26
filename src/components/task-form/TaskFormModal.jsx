@@ -695,7 +695,11 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       if (first.type === "relative") { val = Number(first.offsetValue ?? 30); unit = first.offsetUnit || "minutes"; }
       else { val = 24; unit = "hours"; }
     }
-    try { sessionStorage.removeItem(draftKey); } catch {}
+    try {
+      sessionStorage.removeItem(draftKey);
+    } catch (err) {
+      console.warn('Failed to clear draft from sessionStorage:', err);
+    }
     // Explicitly ensure people array is included and is an array
     const peopleArray = Array.isArray(data.people) ? data.people.filter(Boolean) : [];
     onSave?.({ 

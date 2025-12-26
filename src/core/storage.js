@@ -41,7 +41,11 @@ const save = (key, value) => {
 };
 
 const remove = (key) => {
-    try { localStorage.removeItem(key); } catch (e) {}
+    try {
+        localStorage.removeItem(key);
+    } catch (e) {
+        console.warn('Remove error:', key, e);
+    }
 };
 
 const normalizePerson = (p) => {

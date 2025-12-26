@@ -740,7 +740,23 @@
             reminderOffsetUnit: t.reminderOffsetUnit || 'hours',
             recurring: t.recurring || 'None',
             excludeFromTumbler: Boolean(t.excludeFromTumbler),
-            subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+            subtasks: (() => {
+                if (!Array.isArray(t.subtasks)) return [];
+                // Normalize subtasks: convert strings to objects, ensure all have title and completed
+                return t.subtasks.map(st => {
+                    if (typeof st === 'string') {
+                        return { title: st, text: st, completed: false };
+                    }
+                    if (typeof st === 'object' && st !== null) {
+                        return {
+                            title: st.title || st.text || String(st).trim() || 'Untitled',
+                            text: st.text || st.title || String(st).trim() || 'Untitled',
+                            completed: Boolean(st.completed)
+                        };
+                    }
+                    return { title: 'Untitled', text: 'Untitled', completed: false };
+                });
+            })(),
             tags: Array.isArray(t.tags) ? t.tags.filter(Boolean) : [],
             people: Array.isArray(t.people) ? t.people.filter(Boolean) : [],
             blockedBy: Array.isArray(t.blockedBy) ? t.blockedBy : [],

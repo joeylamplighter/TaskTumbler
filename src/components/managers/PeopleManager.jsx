@@ -2370,16 +2370,26 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
     }
   };
 
-  const handleHistoryClick = (historyItem) => {
+  const handleHistoryClick = (historyItem, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     // If history item has a taskId, try to find and view the task
     if (historyItem.taskId) {
       const task = safeTasks.find(t => t.id === historyItem.taskId);
       if (task) {
         // Use global openModal if available, otherwise fall back to onViewTask
-        if (window.openModal) {
-          window.openModal('task', task.id, { task });
-        } else if (onViewTask) {
-          onViewTask(task);
+        try {
+          if (window.openModal && typeof window.openModal === 'function') {
+            window.openModal('task', task.id, { task });
+          } else if (onViewTask && typeof onViewTask === 'function') {
+            onViewTask(task);
+          } else {
+            console.warn('PeopleManager: No modal handler available for history item task:', historyItem.taskId);
+          }
+        } catch (error) {
+          console.error('Error opening task modal from history:', error);
         }
         return;
       }
@@ -3341,12 +3351,20 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
               {associatedTasks.map((task) => (
                 <div
                   key={task.id}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     // Use global openModal if available, otherwise fall back to onViewTask
-                    if (window.openModal) {
-                      window.openModal('task', task.id, { task });
-                    } else if (onViewTask) {
-                      onViewTask(task);
+                    try {
+                      if (window.openModal && typeof window.openModal === 'function') {
+                        window.openModal('task', task.id, { task });
+                      } else if (onViewTask && typeof onViewTask === 'function') {
+                        onViewTask(task);
+                      } else {
+                        console.warn('PeopleManager: No modal handler available for task:', task.id);
+                      }
+                    } catch (error) {
+                      console.error('Error opening task modal:', error);
                     }
                   }}
                   style={{
@@ -3356,6 +3374,7 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                     cursor: 'pointer',
                     border: task.completed ? '1px solid rgba(0,184,148,0.3)' : '1px solid rgba(255,255,255,0.1)',
                     transition: 'all 0.2s ease',
+                    pointerEvents: 'auto',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = task.completed ? 'rgba(0,184,148,0.15)' : 'rgba(255,255,255,0.08)';
@@ -3464,7 +3483,7 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                 return (
                   <div
                     key={historyItem.id || idx}
-                    onClick={() => handleHistoryClick(historyItem)}
+                    onClick={(e) => handleHistoryClick(historyItem, e)}
                     style={{
                       padding: '12px 16px',
                       background: 'rgba(255,255,255,0.03)',
@@ -3472,6 +3491,7 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                       cursor: 'pointer',
                       border: '1px solid rgba(255,255,255,0.08)',
                       transition: 'all 0.2s ease',
+                      pointerEvents: 'auto',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'rgba(255,255,255,0.06)';

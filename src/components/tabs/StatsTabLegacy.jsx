@@ -1715,7 +1715,11 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
             'location_created': '📍 Location Created',
             'location_edited': '✏️ Location Edited',
             'completion': '✅ Completion',
-            'spin_result': '🎰 Spin Result'
+            'spin_result': '🎰 Spin Result',
+            'subtask_added': '➕ Subtask Added',
+            'subtask_completed': '✅ Subtask Completed',
+            'subtask_deleted': '🗑️ Subtask Deleted',
+            'subtask_uncompleted': '↩️ Subtask Uncompleted'
         };
         return labelMap[type] || type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
@@ -1978,9 +1982,10 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                     if (chartLocationFilter !== 'All' && normalized.locationLabel !== chartLocationFilter) return;
                     if (chartTypeFilter !== 'All' && normalized.type !== chartTypeFilter) return;
                     
-                    // Ensure normalized.createdAt is a Date object before calling toDateString()
-                    const dateObj = normalized.createdAt instanceof Date ? normalized.createdAt : new Date(normalized.createdAt || new Date());
-                    const dateKey = dateObj.toDateString();
+                    // REPLACE dateKey logic: Handle Date objects and invalid dates
+                    const rawDate = normalized.createdAt || Date.now();
+                    const dObj = (rawDate instanceof Date) ? rawDate : new Date(rawDate);
+                    const dateKey = isNaN(dObj.getTime()) ? new Date().toDateString() : dObj.toDateString();
                     if (data[dateKey] !== undefined) {
                         const duration = Number(normalized.duration) || 0;
                         data[dateKey] += (unit === 'hours' ? duration / 60 : duration);
@@ -2005,7 +2010,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
         }
     };
 
-    const chartData = React.useMemo(() => getChartData(timeRange), [timeRange, unit, chartCategoryFilter, chartLocationFilter, chartTypeFilter, safeHistory]);
+    const chartData = React.useMemo(() => getChartData(timeRange), [safeHistory.length, chartCategoryFilter, chartLocationFilter, chartTypeFilter, timeRange, unit]);
     const maxChartVal = React.useMemo(() => {
         if (chartData.length === 0) return 10;
         const values = chartData.map(d => Number(d.value) || 0).filter(v => isFinite(v));
@@ -2036,7 +2041,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
             console.error('Error generating category stats:', e);
             return [];
         }
-    }, [safeHistory, chartLocationFilter, chartTypeFilter]);
+    }, [safeHistory.length, chartLocationFilter, chartTypeFilter]);
 
     // Location stats for location filter dropdown
     const locationStats = React.useMemo(() => {
@@ -2082,7 +2087,7 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
             console.error('Error generating type stats:', e);
             return [];
         }
-    }, [safeHistory]);
+    }, [safeHistory.length, chartCategoryFilter, chartLocationFilter, chartTypeFilter, timeRange, unit]);
 
     const peopleData = (() => {
         const map = {};

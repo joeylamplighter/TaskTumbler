@@ -29,6 +29,7 @@ import './core/dataManager'
 import './core/utils'
 import './core/storage'
 import './core/firebase'
+import './core/preloadedAssets'
 // Import utilities to ensure they're available on window
 import './utils/SoundFX'
 import './utils/confetti'

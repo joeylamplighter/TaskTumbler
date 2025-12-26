@@ -226,7 +226,7 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
                                 margin: 0
                             }}>
                                 {ocrResult.tasks.map((task, index) => (
-                                    <li key={index} style={{
+                                    <li key={`ocr-task-${index}-${task.title?.substring(0, 20)}`} style={{
                                         padding: '10px',
                                         backgroundColor: '#fff',
                                         border: '1px solid #ddd',

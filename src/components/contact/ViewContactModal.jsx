@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
-import { getDisplayName, getInitials } from "../../utils/personUtils";
+import { getDisplayName, getInitials, getPersonId } from "../../utils/personUtils";
 
 function ViewContactModal({ 
   person, 
@@ -250,17 +250,12 @@ function ViewContactModal({
 
   // Handle task click - open task view
   const handleTaskClick = (task) => {
-    // Call onViewTask first if available
-    if (onViewTask) {
-      onViewTask(task);
-    }
-    // Then close the contact modal using global closeModal
-    if (window.closeModal) {
-      window.closeModal();
-    }
-    // Open the task modal
+    // Check for the global openModal function first
     if (window.openModal) {
       window.openModal('task', task.id, { task });
+    } else if (onViewTask) {
+      // Fallback for isolated component testing
+      onViewTask(task);
     }
   };
 
@@ -537,7 +532,7 @@ function ViewContactModal({
                   }}>
                     Contact Information
                   </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {/* Email */}
                     {personEmail && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -620,8 +615,8 @@ function ViewContactModal({
                   {(personCompany || personJobTitle || personWebsite) && (
                     <div style={{
                       background: 'var(--input-bg)',
-                      borderRadius: 8,
                       padding: 12,
+                      borderRadius: 12,
                       marginTop: 12
                     }}>
                       {personJobTitle && (
@@ -738,7 +733,15 @@ function ViewContactModal({
                       <button
                         key={related.id}
                         onClick={() => {
-                          window.dispatchEvent(new CustomEvent('open-contact', { detail: { person: related } }));
+                          // Use consistent person ID when opening related contact
+                          const relatedPersonId = getPersonId(related);
+                          console.log('[ViewContactModal] Opening related contact:', relatedPersonId, related);
+                          if (window.openModal) {
+                            window.openModal('contact', relatedPersonId, { person: related });
+                          } else {
+                            // Fallback to custom event for isolated testing
+                            window.dispatchEvent(new CustomEvent('open-contact', { detail: { person: related } }));
+                          }
                         }}
                         style={{
                           padding: '6px 12px',
