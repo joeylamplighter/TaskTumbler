@@ -12,6 +12,7 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
     const [noteTitle, setNoteTitle] = useState('');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
+    const [showOCRModal, setShowOCRModal] = useState(false);
     
     // Load currentNoteId from localStorage on mount
     const [currentNoteId, setCurrentNoteId] = useState(() => {
@@ -187,6 +188,36 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
         }
     };
 
+    const handleOCRTextExtracted = (tasks, ocrResult) => {
+        if (ocrResult && ocrResult.text) {
+            // Add extracted text to Ideas textarea
+            const separator = text && text.trim() ? "\n\n--- OCR Text ---\n\n" : "";
+            setText(prev => (prev || "") + separator + ocrResult.text);
+            notify("Text extracted and added to Ideas", "📄");
+        }
+        
+        // Optionally add tasks if user wants
+        if (tasks && tasks.length > 0) {
+            const addTasks = confirm(`Found ${tasks.length} task(s) in the document. Add them as tasks?`);
+            if (addTasks && onAddTasks) {
+                tasks.forEach(task => {
+                    const normalizeTask = window.normalizeTask || ((t) => ({
+                        title: t.title || 'Untitled Task',
+                        category: t.category || 'General',
+                        priority: t.priority || 'Medium',
+                        description: t.description || '',
+                        dueDate: t.dueDate || null,
+                        ...t
+                    }));
+                    onAddTasks(normalizeTask(task));
+                });
+                notify(`Added ${tasks.length} task(s)`, "✅");
+            }
+        }
+        
+        setShowOCRModal(false);
+    };
+
     return (
         <div style={{display:'flex', flexDirection:'column', height:'100%', position:'relative'}}>
             <div style={{paddingBottom:8, borderBottom:'1px solid var(--border)', marginBottom:12, display:'flex', flexDirection: 'column', gap:4}}>
@@ -233,6 +264,14 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
                             title="Convert to Tasks"
                         >
                             📋
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={() => setShowOCRModal(true)}
+                            title="Scan Document with OCR"
+                        >
+                            📷
                         </button>
                     </div>
                 </div>
@@ -284,6 +323,12 @@ function IdeasTab({ text, setText, onAddTasks, settings, notify, savedNotes, set
                     </div>
                 </div>
             )}
+
+            {showOCRModal && window.OCRModal && React.createElement(window.OCRModal, {
+                onClose: () => setShowOCRModal(false),
+                onTasksExtracted: handleOCRTextExtracted,
+                settings: settings
+            })}
         </div>
     );
 }

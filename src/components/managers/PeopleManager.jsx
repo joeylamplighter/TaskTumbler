@@ -73,8 +73,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     links: '',
     locationIds: [],
     // New contact fields
+    title: '', // Salutation (Mr., Mrs., Dr., etc.)
     company: '',
+    organizations: '', // Multiple organizations (comma-separated)
     jobTitle: '',
+    department: '',
     address: '',
     city: '',
     state: '',
@@ -83,6 +86,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
     website: '',
     linkedin: '',
     twitter: '',
+    assistantName: '',
+    assistantPhone: '',
+    assistantEmail: '',
+    birthday: '',
+    anniversary: '',
     profilePicture: '', // Can be URL, base64, emoji, or 'ai'
     profilePictureType: 'initials' // 'initials', 'emoji', 'upload', 'ai'
   });
@@ -156,8 +164,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       compassCrmLink: '',
       links: '',
       locationIds: [],
+      title: '',
       company: '',
+      organizations: '',
       jobTitle: '',
+      department: '',
       address: '',
       city: '',
       state: '',
@@ -166,6 +177,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       website: '',
       linkedin: '',
       twitter: '',
+      assistantName: '',
+      assistantPhone: '',
+      assistantEmail: '',
+      birthday: '',
+      anniversary: '',
       profilePicture: '',
       profilePictureType: 'initials'
     });
@@ -214,8 +230,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       compassCrmLink: p.compassCrmLink || p.compassLink || p.crmLink || '',
       links: linksStr,
       locationIds: Array.isArray(p.locationIds) ? p.locationIds : [],
+      title: p.title || '',
       company: p.company || '',
+      organizations: Array.isArray(p.organizations) ? p.organizations.join(', ') : (p.organizations || ''),
       jobTitle: p.jobTitle || '',
+      department: p.department || '',
       address: p.address || '',
       city: p.city || '',
       state: p.state || '',
@@ -224,6 +243,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       website: p.website || '',
       linkedin: p.linkedin || '',
       twitter: p.twitter || '',
+      assistantName: p.assistantName || '',
+      assistantPhone: p.assistantPhone || '',
+      assistantEmail: p.assistantEmail || '',
+      birthday: p.birthday || '',
+      anniversary: p.anniversary || '',
       profilePicture: p.profilePicture || '',
       profilePictureType: p.profilePictureType || (p.profilePicture ? (p.profilePicture.startsWith('data:') ? 'upload' : (p.profilePicture.match(/^[\u{1F300}-\u{1F9FF}]$/u) ? 'emoji' : 'upload')) : 'initials')
     });
@@ -292,8 +316,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       links: parseLinks(formData.links),
       locationIds: Array.isArray(formData.locationIds) ? formData.locationIds.filter(Boolean) : [],
       // New contact fields
+      title: String(formData.title || '').trim(),
       company: String(formData.company || '').trim(),
+      organizations: String(formData.organizations || '').trim().split(',').map(o => o.trim()).filter(Boolean),
       jobTitle: String(formData.jobTitle || '').trim(),
+      department: String(formData.department || '').trim(),
       address: String(formData.address || '').trim(),
       city: String(formData.city || '').trim(),
       state: String(formData.state || '').trim(),
@@ -302,6 +329,11 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
       website: String(formData.website || '').trim(),
       linkedin: String(formData.linkedin || '').trim(),
       twitter: String(formData.twitter || '').trim(),
+      assistantName: String(formData.assistantName || '').trim(),
+      assistantPhone: String(formData.assistantPhone || '').trim(),
+      assistantEmail: String(formData.assistantEmail || '').trim(),
+      birthday: String(formData.birthday || '').trim(),
+      anniversary: String(formData.anniversary || '').trim(),
       profilePicture: String(formData.profilePicture || '').trim(),
       profilePictureType: formData.profilePictureType || 'initials',
       id: editId || (window.generateId ? window.generateId('p') : ('p_' + Date.now())),
@@ -597,7 +629,7 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
           { id: generateId('sub'), title: 'Book meeting room', completed: false }
         ],
         tags: ['meeting', 'q1-project', 'client'],
-        people: ['Alice Johnson'],
+        people: ['Alice Johnson', 'Bob Martinez', 'Carol Williams'],
         location: 'Downtown Office',
         locationCoords: { lat: 40.7128, lon: -74.0060 },
         percentComplete: 40,
@@ -630,7 +662,7 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
           { id: generateId('sub'), title: 'Bring laptop for data entry', completed: false }
         ],
         tags: ['inventory', 'audit', 'warehouse', 'quarterly'],
-        people: ['Bob Martinez'],
+        people: ['Bob Martinez', 'David Chen', 'Alice Johnson'],
         location: 'Warehouse Distribution Center',
         locationCoords: { lat: 40.7357, lon: -74.1724 },
         percentComplete: 25,
@@ -663,7 +695,7 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
           { id: generateId('sub'), title: 'Prepare pricing sheet', completed: false }
         ],
         tags: ['sales', 'demo', 'premium', 'hot-lead', 'follow-up'],
-        people: ['Carol Williams'],
+        people: ['Carol Williams', 'Alice Johnson', 'Bob Martinez'],
         location: '',
         locationCoords: null,
         percentComplete: 30,
@@ -696,7 +728,7 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
           { id: generateId('sub'), title: 'Prepare questions for property owner', completed: false }
         ],
         tags: ['property', 'site-visit', 'commercial', 'client-meeting'],
-        people: ['David Chen', 'Alice Johnson'],
+        people: ['David Chen', 'Alice Johnson', 'Carol Williams'],
         location: 'Client Meeting Space',
         locationCoords: { lat: 40.7589, lon: -73.9710 },
         percentComplete: 10,
@@ -771,10 +803,14 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
 
   const onEditKeyDown = (e) => {
     if (e.key === 'Escape') {
-      if (isEditing) resetForm();
-      else if (viewingId) {
-        setViewingId(null);
+      e.preventDefault();
+      e.stopPropagation();
+      if (isEditing) {
+        // If editing, cancel edit first
+        resetForm();
       } else {
+        // Always close modal on ESC (not just go back to list)
+        console.log('ESC pressed, closing PeopleManager modal');
         onClose?.();
       }
     }
@@ -791,39 +827,47 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
 
   // Auto-select person if initialSelectedPersonId is provided
   useEffect(() => {
-    if (initialSelectedPersonId && safePeople.length > 0) {
-      // Try to find by ID first
-      let person = safePeople.find(p => p.id === initialSelectedPersonId);
-      
-      // If not found by ID, try to find by name (for permalinks using encoded names)
-      if (!person) {
-        try {
-          const decodedName = decodeURIComponent(initialSelectedPersonId);
-          person = safePeople.find(p => {
-            const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
-            return personName === decodedName || 
-                   p.id === decodedName ||
-                   (p.firstName && p.lastName && `${p.firstName} ${p.lastName}` === decodedName);
-          });
-        } catch (e) {
-          // If decode fails, try direct match
-          person = safePeople.find(p => {
-            const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
-            return personName === initialSelectedPersonId || p.id === initialSelectedPersonId;
-          });
-        }
-      }
-      
-      // Always update if person is found and it's different from current view
-      if (person) {
-        const currentPersonId = viewingId || (viewingId && safePeople.find(p => p.id === viewingId)?.id);
-        if (!currentPersonId || currentPersonId !== person.id) {
-          startView(person);
-        }
+    if (!initialSelectedPersonId || safePeople.length === 0) {
+      return;
+    }
+    
+    console.log('PeopleManager: initialSelectedPersonId changed to:', initialSelectedPersonId, 'safePeople.length:', safePeople.length);
+    
+    // Try to find by ID first
+    let person = safePeople.find(p => p.id === initialSelectedPersonId);
+    
+    // If not found by ID, try to find by name (for permalinks using encoded names)
+    if (!person) {
+      try {
+        const decodedName = decodeURIComponent(initialSelectedPersonId);
+        person = safePeople.find(p => {
+          const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+          return personName === decodedName || 
+                 p.id === decodedName ||
+                 (p.firstName && p.lastName && `${p.firstName} ${p.lastName}` === decodedName);
+        });
+      } catch (e) {
+        // If decode fails, try direct match
+        person = safePeople.find(p => {
+          const personName = p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+          return personName === initialSelectedPersonId || p.id === initialSelectedPersonId;
+        });
       }
     }
+    
+    // Always open the person view if found (regardless of current state)
+    if (person) {
+      console.log('PeopleManager: Found person, opening view:', person.id, getDisplayName(person));
+      // Use a small delay to ensure modal is fully rendered
+      const timeoutId = setTimeout(() => {
+        startView(person);
+      }, 50);
+      return () => clearTimeout(timeoutId);
+    } else {
+      console.warn('PeopleManager: Person not found for initialSelectedPersonId:', initialSelectedPersonId, 'Available people:', safePeople.map(p => ({ id: p.id, name: p.name || [p.firstName, p.lastName].filter(Boolean).join(' ') })));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSelectedPersonId, safePeople.length]);
+  }, [initialSelectedPersonId]);
 
   // Helper function to get stats for a person
   const getPersonStats = (person) => {
@@ -860,7 +904,13 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
   return (
     <div
       className="modal-overlay"
-      onClick={() => onClose?.()}
+      onClick={(e) => {
+        // Only close if clicking the overlay itself, not a child
+        if (e.target === e.currentTarget) {
+          console.log('Overlay clicked, calling onClose');
+          onClose?.();
+        }
+      }}
       style={{ zIndex: 3000 }}
     >
       <div
@@ -1038,6 +1088,48 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                 }}
               >
                 + Add New
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  console.log('Close button clicked, calling onClose');
+                  onClose?.();
+                }}
+                title="Close"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  border: '1px solid var(--border)',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 40,
+                  height: 40,
+                  lineHeight: 1,
+                  pointerEvents: 'auto',
+                  zIndex: 10,
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--input-bg)';
+                  e.target.style.color = 'var(--primary)';
+                  e.target.style.borderColor = 'var(--primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.color = 'var(--text)';
+                  e.target.style.borderColor = 'var(--border)';
+                }}
+              >
+                ×
               </button>
             </div>
           </div>
@@ -1306,22 +1398,30 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                     }}
                     style={{
                       position: 'absolute',
-                      top: 16,
-                      right: 16,
+                      top: 20,
+                      right: 20,
                       background: 'transparent',
                       border: 'none',
-                      fontSize: 24,
+                      fontSize: 20,
                       cursor: 'pointer',
-                      color: 'var(--text)',
+                      color: 'var(--text-light)',
                       width: 32,
                       height: 32,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: 8
+                      borderRadius: 8,
+                      zIndex: 1
                     }}
-                    onMouseEnter={(e) => e.target.style.background = 'var(--input-bg)'}
-                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'var(--input-bg)';
+                      e.target.style.color = 'var(--text)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                      e.target.style.color = 'var(--text-light)';
+                    }}
+                    title="Back to list"
                   >
                     ×
                   </button>
@@ -1689,6 +1789,16 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
             ) : isEditing ? (
               <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '0 0 120px' }}>
+                    <label className="f-label">Title</label>
+                    <input
+                      className="f-input"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="Mr., Mrs., Dr., etc."
+                    />
+                  </div>
+
                   <div style={{ flex: '1 1 200px' }}>
                     <label className="f-label">First Name</label>
                     <input
@@ -1800,12 +1910,34 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                   </div>
 
                   <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Organizations</label>
+                    <input
+                      className="f-input"
+                      value={formData.organizations}
+                      onChange={(e) => setFormData({ ...formData, organizations: e.target.value })}
+                      placeholder="Organization 1, Organization 2, ..."
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 300px' }}>
                     <label className="f-label">Job Title</label>
                     <input
                       className="f-input"
                       value={formData.jobTitle}
                       onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
                       placeholder="Job title"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Department</label>
+                    <input
+                      className="f-input"
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                      placeholder="Department"
                     />
                   </div>
                 </div>
@@ -1894,6 +2026,62 @@ export default function PeopleManager({ people, setPeople, onClose, tasks, onVie
                     onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
                     placeholder="@username or URL"
                   />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label className="f-label">Assistant Name</label>
+                    <input
+                      className="f-input"
+                      value={formData.assistantName}
+                      onChange={(e) => setFormData({ ...formData, assistantName: e.target.value })}
+                      placeholder="Assistant's name"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 240px' }}>
+                    <label className="f-label">Assistant Phone</label>
+                    <input
+                      className="f-input"
+                      type="tel"
+                      value={formData.assistantPhone}
+                      onChange={(e) => setFormData({ ...formData, assistantPhone: e.target.value })}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 240px' }}>
+                    <label className="f-label">Assistant Email</label>
+                    <input
+                      className="f-input"
+                      type="email"
+                      value={formData.assistantEmail}
+                      onChange={(e) => setFormData({ ...formData, assistantEmail: e.target.value })}
+                      placeholder="assistant@email.com"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label className="f-label">Birthday</label>
+                    <input
+                      className="f-input"
+                      type="date"
+                      value={formData.birthday}
+                      onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label className="f-label">Anniversary</label>
+                    <input
+                      className="f-input"
+                      type="date"
+                      value={formData.anniversary}
+                      onChange={(e) => setFormData({ ...formData, anniversary: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -2719,13 +2907,35 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
               </div>
             )}
 
+            {person.title && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  👤 TITLE
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
+                  {person.title}
+                </div>
+              </div>
+            )}
+
             {(person.organization || person.company) && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
-                  🏢 ORGANIZATION
+                  🏢 COMPANY
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
                   {person.organization || person.company}
+                </div>
+              </div>
+            )}
+
+            {person.organizations && Array.isArray(person.organizations) && person.organizations.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🏛️ ORGANIZATIONS
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
+                  {person.organizations.join(', ')}
                 </div>
               </div>
             )}
@@ -2737,6 +2947,17 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
                   {person.jobTitle}
+                </div>
+              </div>
+            )}
+
+            {person.department && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  🏢 DEPARTMENT
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>
+                  {person.department}
                 </div>
               </div>
             )}
@@ -2820,6 +3041,31 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6 }}>
                   {[person.address, person.city, person.state, person.zipCode, person.country].filter(Boolean).join(', ')}
+                </div>
+              </div>
+            )}
+
+            {(person.assistantName || person.assistantPhone || person.assistantEmail) && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  👥 ASSISTANT
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6 }}>
+                  {person.assistantName && <div><strong>Name:</strong> {person.assistantName}</div>}
+                  {person.assistantPhone && <div><strong>Phone:</strong> <a href={`tel:${person.assistantPhone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>{person.assistantPhone}</a></div>}
+                  {person.assistantEmail && <div><strong>Email:</strong> <a href={`mailto:${person.assistantEmail}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>{person.assistantEmail}</a></div>}
+                </div>
+              </div>
+            )}
+
+            {(person.birthday || person.anniversary) && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-light)', marginBottom: 6, fontWeight: 700, letterSpacing: 0.5 }}>
+                  📅 IMPORTANT DATES
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.6 }}>
+                  {person.birthday && <div><strong>Birthday:</strong> {new Date(person.birthday).toLocaleDateString()}</div>}
+                  {person.anniversary && <div><strong>Anniversary:</strong> {new Date(person.anniversary).toLocaleDateString()}</div>}
                 </div>
               </div>
             )}

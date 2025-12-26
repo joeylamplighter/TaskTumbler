@@ -164,9 +164,12 @@ const style = {
   transform: isHidden ? 'translate(-50%, 140%)' : 'translate(-50%, 0%)',
   opacity: isHidden ? 0 : 1,
   visibility: isHidden ? 'hidden' : 'visible',
-  transition: 'transform 300ms cubic-bezier(0.25, 0.9, 0.3, 1), opacity 200ms ease-out, visibility 0s linear 300ms',
+  transition: isHidden
+    ? 'transform 300ms cubic-bezier(0.25, 0.9, 0.3, 1), opacity 300ms ease-out, visibility 0s linear 300ms'
+    : 'transform 300ms cubic-bezier(0.25, 0.9, 0.3, 1), opacity 300ms ease-out, visibility 0s linear 0s',
   willChange: 'transform, opacity',
-  zIndex: isHidden ? -1 : 999,
+  zIndex: 999,
+  pointerEvents: isHidden ? 'none' : 'auto',
   width: 'min(520px, 94vw)',
   padding: 8,
 
@@ -188,7 +191,6 @@ const style = {
   display: 'flex',
   justifyContent: 'space-around',
   alignItems: 'center',
-  pointerEvents: isHidden ? 'none' : 'auto',
 };
 
   // Helper function to calculate active state for an item

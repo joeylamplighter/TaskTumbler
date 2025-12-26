@@ -4,6 +4,7 @@
 // ===========================================
 
 import React, { useState, useEffect } from "react";
+import OCRModal from "../ocr/OCRModal";
 
 const CURRENT_NOTE_ID_KEY = 'tt_ideas_current_note_id';
 
@@ -12,6 +13,7 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
     const [noteTitle, setNoteTitle] = useState('');
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
+    const [showOCRModal, setShowOCRModal] = useState(false);
     
     // Load currentNoteId from localStorage on mount
     const [currentNoteId, setCurrentNoteId] = useState(() => {
@@ -162,6 +164,36 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
         }
     };
 
+    const handleOCRTextExtracted = (tasks, ocrResult) => {
+        if (ocrResult && ocrResult.text) {
+            // Add extracted text to Ideas textarea
+            const separator = text && text.trim() ? "\n\n--- OCR Text ---\n\n" : "";
+            setText?.(prev => (prev || "") + separator + ocrResult.text);
+            notify?.("Text extracted and added to Ideas", "📄");
+        }
+        
+        // Optionally add tasks if user wants
+        if (tasks && tasks.length > 0) {
+            const addTasks = confirm(`Found ${tasks.length} task(s) in the document. Add them as tasks?`);
+            if (addTasks && onAddTasks) {
+                tasks.forEach(task => {
+                    const normalizeTask = window.normalizeTask || ((t) => ({
+                        title: t.title || 'Untitled Task',
+                        category: t.category || 'General',
+                        priority: t.priority || 'Medium',
+                        description: t.description || '',
+                        dueDate: t.dueDate || null,
+                        ...t
+                    }));
+                    onAddTasks(normalizeTask(task));
+                });
+                notify?.(`Added ${tasks.length} task(s)`, "✅");
+            }
+        }
+        
+        setShowOCRModal(false);
+    };
+
     return (
         <div style={{display:'flex', flexDirection:'column', height:'100%', position:'relative'}}>
             <div style={{paddingBottom:8, borderBottom:'1px solid var(--border)', marginBottom:12, display:'flex', flexDirection: 'column', gap:4}}>
@@ -204,10 +236,44 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
                         <button 
                             className="btn-white-outline" 
                             style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
-                            onClick={handleConvertToTasks}
+                            onClick={() => {
+                                const normalizeTask = window.normalizeTask || ((t) => ({
+                                    title: t.title || 'Untitled Task',
+                                    category: t.category || 'General',
+                                    priority: t.priority || 'Medium',
+                                    ...t
+                                }));
+                                const lines = (text || '').split('\n');
+                                let count = 0;
+                                lines.forEach(line => {
+                                    const cleanLine = line.replace(/^[-*•]\s*/, '').trim();
+                                    if (cleanLine.length > 2) {
+                                        onAddTasks?.(normalizeTask({ title: cleanLine, category: 'General' }));
+                                        count++;
+                                    }
+                                });
+                                if (count > 0) {
+                                    notify?.(`Created ${count} Tasks`, "✅");
+                                    setText?.('');
+                                    setCurrentNoteId(null);
+                                    try {
+                                        localStorage.removeItem(CURRENT_NOTE_ID_KEY);
+                                    } catch {}
+                                } else {
+                                    notify?.("No valid tasks found", "⚠️");
+                                }
+                            }}
                             title="Convert to Tasks"
                         >
                             📋
+                        </button>
+                        <button 
+                            className="btn-white-outline" 
+                            style={{padding:'6px 10px', fontSize:16, border:'none', background:'transparent', cursor:'pointer'}} 
+                            onClick={() => setShowOCRModal(true)}
+                            title="Scan Document with OCR"
+                        >
+                            📷
                         </button>
                     </div>
                 </div>
@@ -258,6 +324,14 @@ export default function IdeasTabLegacy({ text, setText, onAddTasks, settings, no
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showOCRModal && (
+                <OCRModal
+                    onClose={() => setShowOCRModal(false)}
+                    onTasksExtracted={handleOCRTextExtracted}
+                    settings={settings}
+                />
             )}
         </div>
     );

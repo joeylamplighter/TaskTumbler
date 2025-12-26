@@ -18,7 +18,10 @@ import React from 'react'
         const allTasks = useMemo(() => {
             const active = getActiveTasks(tasks);
             const completed = getCompletedTasks(tasks);
-            return [...active, ...completed].filter(t => t.dueDate); // Only show tasks with due dates
+            // Show tasks with either startDate or dueDate
+            return [...active, ...completed].filter(t => {
+                return t.startDate || t.dueDate || t.due || t.dueAt || t.dueDateTime;
+            });
         }, [tasks]);
 
         if (!window.CalendarView) {

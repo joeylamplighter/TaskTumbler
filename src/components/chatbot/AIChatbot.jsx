@@ -8,7 +8,7 @@ function AIChatbot() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hi! I'm your TaskTumbler assistant. I can help you manage tasks, navigate the app, answer questions, and execute actions. What would you like to do?",
+      content: "bot",
       timestamp: new Date()
     }
   ]);
@@ -240,7 +240,7 @@ function AIChatbot() {
             if (response.action.type === 'clearChat') {
               setMessages([{
                 role: 'assistant',
-                content: "Chat cleared! How can I help you?",
+                content: "bot",
                 timestamp: new Date()
               }]);
             } else if (response.action.type === 'closeChatbot') {
@@ -402,9 +402,15 @@ function AIChatbot() {
           minHeight: '40px',
           overflow: 'visible',
         }}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Open AI Assistant"
-        title="AI Assistant"
+        onClick={(e) => {
+          // Only toggle if clicking the button itself, not the icon
+          // The icon has its own handler
+          if (e.target === e.currentTarget || !e.target.closest('.chatbot-icon')) {
+            setIsOpen(prev => !prev);
+          }
+        }}
+        aria-label={isOpen ? "Close AI Assistant" : "Open AI Assistant"}
+        title={isOpen ? "Close chat" : "Open AI Assistant"}
       >
         <span 
           className="chatbot-icon" 
@@ -412,7 +418,24 @@ function AIChatbot() {
             fontSize: `${Math.min(Math.max((appearance.buttonSize || 56), 40), 100) * 0.6}px`,
             display: 'block',
             lineHeight: 1,
-            pointerEvents: 'none',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            transition: 'transform 0.5s ease',
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Spin animation
+            const icon = e.currentTarget;
+            icon.style.transform = 'rotate(360deg)';
+            setTimeout(() => {
+              icon.style.transform = 'rotate(0deg)';
+            }, 500);
+            // Toggle chatbot - use functional update to ensure we get latest state
+            setIsOpen(prev => {
+              const newState = !prev;
+              return newState;
+            });
           }}
         >
           🤖
@@ -430,7 +453,24 @@ function AIChatbot() {
         >
           <div className="chatbot-header">
             <div className="chatbot-header-content">
-              <span className="chatbot-header-icon">🤖</span>
+              <span 
+                className="chatbot-header-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const icon = e.currentTarget;
+                  icon.style.transform = 'rotate(360deg)';
+                  setTimeout(() => {
+                    icon.style.transform = 'rotate(0deg)';
+                  }, 500);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  transition: 'transform 0.5s ease',
+                  display: 'inline-block',
+                }}
+              >
+                🤖
+              </span>
               <div>
                 <h3>AI Assistant</h3>
                 <p>TaskTumbler Helper</p>

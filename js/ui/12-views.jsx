@@ -521,7 +521,45 @@
         };
         
         const getTasksForDate = (dateStr) => {
-            return tasks.filter(t => t.dueDate === dateStr && !t.completed);
+            return tasks.filter(t => {
+                // Check both startDate and dueDate
+                const taskDate = t.startDate || t.dueDate || t.due || t.dueAt || t.dueDateTime;
+                if (!taskDate) return false;
+                
+                // Handle different date formats
+                let taskDateStr = '';
+                if (typeof taskDate === 'string') {
+                    // Extract YYYY-MM-DD from various formats
+                    const match = taskDate.match(/(\d{4}-\d{2}-\d{2})/);
+                    if (match) {
+                        taskDateStr = match[1];
+                    } else {
+                        // Try parsing as date
+                        const d = new Date(taskDate);
+                        if (!isNaN(d.getTime())) {
+                            const year = d.getFullYear();
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const day = String(d.getDate()).padStart(2, '0');
+                            taskDateStr = `${year}-${month}-${day}`;
+                        }
+                    }
+                } else if (typeof taskDate === 'number') {
+                    const d = new Date(taskDate);
+                    if (!isNaN(d.getTime())) {
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        taskDateStr = `${year}-${month}-${day}`;
+                    }
+                } else if (taskDate instanceof Date) {
+                    const year = taskDate.getFullYear();
+                    const month = String(taskDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(taskDate.getDate()).padStart(2, '0');
+                    taskDateStr = `${year}-${month}-${day}`;
+                }
+                
+                return taskDateStr === dateStr;
+            });
         };
         
         const isToday = (d) => {
@@ -659,15 +697,16 @@
                                     key={i}
                                     onClick={() => d.tasks.length > 0 && d.tasks[0] && onView(d.tasks[0])}
                                     style={{
-                                        minHeight: '100px',
-                                        padding: '8px',
+                                        minHeight: '120px',
+                                        padding: '10px',
                                         borderRight: col < 6 ? '1px solid var(--border)' : 'none',
                                         borderBottom: '1px solid var(--border)',
-                                        background: d.isToday ? 'rgba(255, 107, 53, 0.1)' : 'transparent',
+                                        background: d.isToday ? 'rgba(255, 107, 53, 0.08)' : 'transparent',
                                         cursor: d.tasks.length > 0 ? 'pointer' : 'default',
                                         transition: 'all 0.2s',
                                         display: 'flex',
-                                        flexDirection: 'column'
+                                        flexDirection: 'column',
+                                        position: 'relative'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (d.tasks.length > 0) {
@@ -683,10 +722,11 @@
                                     }}
                                 >
                                     <div style={{
-                                        fontSize: 14,
+                                        fontSize: 15,
                                         fontWeight: d.isToday ? 800 : 600,
                                         color: d.isToday ? 'var(--primary)' : 'var(--text)',
-                                        marginBottom: '6px'
+                                        marginBottom: '8px',
+                                        lineHeight: '1.2'
                                     }}>
                                         {d.day}
                                     </div>
@@ -706,20 +746,31 @@
                                                         onView(t);
                                                     }}
                                                     style={{
-                                                        fontSize: 10,
-                                                        padding: '4px 6px',
-                                                        borderRadius: '4px',
+                                                        fontSize: 11,
+                                                        padding: '6px 8px',
+                                                        borderRadius: '6px',
                                                         background: t.priority === 'Urgent' 
-                                                            ? 'rgba(255, 118, 117, 0.2)' 
+                                                            ? 'rgba(255, 118, 117, 0.25)' 
                                                             : t.priority === 'High'
-                                                            ? 'rgba(255, 159, 67, 0.2)'
-                                                            : 'var(--input-bg)',
+                                                            ? 'rgba(255, 159, 67, 0.25)'
+                                                            : 'rgba(255, 159, 67, 0.15)',
                                                         color: 'var(--text)',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap',
                                                         cursor: 'pointer',
-                                                        border: `1px solid ${t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.3)' : 'var(--border-light)'}`
+                                                        border: `1px solid ${t.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.4)' : t.priority === 'High' ? 'rgba(255, 159, 67, 0.4)' : 'rgba(255, 159, 67, 0.3)'}`,
+                                                        fontWeight: 500,
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                                                     }}
                                                     title={t.title}
                                                 >

@@ -359,47 +359,75 @@ export default function WinnerPopup({ open, task, onClose, onFocus, onView, onDo
                 📍 {task.location}
               </span>
             )}
-            {task?.people && Array.isArray(task.people) && task.people.length > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Open PeopleManager with the first person selected
-                  if (firstPersonName && window.setShowPeopleManager) {
-                    window.setShowPeopleManager(true);
-                    // Store the person name to be used by PeopleManager
-                    window.__pendingPeopleManagerSelection = firstPersonName;
-                  } else if (onView) {
-                    // Fallback: open task view
-                    onView(task);
-                  }
-                }}
-                style={{
-                  background: "var(--input-bg)",
-                  padding: "5px 9px",
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "var(--primary)",
-                  border: "1px solid rgba(255,107,53,0.2)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = "rgba(255,107,53,0.15)";
-                  e.target.style.transform = "scale(1.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = "var(--input-bg)";
-                  e.target.style.transform = "scale(1)";
-                }}
-                title={task.people.length === 1 ? `Click to view ${task.people[0]}` : `Click to view ${task.people.length} people`}
-              >
-                👤 {task.people.length === 1 ? task.people[0] : `${task.people.length} people`}
-              </span>
-            )}
+            {task?.people && Array.isArray(task.people) && task.people.length > 0 && task.people.map((personName, idx) => {
+              const personRecord = getPersonRecordByName(personName);
+              const displayName = personRecord ? getDisplayName(personRecord) : personName;
+              const personId = personRecord?.id;
+              
+              return (
+                <span
+                  key={`person-${idx}-${personId || personName}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    
+                    // Prevent rapid clicks - check if already opening
+                    if (window.__openingContactModal) return;
+                    window.__openingContactModal = true;
+                    setTimeout(() => { delete window.__openingContactModal; }, 300);
+                    
+                    // Open ViewContactModal directly with this person
+                    if (!personRecord) {
+                      console.warn('Person record not found for:', personName);
+                      delete window.__openingContactModal;
+                      return;
+                    }
+                    
+                    try {
+                      // Open ViewContactModal directly
+                      if (window.pushModal) {
+                        window.pushModal({ type: 'viewContact', data: personRecord });
+                      } else {
+                        // Fallback: use custom event
+                        window.dispatchEvent(new CustomEvent('open-contact', { detail: { person: personRecord } }));
+                      }
+                    } catch (error) {
+                      console.error("Error opening person contact:", error);
+                      delete window.__openingContactModal;
+                    }
+                    // Don't close the popup - keep it open behind
+                  }}
+                  style={{
+                    background: "var(--input-bg)",
+                    padding: "5px 9px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--primary)",
+                    border: "1px solid rgba(255,107,53,0.2)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    pointerEvents: "auto",
+                    position: "relative",
+                    zIndex: 1
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "rgba(255,107,53,0.15)";
+                    e.target.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "var(--input-bg)";
+                    e.target.style.transform = "scale(1)";
+                  }}
+                  title={`Click to view ${displayName}`}
+                >
+                  👤 {displayName}
+                </span>
+              );
+            })}
           </div>
         </div>
 
