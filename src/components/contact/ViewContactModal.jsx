@@ -3,11 +3,11 @@
 // Dedicated page/view for individual contacts
 // ===========================================
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { getDisplayName, getInitials } from "../../utils/personUtils";
 
-export default function ViewContactModal({ 
+function ViewContactModal({ 
   person, 
   onClose = () => console.warn('ViewContactModal: onClose not provided'), 
   onEdit, 
@@ -17,7 +17,8 @@ export default function ViewContactModal({
   people = [],
   setPeople = () => {},
   onViewTask = () => {},
-  onComplete = () => {}
+  onComplete = () => {},
+  ignoreHash = false
 }) {
   // Ensure onClose is a function
   const handleClose = useCallback(() => {
@@ -43,6 +44,25 @@ export default function ViewContactModal({
       document.removeEventListener('keydown', handleEsc, { capture: true });
     };
   }, [person, handleClose]);
+
+  // Lock scroll when modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { 
+      document.body.style.overflow = originalOverflow; 
+    };
+  }, []);
+
+  // Hash-listening useEffect (only if not ignoring hash)
+  useEffect(() => {
+    if (ignoreHash) return;
+    // Add hash change listening logic here if needed in the future
+    // Example:
+    // const handleHashChange = () => { ... };
+    // window.addEventListener('hashchange', handleHashChange);
+    // return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [ignoreHash]);
 
   // Load locations data
   useEffect(() => {
@@ -212,20 +232,35 @@ export default function ViewContactModal({
 
   // Handle history item click
   const handleHistoryClick = (historyItem) => {
-    if (historyItem.taskId && onViewTask) {
+    if (historyItem.taskId && (onViewTask || window.openModal)) {
       const task = tasks.find(t => t.id === historyItem.taskId);
       if (task) {
-        onViewTask(task);
-        onClose(); // Close contact modal when opening task
+        // Use global closeModal to close contact modal, then open task
+        if (window.closeModal) {
+          window.closeModal();
+        }
+        if (window.openModal) {
+          window.openModal('task', task.id, { task });
+        } else if (onViewTask) {
+          onViewTask(task);
+        }
       }
     }
   };
 
   // Handle task click - open task view
   const handleTaskClick = (task) => {
+    // Call onViewTask first if available
     if (onViewTask) {
       onViewTask(task);
-      onClose(); // Close contact modal when opening task
+    }
+    // Then close the contact modal using global closeModal
+    if (window.closeModal) {
+      window.closeModal();
+    }
+    // Open the task modal
+    if (window.openModal) {
+      window.openModal('task', task.id, { task });
     }
   };
 
@@ -307,6 +342,48 @@ export default function ViewContactModal({
               flexShrink: 0
             }}>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                {/* Back button when ignoreHash is true */}
+                {ignoreHash && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      // Use global closeModal
+                      if (window.closeModal) {
+                        window.closeModal();
+                      } else {
+                        handleClose();
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-light)',
+                      fontSize: 24,
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--border-radius-sm, 6px)',
+                      transition: 'background 0.2s',
+                      flexShrink: 0,
+                      lineHeight: 1,
+                      width: 36,
+                      height: 36,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 8
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    title="Back"
+                  >
+                    ←
+                  </button>
+                )}
                 {/* Profile Picture */}
                 <div style={{
                   width: 80,
@@ -447,8 +524,8 @@ export default function ViewContactModal({
               flexDirection: 'column',
               gap: 24
             }}>
-              {/* Contact Information */}
-              {(personEmail || personPhone || personWebsite || personLinkedIn || personTwitter || personCompassLink) && (
+              {/* Contact Information - Grid Layout */}
+              {(personEmail || personPhone || personWebsite || personLinkedIn || personTwitter || personCompassLink || personCompany || personJobTitle) && (
                 <div>
                   <h3 style={{ 
                     fontSize: 12, 
@@ -460,7 +537,8 @@ export default function ViewContactModal({
                   }}>
                     Contact Information
                   </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {/* Email */}
                     {personEmail && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18, width: 24 }}>📧</span>
@@ -474,6 +552,7 @@ export default function ViewContactModal({
                         </a>
                       </div>
                     )}
+                    {/* Phone */}
                     {personPhone && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18, width: 24 }}>📞</span>
@@ -487,21 +566,7 @@ export default function ViewContactModal({
                         </a>
                       </div>
                     )}
-                    {personWebsite && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 18, width: 24 }}>🌐</span>
-                        <a 
-                          href={personWebsite.startsWith('http') ? personWebsite : `https://${personWebsite}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: 14 }}
-                          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                        >
-                          {personWebsite}
-                        </a>
-                      </div>
-                    )}
+                    {/* LinkedIn */}
                     {personLinkedIn && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18, width: 24 }}>💼</span>
@@ -517,6 +582,7 @@ export default function ViewContactModal({
                         </a>
                       </div>
                     )}
+                    {/* Twitter */}
                     {personTwitter && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18, width: 24 }}>🐦</span>
@@ -532,6 +598,7 @@ export default function ViewContactModal({
                         </a>
                       </div>
                     )}
+                    {/* Compass Link */}
                     {personCompassLink && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 18, width: 24 }}>🏠</span>
@@ -548,6 +615,42 @@ export default function ViewContactModal({
                       </div>
                     )}
                   </div>
+                  
+                  {/* Company, Job Title, Website grouped card */}
+                  {(personCompany || personJobTitle || personWebsite) && (
+                    <div style={{
+                      background: 'var(--input-bg)',
+                      borderRadius: 8,
+                      padding: 12,
+                      marginTop: 12
+                    }}>
+                      {personJobTitle && (
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: personCompany || personWebsite ? 6 : 0 }}>
+                          {personJobTitle}
+                        </div>
+                      )}
+                      {personCompany && (
+                        <div style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: personWebsite ? 6 : 0 }}>
+                          {personCompany}
+                        </div>
+                      )}
+                      {personWebsite && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>🌐</span>
+                          <a 
+                            href={personWebsite.startsWith('http') ? personWebsite : `https://${personWebsite}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: 14 }}
+                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                          >
+                            {personWebsite}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -778,7 +881,7 @@ export default function ViewContactModal({
                   }}>
                     Associated Tasks ({personTasks.length})
                   </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
                     {personTasks.slice(0, 10).map(task => (
                       <div
                         key={task.id}
@@ -869,7 +972,7 @@ export default function ViewContactModal({
                   }}>
                     Recent Activity ({personHistory.length})
                   </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
                     {personHistory.slice(0, 20).map((item, idx) => (
                       <button
                         key={idx}
@@ -1012,7 +1115,7 @@ export default function ViewContactModal({
                   }}>
                     Notes History
                   </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 250, overflowY: 'auto' }}>
                     {personNotesHistory.map((note, idx) => {
                       const noteText = note.text || note.note || note;
                       const noteTime = note.timestamp || note.time || '';
@@ -1141,3 +1244,18 @@ export default function ViewContactModal({
     </>
   );
 }
+
+// Memoize to prevent re-renders when person.id hasn't changed
+const MemoizedViewContactModal = memo(ViewContactModal, (prevProps, nextProps) => {
+  const prevId = prevProps.person?.id || prevProps.person?.name || 
+                 (prevProps.person?.firstName && prevProps.person?.lastName 
+                   ? `${prevProps.person.firstName} ${prevProps.person.lastName}` 
+                   : null);
+  const nextId = nextProps.person?.id || nextProps.person?.name || 
+                 (nextProps.person?.firstName && nextProps.person?.lastName 
+                   ? `${nextProps.person.firstName} ${nextProps.person.lastName}` 
+                   : null);
+  return prevId === nextId && prevProps.person === nextProps.person;
+});
+
+export default MemoizedViewContactModal;

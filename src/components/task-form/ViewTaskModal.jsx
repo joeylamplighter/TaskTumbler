@@ -3,19 +3,16 @@
 // Matches new design with timer, subtasks, and notes
 // ===========================================
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { createPortal } from "react-dom";
-import PeopleManager from "../managers/PeopleManager";
 
-export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTimer, goals, settings, tasks, updateTask, onRespin }) {
+function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTimer, goals, settings, tasks, updateTask, onRespin }) {
   const [subtaskInput, setSubtaskInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [allPeople, setAllPeople] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
-  const [showPeopleManager, setShowPeopleManager] = useState(false);
-  const [selectedPersonName, setSelectedPersonName] = useState(null);
   const [expandedCallInfo, setExpandedCallInfo] = useState(false);
 
   // Load people and locations data
@@ -306,7 +303,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8
             }}>
               <span style={{
-                background: 'rgba(255, 255, 255, 0.08)',
+                background: 'var(--input-bg)',
                 color: 'var(--text-light)',
                 padding: '3px 8px',
                 borderRadius: 12,
@@ -320,7 +317,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
               {priorityBadge && (
                 <span style={{
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--text)',
                   padding: '3px 8px',
                   borderRadius: 12,
                   fontSize: 9,
@@ -398,12 +395,15 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                         try {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (displayName) {
-                            setSelectedPersonName(displayName);
-                            setShowPeopleManager(true);
+                          if (displayName && personRecord) {
+                            // Use global openModal to open contact
+                            const personId = personRecord.id || personRecord.name || displayName;
+                            if (window.openModal) {
+                              window.openModal('contact', personId, { person: personRecord });
+                            }
                           }
                         } catch (error) {
-                          console.error("Error opening PeopleManager:", error);
+                          console.error("Error opening contact view:", error);
                         }
                       }}
                       style={{
@@ -571,8 +571,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                 
                 return (
                   <div style={{
-                    background: 'rgba(255, 107, 53, 0.1)',
-                    border: '1px solid rgba(255, 107, 53, 0.3)',
+                    background: 'var(--primary-light)',
+                    border: '1px solid var(--primary)',
                     borderRadius: 10,
                     padding: 12,
                     marginBottom: 16
@@ -813,8 +813,8 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
           {/* TIMER & FOCUS MODE BAR */}
           {shouldShowSection('showTimer') && (
           <div style={{
-            background: 'rgba(108, 92, 231, 0.15)',
-            border: '1px solid rgba(108, 92, 231, 0.25)',
+            background: 'var(--input-bg)',
+            border: '1px solid var(--border)',
             borderRadius: 10,
             padding: '10px 14px',
             marginBottom: 16,
@@ -858,7 +858,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: '#fff',
+                  color: 'var(--text)',
                   padding: 0,
                   fontSize: 14
                 }}
@@ -882,7 +882,7 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
                 style={{
                   background: 'var(--primary)',
                   border: 'none',
-                  color: '#fff',
+                  color: 'var(--text)',
                   padding: '5px 12px',
                   borderRadius: 16,
                   fontSize: 11,
@@ -1304,47 +1304,20 @@ export default function ViewTaskModal({ task, onClose, onEdit, onComplete, onFoc
     </div>,
     document.body
       )}
-      {showPeopleManager && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10000 }}>
-          <PeopleManager
-            people={allPeople || []}
-            setPeople={(newPeople) => {
-              try {
-                if (window.DataManager?.people?.setAll) {
-                  window.DataManager.people.setAll(newPeople);
-                } else {
-                  localStorage.setItem("savedPeople", JSON.stringify(newPeople));
-                  window.dispatchEvent(new Event("people-updated"));
-                }
-                setAllPeople(newPeople);
-              } catch (e) {
-                console.error("Error updating people", e);
-              }
-            }}
-            onClose={() => {
-              setShowPeopleManager(false);
-              setSelectedPersonName(null);
-            }}
-            tasks={tasks || []}
-            onViewTask={(t) => {
-              setShowPeopleManager(false);
-              if (onEdit && t) {
-                onEdit(t);
-              }
-            }}
-            locations={allLocations}
-            setLocations={updateLocationsGlobally}
-            initialSelectedPersonName={selectedPersonName}
-          />
-        </div>,
-        document.body
-      )}
     </>
   );
 }
 
+// Memoize to prevent re-renders when props.id hasn't changed
+const MemoizedViewTaskModal = memo(ViewTaskModal, (prevProps, nextProps) => {
+  return prevProps.task?.id === nextProps.task?.id && 
+         prevProps.task === nextProps.task;
+});
+
 // Expose on window for backward compatibility
 if (typeof window !== 'undefined') {
-  window.ViewTaskModal = ViewTaskModal;
+  window.ViewTaskModal = MemoizedViewTaskModal;
 }
+
+export default MemoizedViewTaskModal;
 

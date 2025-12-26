@@ -310,7 +310,10 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
     }, [spinCooldownEnabled, spinCooldownSpins, spinCooldownMinutes, spinCooldownSeconds, spinning]);
 
     const openWinnerPopup = () => setShowWinner(true);
-    const closeWinnerPopup = () => setShowWinner(false);
+    const closeWinnerPopup = () => {
+      setShowWinner(false);
+      setSpinning(false); // Ensure spinning is stopped when popup closes
+    };
 
     useEffect(() => {
       const onKeyDown = (e) => {
@@ -491,15 +494,28 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
       }
     }, [filterDue, filterCats, filterPriorities, filterDuration, pool.length, spinDurationSec, settings?.spinStyle]);
 
-    // Cleanup on unmount
+    // Cleanup on unmount and when winner popup closes
     useEffect(() => {
       return () => {
         if (tickIntervalRef.current) {
           clearInterval(tickIntervalRef.current);
           tickIntervalRef.current = null;
         }
+        setSpinning(false);
       };
     }, []);
+    
+    // Also cleanup when showWinner changes (popup closes)
+    useEffect(() => {
+      if (!showWinner && spinning) {
+        // Clean up if winner popup closes while still spinning (shouldn't happen, but safety)
+        if (tickIntervalRef.current) {
+          clearInterval(tickIntervalRef.current);
+          tickIntervalRef.current = null;
+        }
+        setSpinning(false);
+      }
+    }, [showWinner, spinning]);
 
     const doSpin = () => {
       if (spinning) return;

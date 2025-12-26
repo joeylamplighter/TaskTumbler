@@ -1978,7 +1978,9 @@ export default function StatsTabLegacy({ tasks = [], history = [], categories = 
                     if (chartLocationFilter !== 'All' && normalized.locationLabel !== chartLocationFilter) return;
                     if (chartTypeFilter !== 'All' && normalized.type !== chartTypeFilter) return;
                     
-                    const dateKey = (normalized.createdAt || new Date()).toDateString();
+                    // Ensure normalized.createdAt is a Date object before calling toDateString()
+                    const dateObj = normalized.createdAt instanceof Date ? normalized.createdAt : new Date(normalized.createdAt || new Date());
+                    const dateKey = dateObj.toDateString();
                     if (data[dateKey] !== undefined) {
                         const duration = Number(normalized.duration) || 0;
                         data[dateKey] += (unit === 'hours' ? duration / 60 : duration);

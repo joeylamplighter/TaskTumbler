@@ -63,6 +63,7 @@ function AppHeader({
     'settings': '⚙',
     'search': '🔍',
     'sync': '☁️',
+    'chatbot': '🤖',
   };
   
   // Helper to check if we're on a stats subtab
@@ -247,6 +248,17 @@ function AppHeader({
   const handleNavClick = (item) => {
     setDropdownOpen(false);
     setSearchQuery(''); // Clear search when navigating
+    
+    // Special handling for chatbot - open chatbot instead of navigating
+    if (item.key === 'chatbot') {
+      if (window.openChatbot) {
+        window.openChatbot();
+      } else if (window.toggleChatbot) {
+        window.toggleChatbot();
+      }
+      return;
+    }
+    
     if (item.key.includes(':')) {
       const [parentTab, subtab] = item.key.split(':');
       if (parentTab === 'stats') {

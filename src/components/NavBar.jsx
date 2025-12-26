@@ -1,5 +1,15 @@
 function NavBar({ current, onTabChange, items, hidden, getCurrentSubtab }) {
   const handleTabClick = (tabKey) => {
+    // Special handling for chatbot - open chatbot instead of navigating
+    if (tabKey === 'chatbot') {
+      if (window.openChatbot) {
+        window.openChatbot()
+      } else if (window.toggleChatbot) {
+        window.toggleChatbot()
+      }
+      return
+    }
+    
     if (onTabChange) {
       onTabChange(tabKey)
     }

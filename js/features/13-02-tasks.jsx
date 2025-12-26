@@ -316,7 +316,111 @@ import ReactDOM from 'react-dom'
       );
   }
 
-  // ---------- 4. TASK ROW ----------
+  // ---------- 4. SIMPLE TASK ROW (1-line with columns) ----------
+  function SimpleTaskRow({ task, onView, onComplete, onDelete, onUpdate, showProgress = true, urgencyStyle = {}, priClass = '', settings = {} }) {
+    const [offset, setOffset] = useState(0);
+    const startX = useRef(null);
+    const isDragging = useRef(false);
+    
+    const safeCall = (fn, ...args) => { if (typeof fn === 'function') try { fn(...args); } catch (e) {} };
+    const onTouchStart = (e) => { startX.current = e.touches[0].clientX; isDragging.current = true; };
+    const onTouchMove = (e) => { 
+      if (!isDragging.current) return;
+      const diffX = e.touches[0].clientX - startX.current;
+      if (Math.abs(diffX) > 10) setOffset(diffX);
+    };
+    const onTouchEnd = () => { 
+      isDragging.current = false;
+      if (offset > 100) safeCall(onComplete, task.id); 
+      else if (offset < -100) safeCall(onView, task); 
+      setOffset(0); 
+    };
+
+    const handleProgressChange = (e) => {
+      e.stopPropagation();
+      const newProgress = parseInt(e.target.value) || 0;
+      safeCall(onUpdate, task.id, { progress: newProgress, percentComplete: newProgress });
+    };
+
+    const progress = task.progress !== undefined ? task.progress : (task.percentComplete !== undefined ? task.percentComplete : (task.completed ? 100 : 0));
+    const fmtTime = (secs) => { 
+      if (!secs) return null; 
+      const min = Math.round(secs / 60);
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return h > 0 ? `${h}h${m>0?` ${m}m`:''}` : `${m}m`;
+    };
+
+    let bg = offset > 0 ? { background: 'var(--success)', justifyContent: 'flex-start' } : { background: '#ff7675', justifyContent: 'flex-end' };
+    let icon = offset > 0 ? (task.completed ? '↺' : '✓') : '✎';
+
+    return (
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'var(--card)' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', padding: '0 24px', ...bg, color:'white', fontWeight:700, fontSize:20 }}>
+          {Math.abs(offset) > 30 && icon}
+        </div>
+        <div className="task-row" style={{ ...urgencyStyle, transform: `translateX(${offset}px)`, transition: isDragging.current ? 'none' : 'transform 0.2s', borderBottom: '1px solid var(--border)', position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: showProgress && !task.completed ? 'auto 1fr auto auto auto auto auto' : 'auto 1fr auto auto auto auto', gap: '8px', alignItems: 'center', padding: '8px 12px' }}
+          onClick={() => { if (Math.abs(offset) < 5) safeCall(onView, task); }}
+          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        >
+          <input type="checkbox" className="task-check" checked={!!task.completed} onChange={e => { e.stopPropagation(); safeCall(onComplete, task.id); }} onClick={e => e.stopPropagation()} style={{ margin: 0 }} />
+          <div style={{ opacity: task.completed ? 0.6 : 1, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ fontWeight: 600, fontSize: 14, textDecoration: task.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+          </div>
+          {showProgress && !task.completed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 60 }}>
+              <div style={{ flex: 1, position: 'relative', height: 4, borderRadius: 2, background: 'var(--input-bg)', minWidth: 40 }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  height: '100%',
+                  width: `${progress}%`,
+                  borderRadius: 2,
+                  background: 'var(--primary)',
+                  pointerEvents: 'none'
+                }} />
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={progress}
+                  onChange={handleProgressChange}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'transparent',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                    appearance: 'none',
+                    zIndex: 2,
+                    margin: 0,
+                    padding: 0,
+                    opacity: 0
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-light)', minWidth: 28, textAlign: 'right' }}>
+                {progress}%
+              </span>
+            </div>
+          )}
+          <span style={{ fontSize: 10, color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{(task.category || 'General').toUpperCase()}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{task.priority || 'Medium'}</span>
+          {task.dueDate && <span style={{ fontSize: 10, color: 'var(--text-light)', whiteSpace: 'nowrap' }}>📅 {task.dueDate}</span>}
+          <span style={{ fontSize: 18, color: '#666', padding: '4px 8px', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); safeCall(onDelete, task.id); }}>×</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- 4. TASK ROW (Detailed) ----------
   function SwipeableTaskRow({ task, onView, onComplete, onDelete, onUpdate, urgencyStyle = {}, priClass = '', settings = {} }) {
     const [offset, setOffset] = useState(0);
     const startX = useRef(null);
@@ -439,6 +543,14 @@ import ReactDOM from 'react-dom'
   // --- TASKS TAB MAIN ---
   function TasksTab({ tasks, onView, onComplete, onDelete, onUpdate, categories, onAdd, openAdd, notify, settings }) {
     const [viewMode, setViewMode] = useState('active'); // Filter mode: active, done, all
+    const [layoutStyle, setLayoutStyle] = useState(() => {
+      try {
+        const saved = localStorage.getItem('taskLayoutStyle');
+        return saved || 'detailed';
+      } catch {
+        return 'detailed';
+      }
+    }); // Layout style: detailed, simple, simple-no-progress
     const [searchText, setSearchText] = useState('');
     
     // Command Bar State
@@ -1065,6 +1177,31 @@ import ReactDOM from 'react-dom'
                             </div>
                         </div>
 
+                        {/* LAYOUT STYLE ROW */}
+                        <div style={{ marginBottom: 12, padding: '0 14px' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-light)', marginBottom: 4, textTransform: 'uppercase' }}>Layout</div>
+                            <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: 6, padding: 2, gap: 2 }}>
+                                {[
+                                    { value: 'detailed', label: 'Detailed' },
+                                    { value: 'simple', label: 'Simple' },
+                                    { value: 'simple-no-progress', label: 'Simple (No Progress)' }
+                                ].map(l => (
+                                    <button key={l.value} type="button" onClick={() => {
+                                        setLayoutStyle(l.value);
+                                        try { localStorage.setItem('taskLayoutStyle', l.value); } catch {}
+                                    }}
+                                        style={{ 
+                                            flex: 1, padding: '4px 0', border: 'none', borderRadius: 4, fontSize: 9, fontWeight: 700, cursor: 'pointer',
+                                            background: layoutStyle === l.value ? 'var(--primary)' : 'transparent',
+                                            color: layoutStyle === l.value ? '#fff' : 'var(--text-light)',
+                                            transition: 'all 0.15s'
+                                        }}>
+                                        {l.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* FILTER SECTIONS - Single Line Each */}
                         <FilterSection label="📅 Due Date" options={['Any', 'Overdue', 'Now', 'Tomorrow', 'Week', 'Month']} value={filterTime} onChange={setFilterTime} />
                         <FilterSection label="⏱️ Duration" options={['Any', '< 5m', '< 15m', '< 30m', '< 60m', '> 1h', 'None']} value={filterDuration} onChange={setFilterDuration} />
@@ -1134,9 +1271,15 @@ import ReactDOM from 'react-dom'
 
         {/* VIEW CONTENT */}
         <div className="task-list">
-          {displayTasks.map(t => (
-              <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} settings={settings} />
-          ))}
+          {displayTasks.map(t => {
+            if (layoutStyle === 'simple') {
+              return <SimpleTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} showProgress={true} settings={settings} />;
+            } else if (layoutStyle === 'simple-no-progress') {
+              return <SimpleTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} showProgress={false} settings={settings} />;
+            } else {
+              return <SwipeableTaskRow key={t.id} task={t} onView={onView} onComplete={onComplete} onDelete={onDelete} onUpdate={onUpdate} settings={settings} />;
+            }
+          })}
           {displayTasks.length === 0 && <div style={{textAlign:'center', padding:20, opacity:0.5}}>No tasks found.</div>}
         </div>
       </div>

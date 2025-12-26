@@ -138,6 +138,24 @@ Available categories: Work, Personal, Health, Learning, Finance, Home Project, E
   - element: "showProgressSliders" | "showTaskTimes" | "showGoalProgress"
   - Example: toggleUIElement("showProgressSliders") to hide/show task progress sliders
 
+### Chatbot Customization
+- updateChatbotName(name): Change the chatbot's display name
+  - Example: updateChatbotName("My Assistant") to rename the chatbot
+  - The name will appear in the chatbot header
+
+### Advanced UI Controls
+- setFontSize(size): Change global font size (small, medium, large)
+- setSpacing(amount): Adjust UI spacing (compact, normal, spacious)
+- toggleAnimations(enabled): Enable/disable UI animations
+- setOpacity(element, value): Set opacity for UI elements (0-1)
+- hideElement(selector): Hide specific UI elements by CSS selector
+- showElement(selector): Show previously hidden UI elements
+
+### Task Management
+- filterTasks(criteria): Filter tasks by category, priority, or status
+- groupTasks(by): Group tasks by category, priority, or due date
+- sortTasks(by): Sort tasks by priority, due date, or title
+
 ### Data Queries
 - getStats(): Get user statistics
 - getCategories(): Get all categories
@@ -413,6 +431,141 @@ If no action is needed, just respond with a message.
 
           window.dispatchEvent(new CustomEvent('ui-elements-updated'));
           notify(`${elementName} ${newValue ? 'shown' : 'hidden'}`, '👁️');
+          break;
+        }
+
+        case 'updateChatbotName': {
+          const name = action.params?.name;
+          if (!name || typeof name !== 'string') {
+            notify('Chatbot name is required', '❌');
+            break;
+          }
+
+          if (!DM?.settings) {
+            notify('Settings not available', '❌');
+            break;
+          }
+
+          const currentSettings = DM.settings.get() || {};
+          DM.settings.set({
+            ...currentSettings,
+            chatbotName: name.trim()
+          });
+
+          // Dispatch event to update UI
+          window.dispatchEvent(new CustomEvent('chatbot-name-updated', { detail: { name: name.trim() } }));
+          notify(`Chatbot renamed to "${name.trim()}"`, '✏️');
+          break;
+        }
+
+        case 'setFontSize': {
+          const size = action.params?.size; // 'small', 'medium', 'large'
+          if (!size || !['small', 'medium', 'large'].includes(size)) {
+            notify('Font size must be small, medium, or large', '❌');
+            break;
+          }
+
+          const sizeMap = { small: '12px', medium: '14px', large: '16px' };
+          document.documentElement.style.setProperty('--base-font-size', sizeMap[size]);
+          notify(`Font size set to ${size}`, '📝');
+          break;
+        }
+
+        case 'setSpacing': {
+          const spacing = action.params?.amount; // 'compact', 'normal', 'spacious'
+          if (!spacing || !['compact', 'normal', 'spacious'].includes(spacing)) {
+            notify('Spacing must be compact, normal, or spacious', '❌');
+            break;
+          }
+
+          const spacingMap = { compact: '4px', normal: '8px', spacious: '16px' };
+          document.documentElement.style.setProperty('--spacing-unit', spacingMap[spacing]);
+          notify(`Spacing set to ${spacing}`, '📏');
+          break;
+        }
+
+        case 'toggleAnimations': {
+          const enabled = action.params?.enabled !== false;
+          document.documentElement.setAttribute('data-animations', enabled ? 'enabled' : 'disabled');
+          notify(`Animations ${enabled ? 'enabled' : 'disabled'}`, '🎬');
+          break;
+        }
+
+        case 'setOpacity': {
+          const { element, value } = action.params || {};
+          if (!element || value === undefined) {
+            notify('Element selector and opacity value (0-1) required', '❌');
+            break;
+          }
+
+          const opacity = Math.max(0, Math.min(1, parseFloat(value)));
+          try {
+            const elements = document.querySelectorAll(element);
+            elements.forEach(el => {
+              el.style.opacity = opacity;
+            });
+            notify(`Opacity set to ${opacity} for ${element}`, '👁️');
+          } catch (error) {
+            notify('Invalid element selector', '❌');
+          }
+          break;
+        }
+
+        case 'hideElement': {
+          const selector = action.params?.selector;
+          if (!selector) {
+            notify('Element selector required', '❌');
+            break;
+          }
+
+          try {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+              el.style.display = 'none';
+              el.setAttribute('data-chatbot-hidden', 'true');
+            });
+            notify(`Hidden ${elements.length} element(s)`, '👁️');
+          } catch (error) {
+            notify('Invalid element selector', '❌');
+          }
+          break;
+        }
+
+        case 'showElement': {
+          const selector = action.params?.selector;
+          if (!selector) {
+            notify('Element selector required', '❌');
+            break;
+          }
+
+          try {
+            const elements = document.querySelectorAll(`[data-chatbot-hidden="true"]${selector}`);
+            elements.forEach(el => {
+              el.style.display = '';
+              el.removeAttribute('data-chatbot-hidden');
+            });
+            notify(`Shown ${elements.length} element(s)`, '👁️');
+          } catch (error) {
+            notify('Invalid element selector', '❌');
+          }
+          break;
+        }
+
+        case 'filterTasks': {
+          // This is more of a query action - handled in processMessage
+          notify('Task filtering requested', '🔍');
+          break;
+        }
+
+        case 'groupTasks': {
+          // This is more of a query action - handled in processMessage
+          notify('Task grouping requested', '📊');
+          break;
+        }
+
+        case 'sortTasks': {
+          // This is more of a query action - handled in processMessage
+          notify('Task sorting requested', '🔢');
           break;
         }
 

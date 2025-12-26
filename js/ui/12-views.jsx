@@ -685,6 +685,8 @@
                                 return (
                                     <div key={`empty-${i}`} style={{
                                         minHeight: '100px',
+                                        minWidth: 0,
+                                        width: '100%',
                                         borderRight: (i % 7) < 6 ? '1px solid var(--border)' : 'none',
                                         borderBottom: '1px solid var(--border)'
                                     }} />
@@ -698,6 +700,8 @@
                                     onClick={() => d.tasks.length > 0 && d.tasks[0] && onView(d.tasks[0])}
                                     style={{
                                         minHeight: '120px',
+                                        minWidth: 0,
+                                        width: '100%',
                                         padding: '10px',
                                         borderRight: col < 6 ? '1px solid var(--border)' : 'none',
                                         borderBottom: '1px solid var(--border)',
@@ -706,7 +710,8 @@
                                         transition: 'all 0.2s',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        position: 'relative'
+                                        position: 'relative',
+                                        boxSizing: 'border-box'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (d.tasks.length > 0) {

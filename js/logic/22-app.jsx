@@ -2961,6 +2961,7 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
+    { key: "chatbot", icon: "🤖", label: "AI Assistant", displayLabel: "AI" },
     { key: "crm", icon: "👔", label: "CRM", displayLabel: "CRM", hasDropdown: true, dropdownItems: ["crm:people", "crm:places"] },
     { key: "crm:people", icon: "👥", label: "People", displayLabel: "People", groupLabel: "CRM" },
     { key: "crm:places", icon: "📍", label: "Places", displayLabel: "Places", groupLabel: "CRM" },

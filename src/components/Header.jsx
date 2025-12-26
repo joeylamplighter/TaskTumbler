@@ -121,6 +121,7 @@ function Header({
     'settings': '⚙',
     'search': '🔍',
     'sync': '☁️',
+    'chatbot': '🤖',
   }
   
   // Helper to check if we're on a stats subtab
@@ -189,6 +190,13 @@ function Header({
                     onSearchClick?.()
                   } else if (item === 'sync') {
                     onSyncClick?.()
+                  } else if (item === 'chatbot') {
+                    // Open chatbot
+                    if (window.openChatbot) {
+                      window.openChatbot()
+                    } else if (window.toggleChatbot) {
+                      window.toggleChatbot()
+                    }
                   } else {
                     onTabChange?.(item)
                   }
@@ -206,8 +214,8 @@ function Header({
                   background: isActive ? 'var(--primary-light)' : 'transparent',
                   transition: 'all 0.2s ease',
                 }}
-                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
-                aria-label={item === 'search' ? 'Search' : item === 'sync' ? 'Cloud Sync' : `Go to ${item}`}
+                title={item === 'search' ? 'Search (Cmd/Ctrl+K)' : item === 'sync' ? 'Cloud Sync' : item === 'chatbot' ? 'AI Assistant' : `Go to ${item}`}
+                aria-label={item === 'search' ? 'Search' : item === 'sync' ? 'Cloud Sync' : item === 'chatbot' ? 'Open AI Assistant' : `Go to ${item}`}
               >
                 {icon}
               </button>

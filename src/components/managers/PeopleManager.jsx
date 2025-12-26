@@ -2372,10 +2372,15 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
 
   const handleHistoryClick = (historyItem) => {
     // If history item has a taskId, try to find and view the task
-    if (historyItem.taskId && onViewTask) {
+    if (historyItem.taskId) {
       const task = safeTasks.find(t => t.id === historyItem.taskId);
       if (task) {
-        onViewTask(task);
+        // Use global openModal if available, otherwise fall back to onViewTask
+        if (window.openModal) {
+          window.openModal('task', task.id, { task });
+        } else if (onViewTask) {
+          onViewTask(task);
+        }
         return;
       }
     }
@@ -3336,7 +3341,14 @@ function PersonView({ person, onEdit, tasks, onViewTask, history = [], setPeople
               {associatedTasks.map((task) => (
                 <div
                   key={task.id}
-                  onClick={() => onViewTask?.(task)}
+                  onClick={() => {
+                    // Use global openModal if available, otherwise fall back to onViewTask
+                    if (window.openModal) {
+                      window.openModal('task', task.id, { task });
+                    } else if (onViewTask) {
+                      onViewTask(task);
+                    }
+                  }}
                   style={{
                     padding: tasksCompactView ? '8px 12px' : '14px 16px',
                     background: task.completed ? 'rgba(0,184,148,0.1)' : 'rgba(255,255,255,0.05)',
