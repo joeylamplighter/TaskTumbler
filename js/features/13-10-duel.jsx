@@ -498,11 +498,11 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         {/* Animated characters removed - keeping it clean with just fighters and speech bubbles */}
 
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1, wordBreak: 'break-word' }}>
             {pair[0].title}
           </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap', maxWidth: '100%', overflow: 'hidden' }}>
             <span
               style={{
                 fontSize: 9,
@@ -556,7 +556,12 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
                   fontWeight: 700,
                   background: 'rgba(255, 107, 53, 0.1)',
                   color: 'var(--primary)',
-                  border: '1px solid rgba(255, 107, 53, 0.3)'
+                  border: '1px solid rgba(255, 107, 53, 0.3)',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  flexShrink: 1
                 }}
               >
                 #{tag} {tag}
@@ -638,11 +643,11 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
 
         {/* Animated characters removed - keeping it clean with just fighters and speech bubbles */}
 
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, lineHeight: 1.1, wordBreak: 'break-word' }}>
             {pair[1].title}
           </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'wrap', maxWidth: '100%', overflow: 'hidden' }}>
             <span
               style={{
                 fontSize: 9,
@@ -696,7 +701,12 @@ function DuelTab({ tasks = [], onUpdate, settings = {}, notify = () => {}, fireC
                   fontWeight: 700,
                   background: 'rgba(255, 107, 53, 0.1)',
                   color: 'var(--primary)',
-                  border: '1px solid rgba(255, 107, 53, 0.3)'
+                  border: '1px solid rgba(255, 107, 53, 0.3)',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  flexShrink: 1
                 }}
               >
                 #{tag} {tag}

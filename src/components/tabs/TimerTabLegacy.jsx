@@ -65,13 +65,15 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
   // --- STYLES ---
   const cardStyle = useMemo(
     () => ({
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 6,
-      padding: 16,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      borderRadius: 8,
+      padding: 8,
+      boxShadow: "0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      boxSizing: "border-box",
+      width: "100%",
     }),
     []
   );
@@ -615,15 +617,15 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
 // RENDER
 // ==========================================
   return (
-    <div style={{ padding: "20px 16px", paddingBottom: 80, maxWidth: 500, margin: "0 auto", width: "100%" }}>
+    <div style={{ padding: "4px 4px", paddingBottom: 50, maxWidth: "100%", margin: "0 auto", width: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
       <style>{heroCSS}</style>
 
     {/* HERO */}
-    <div style={{ marginTop: 8, marginBottom: 20 }}>
+    <div style={{ marginTop: 0, marginBottom: 4 }}>
       <ClockHero timerState={timerState} getElapsed={getElapsed} fmt={fmt} />
 
       {/* ACTIVITY NAME (flat) */}
-      <div style={{ maxWidth: "100%", margin: "16px auto 12px" }}>
+      <div style={{ maxWidth: "100%", margin: "6px auto 6px", boxSizing: "border-box" }}>
         <input
           type="text"
           placeholder="What are you doing?"
@@ -631,17 +633,20 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
           onChange={(e) => updateTimer({ activityName: e.target.value })}
           style={{
             width: "100%",
-            fontSize: 20,
-            fontWeight: 900,
+            maxWidth: "100%",
+            fontSize: "clamp(14px, 3.5vw, 18px)",
+            fontWeight: 800,
             textAlign: "center",
             border: "none",
             background: "transparent",
             color: "var(--text)",
             outline: "none",
-            padding: "8px 0",
-            textShadow: "none",
+            padding: "4px 4px",
+            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
             fontFamily: "'Fredoka', sans-serif",
             transition: "opacity 0.2s ease",
+            boxSizing: "border-box",
+            letterSpacing: "0.3px",
           }}
           onFocus={(e) => e.target.style.opacity = "1"}
           onBlur={(e) => e.target.style.opacity = "1"}
@@ -649,15 +654,16 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* CATEGORY (sleek inline) */}
-      <div style={{ maxWidth: "100%", margin: "0 auto 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, opacity: 0.95 }}>
+      <div style={{ maxWidth: "100%", margin: "0 auto 6px", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, opacity: 0.95 }}>
           <span
             style={{
-              fontSize: 11,
-              letterSpacing: 1.2,
-              opacity: 0.45,
-              fontWeight: 800,
+              fontSize: 10,
+              letterSpacing: 1,
+              opacity: 0.5,
+              fontWeight: 700,
               whiteSpace: "nowrap",
+              color: "var(--text-light)",
             }}
           >
             CATEGORY
@@ -671,19 +677,20 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
                 appearance: "none",
                 WebkitAppearance: "none",
                 MozAppearance: "none",
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.08)",
                 color: "rgba(255,255,255,0.95)",
                 padding: "10px 36px 10px 14px",
-                borderRadius: 4,
-                fontWeight: 900,
+                borderRadius: 6,
+                fontWeight: 800,
                 fontSize: 13,
                 lineHeight: 1,
                 cursor: "pointer",
                 outline: "none",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                transition: "all 0.2s ease",
               }}
             >
               {categoryOptions.map((c) => (
@@ -711,76 +718,80 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* Actions */}
-      <div style={{ maxWidth: "100%", margin: "0 auto", width: "100%" }}>
+      <div style={{ maxWidth: "100%", margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "0", display: "flex", justifyContent: "center" }}>
         <div style={{ 
-          display: "grid", 
-          gap: 16, 
-          gridTemplateColumns: "1fr 1fr",
-          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 6, 
+          width: "auto",
+          maxWidth: "100px",
           minWidth: 0,
+          boxSizing: "border-box",
         }}>
-          {(() => {
-            // Always show two buttons if timer has been started (isRunning) or has any time
-            const hasElapsed = (getElapsed() || 0) > 0;
-            const hasStoredTime = (timerState?.storedTime || 0) > 0;
-            const hasStartTime = !!timerState?.startTime;
-            const shouldShowTwoButtons = hasElapsed || isRunning || hasStoredTime || hasStartTime;
-            return shouldShowTwoButtons;
-          })() ? (
-            <>
-              <button
-                onClick={onToggle}
-                style={{
-                  height: 68,
-                  borderRadius: 4,
-                  fontSize: 18,
-                  fontWeight: 900,
-                  background: "var(--primary)",
-                  border: "2px solid transparent",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 6px 24px rgba(255, 107, 53, 0.35)",
-                  boxSizing: "border-box",
-                }}
-              >
-                {isRunning ? "⏸ Pause" : "▶ Resume"}
-              </button>
-              <button
-                onClick={handleFinish}
-                style={{
-                  height: 68,
-                  borderRadius: 4,
-                  fontSize: 18,
-                  fontWeight: 900,
-                  background: "var(--success)",
-                  border: "2px solid transparent",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 6px 24px rgba(0, 184, 148, 0.35)",
-                  boxSizing: "border-box",
-                }}
-              >
-                ✓ Finish
-              </button>
-            </>
-          ) : (
+          <button
+            onClick={onToggle}
+            title={isRunning ? "Pause" : (getElapsed() || 0) > 0 ? "Resume" : "Start"}
+            style={{
+              height: "clamp(40px, 9vw, 52px)",
+              width: "clamp(60px, 15vw, 90px)",
+              borderRadius: 8,
+              fontSize: "clamp(20px, 5vw, 24px)",
+              fontWeight: 900,
+              background: "var(--primary)",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(255, 107, 53, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+              boxSizing: "border-box",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(255, 107, 53, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 107, 53, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)";
+            }}
+          >
+            {isRunning ? "⏸" : "▶"}
+          </button>
+          {isRunning && (
             <button
-              onClick={onToggle}
+              onClick={handleFinish}
+              title="Finish"
               style={{
-                height: 68,
-                borderRadius: 4,
-                fontSize: 18,
+                height: "clamp(40px, 9vw, 52px)",
+                width: "clamp(60px, 15vw, 90px)",
+                borderRadius: 8,
+                fontSize: "clamp(20px, 5vw, 24px)",
                 fontWeight: 900,
-                background: "var(--primary)",
-                border: "2px solid transparent",
+                background: "var(--success)",
+                border: "none",
                 color: "#fff",
                 cursor: "pointer",
-                boxShadow: "0 6px 24px rgba(255, 107, 53, 0.35)",
+                boxShadow: "0 4px 16px rgba(0, 184, 148, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
                 boxSizing: "border-box",
-                gridColumn: "1 / -1",
+                padding: "0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 184, 148, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 184, 148, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)";
               }}
             >
-              ▶ Start
+              ✓
             </button>
           )}
         </div>
@@ -807,34 +818,41 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
     </div>
 
       {/* PEOPLE */}
+      <div style={{ ...cardStyle, marginTop: 6 }}>
+        <div style={{ fontWeight: 800, fontSize: 10, color: "var(--text-light)", marginBottom: 6, letterSpacing: 0.8, opacity: 0.85 }}>👥 PEOPLE</div>
 
-      {/* PEOPLE */}
-      <div style={{ ...cardStyle, marginTop: 16 }}>
-        <div style={{ fontWeight: 900, fontSize: 12, color: "var(--text-light)", marginBottom: 12, letterSpacing: 0.5, opacity: 0.9 }}>👥 PEOPLE</div>
-
-        <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 4, padding: "10px 12px", minHeight: 48, display: "flex", flexWrap: "wrap", gap: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: 6, padding: "6px 8px", minHeight: 36, display: "flex", flexWrap: "wrap", gap: 4, border: "1px solid rgba(255,255,255,0.08)", boxSizing: "border-box" }}>
           {(Array.isArray(timerState?.people) ? timerState.people : []).map((p) => (
             <span
               key={p}
               style={{
                 background: "var(--primary)",
                 color: "#fff",
-                borderRadius: 4,
-                padding: "8px 14px",
+                borderRadius: 6,
+                padding: "4px 10px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 10,
-                fontSize: 13,
-                fontWeight: 900,
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 700,
                 userSelect: "none",
-                boxShadow: "0 4px 12px rgba(255, 107, 53, 0.25)",
-                border: "1px solid rgba(255,255,255,0.15)",
+                boxShadow: "0 2px 8px rgba(255, 107, 53, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(255, 107, 53, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 2px 8px rgba(255, 107, 53, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)";
               }}
             >
               <span onDoubleClick={() => openPersonEditor(p)} title="Double click to edit details" style={{ cursor: "pointer" }}>
                 {p}
               </span>
-              <span onClick={() => removePersonFromSession(p)} style={{ cursor: "pointer", fontSize: 16, lineHeight: 1, opacity: 0.8 }}>
+              <span onClick={() => removePersonFromSession(p)} style={{ cursor: "pointer", fontSize: 12, lineHeight: 1, opacity: 0.8 }}>
                 ×
               </span>
             </span>
@@ -854,11 +872,12 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
               background: "transparent", 
               color: "var(--text)", 
               flex: 1, 
-              minWidth: 120, 
+              minWidth: 100, 
               outline: "none",
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: 500,
-              padding: "4px 8px",
+              padding: "2px 6px",
+              boxSizing: "border-box",
             }}
           />
           <datalist id="timer-saved-people">
@@ -914,21 +933,23 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* LOCATION */}
-      <div style={{ ...cardStyle, marginTop: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontWeight: 900, fontSize: 12, color: "var(--text-light)", letterSpacing: 0.5, opacity: 0.9 }}>📍 LOCATION</div>
-          <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ ...cardStyle, marginTop: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 4 }}>
+          <div style={{ fontWeight: 800, fontSize: 10, color: "var(--text-light)", letterSpacing: 0.8, opacity: 0.85 }}>📍 LOCATION</div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             <button
               onClick={() => setShowLocManager(true)}
               className="btn-white-outline"
               style={{ 
                 display: "inline-flex", 
                 alignItems: "center", 
-                gap: 6, 
-                padding: "8px 12px", 
-                borderRadius: 4, 
+                gap: 4, 
+                padding: "4px 8px", 
+                borderRadius: 3, 
                 fontWeight: 700, 
-                fontSize: 12,
+                fontSize: 10,
+                whiteSpace: "nowrap",
+                boxSizing: "border-box",
               }}
               title="Manage saved locations"
             >
@@ -942,22 +963,24 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
               style={{ 
                 display: "inline-flex", 
                 alignItems: "center", 
-                gap: 8, 
-                padding: "10px 14px", 
-                borderRadius: 4, 
+                gap: 4, 
+                padding: "4px 8px", 
+                borderRadius: 3, 
                 fontWeight: 900, 
                 opacity: isLocLoading ? 0.7 : 1,
-                fontSize: 13,
+                fontSize: 10,
+                whiteSpace: "nowrap",
+                boxSizing: "border-box",
               }}
               title="Use GPS to capture your current place"
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>{resolvedLocation ? "💾" : "📍"}</span>
+              <span style={{ fontSize: 12, lineHeight: 1 }}>{resolvedLocation ? "💾" : "📍"}</span>
               <span>{isLocLoading ? "Locating…" : resolvedLocation ? "Save GPS" : "Use GPS"}</span>
             </button>
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 5 }}>
           {/* Current Location Display */}
           {timerState?.location && (() => {
             const currentLoc = timerState?.locationId ? 
@@ -970,17 +993,17 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
                 background: "rgba(255, 107, 53, 0.15)",
                 border: "1px solid rgba(255, 107, 53, 0.3)",
                 borderRadius: 6,
-                padding: "10px 12px",
+                padding: "8px 10px",
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
               }}>
                 <span style={{ fontSize: 20 }}>📍</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 2 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text)", marginBottom: 3, letterSpacing: "0.3px" }}>
                     Current Location
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--text-light)", opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-light)", opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>
                     {timerState.location}
                   </div>
                   {currentLoc?.resolvedAddress && currentLoc.resolvedAddress !== timerState.location && (
@@ -1033,10 +1056,10 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
           })()}
 
           {/* Location Input */}
-          <div>
+          <div style={{ width: "100%", boxSizing: "border-box" }}>
             <input
               className="f-input"
-              style={{ width: "100%" }}
+              style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", fontSize: 12, padding: "6px 8px" }}
               placeholder={timerState?.location ? "Change location..." : "Type a place name or choose from saved locations…"}
               value={timerState?.location || ""}
               onChange={handleLocationInput}
@@ -1061,7 +1084,20 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
           {/* Notes */}
           <textarea 
             className="f-textarea" 
-            style={{ minHeight: 60, marginTop: 8, fontSize: 13, padding: "8px 12px" }} 
+            style={{ 
+              minHeight: 50, 
+              marginTop: 5, 
+              fontSize: 12, 
+              padding: "8px 10px", 
+              resize: "none", 
+              width: "100%", 
+              boxSizing: "border-box",
+              borderRadius: 6,
+              background: "rgba(0,0,0,0.2)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "var(--text)",
+              lineHeight: "1.5",
+            }} 
             placeholder="Notes…" 
             value={timerState?.notes || ""} 
             onChange={(e) => updateTimer({ notes: e.target.value })} 
@@ -1070,12 +1106,12 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* RECENT LOG */}
-      <div style={{ ...cardStyle, marginTop: 16 }}>
-        <div style={{ fontWeight: 900, fontSize: 12, color: "var(--text-light)", letterSpacing: 0.5, opacity: 0.9, marginBottom: 12 }}>
+      <div style={{ ...cardStyle, marginTop: 6 }}>
+        <div style={{ fontWeight: 800, fontSize: 10, color: "var(--text-light)", letterSpacing: 0.8, opacity: 0.85, marginBottom: 6 }}>
           📜 RECENT ACTIVITY
         </div>
         {recentLogItems.length > 0 ? (
-          <div style={{ display: "grid", gap: 6, maxHeight: 250, overflowY: "auto", padding: "2px" }}>
+          <div style={{ display: "grid", gap: 4, maxHeight: 100, overflowY: "auto", padding: "2px", boxSizing: "border-box" }}>
             {recentLogItems.map((item) => (
               <div
                 key={item.id}
@@ -1086,63 +1122,65 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
                   }
                 }}
                 style={{
-                  background: "rgba(0,0,0,0.2)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 4,
-                  padding: "8px 10px",
+                  background: "rgba(0,0,0,0.25)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 6,
+                  padding: "6px 8px",
                   cursor: item.taskId ? "pointer" : "default",
                   transition: "all 0.2s ease",
                 }}
                 onMouseOver={(e) => {
                   if (item.taskId) {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                    e.currentTarget.style.transform = "translateX(2px)";
                   }
                 }}
                 onMouseOut={(e) => {
                   if (item.taskId) {
-                    e.currentTarget.style.background = "rgba(0,0,0,0.2)";
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                    e.currentTarget.style.background = "rgba(0,0,0,0.25)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.transform = "translateX(0)";
                   }
                 }}
               >
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                 <div style={{ fontSize: 14, lineHeight: 1, marginTop: 1 }}>
                   {item.type === 'timer' ? '⏱️' : item.type === 'task_complete' ? '✅' : '✓'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.title}
                     </div>
                     {item.type === 'timer' && item.duration > 0 && (
-                      <span style={{ fontSize: 10, color: "var(--primary)", fontWeight: 800, whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: 9, color: "var(--primary)", fontWeight: 800, whiteSpace: "nowrap" }}>
                         {formatDuration(item.duration)}
                       </span>
                     )}
                   </div>
                   {item.type === 'subtask_complete' && item.taskTitle && (
-                    <div style={{ fontSize: 10, color: "var(--text-light)", opacity: 0.7, marginBottom: 2 }}>
+                    <div style={{ fontSize: 9, color: "var(--text-light)", opacity: 0.7, marginBottom: 2 }}>
                       From: {item.taskTitle}
                     </div>
                   )}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                     {item.category && (
-                      <span style={{ fontSize: 9, color: "var(--text-light)", opacity: 0.6 }}>
+                      <span style={{ fontSize: 8, color: "var(--text-light)", opacity: 0.65, fontWeight: 600 }}>
                         {item.category}
                       </span>
                     )}
                     {item.type === 'timer' && item.people && item.people.length > 0 && (
-                      <span style={{ fontSize: 9, color: "var(--text-light)", opacity: 0.6 }}>
+                      <span style={{ fontSize: 8, color: "var(--text-light)", opacity: 0.65 }}>
                         👥 {item.people.length}
                       </span>
                     )}
                     {item.type === 'timer' && item.location && (
-                      <span style={{ fontSize: 9, color: "var(--text-light)", opacity: 0.6 }}>
-                        📍 {item.location.length > 15 ? item.location.substring(0, 15) + '...' : item.location}
+                      <span style={{ fontSize: 8, color: "var(--text-light)", opacity: 0.65 }}>
+                        📍 {item.location.length > 12 ? item.location.substring(0, 12) + '...' : item.location}
                       </span>
                     )}
-                    <span style={{ fontSize: 9, color: "var(--text-light)", opacity: 0.5, marginLeft: "auto" }}>
+                    <span style={{ fontSize: 8, color: "var(--text-light)", opacity: 0.5, marginLeft: "auto", fontWeight: 500 }}>
                       {formatTimeAgo(item.timestamp)}
                     </span>
                   </div>
@@ -1152,9 +1190,9 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: "center", padding: "12px", opacity: 0.6 }}>
-            <div style={{ fontSize: 11, color: "var(--text-light)" }}>
-              No recent activity. Start tracking time or complete tasks to see them here.
+          <div style={{ textAlign: "center", padding: "4px", opacity: 0.6 }}>
+            <div style={{ fontSize: 9, color: "var(--text-light)" }}>
+              No recent activity
             </div>
           </div>
         )}
@@ -1236,49 +1274,50 @@ const ClockHero = React.memo(function ClockHero({ timerState, getElapsed, fmt })
   const elapsed = shownElapsed;
 
   return (
-    <div style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%" }}>
+    <div style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", boxSizing: "border-box" }}>
       <div
-        style={{
-          width: "400px",
-          maxWidth: "400px",
-          height: 200,
-          borderRadius: 4,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "transparent",
-          border: "none",
-          animation: isRunning ? "softGlow 8s ease-in-out infinite" : "none",
-          boxShadow: isRunning 
-            ? "0 0 60px rgba(255, 107, 53, 0.3), 0 0 120px rgba(255, 107, 53, 0.2), 0 0 180px rgba(255, 107, 53, 0.1), 0 0 240px rgba(255, 107, 53, 0.05)"
-            : "0 0 60px rgba(255, 107, 53, 0), 0 0 120px rgba(255, 107, 53, 0), 0 0 180px rgba(255, 107, 53, 0), 0 0 240px rgba(255, 107, 53, 0)",
-          padding: "20px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      >
-        <div
           style={{
-            fontSize: "clamp(88px, 14.5vw, 130px)",
-            fontWeight: 900,
-            fontFamily: "monospace",
-            color: "var(--text)",
-            fontVariantNumeric: "tabular-nums",
-            lineHeight: 1,
-            letterSpacing: 1,
-            textShadow: "none",
-            position: "relative",
-            zIndex: 2,
             width: "100%",
-            textAlign: "center",
-            whiteSpace: "nowrap",
+            maxWidth: "100%",
+            height: "auto",
+            minHeight: "clamp(70px, 18vw, 90px)",
+            borderRadius: 8,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            animation: isRunning ? "softGlow 8s ease-in-out infinite" : "none",
+            boxShadow: isRunning 
+              ? "0 0 40px rgba(255, 107, 53, 0.35), 0 0 80px rgba(255, 107, 53, 0.25), 0 0 120px rgba(255, 107, 53, 0.15)"
+              : "0 0 40px rgba(255, 107, 53, 0), 0 0 80px rgba(255, 107, 53, 0), 0 0 120px rgba(255, 107, 53, 0)",
+            padding: "8px",
+            boxSizing: "border-box",
             overflow: "hidden",
           }}
         >
-          {fmt(elapsed)}
+          <div
+            style={{
+              fontSize: "clamp(42px, 13vw, 88px)",
+              fontWeight: 900,
+              fontFamily: "monospace",
+              color: "var(--text)",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
+              letterSpacing: 1,
+              textShadow: "0 2px 8px rgba(0,0,0,0.5), 0 0 20px rgba(255, 107, 53, 0.3)",
+              position: "relative",
+              zIndex: 2,
+              width: "100%",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
+          >
+            {fmt(elapsed)}
+          </div>
         </div>
-      </div>
     </div>
   );
 });

@@ -1655,12 +1655,89 @@ function Fold({ title, right, open, onToggle, children }) {
 
             <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16 }}>
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-                Choose which items appear in the main navigation bar and their order
+                Choose which items appear in the main navigation dock (bottom bar). This controls which nav items are visible, not the dock visibility itself.
               </p>
               
               {/* Nav Bar Visibility */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "var(--text-light)" }}>Visible Items</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-light)" }}>Visible Items</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allNavItems = [
+                          "spin", "tasks", "timer", "lists", "goals", "people", "places", "stats",
+                          "stats:overview", "stats:charts", "stats:history", "duel", "settings",
+                          "settings:view", "settings:logic", "settings:game", "settings:cats", "settings:data"
+                        ];
+                        const allSelected = {};
+                        allNavItems.forEach(key => {
+                          allSelected[key] = true;
+                        });
+                        setSettings((p) => ({
+                          ...p,
+                          navBarVisibleItems: allSelected,
+                        }));
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = "var(--primary-light)";
+                        e.currentTarget.style.borderColor = "var(--primary)";
+                        e.currentTarget.style.color = "var(--primary)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.color = "var(--text)";
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettings((p) => ({
+                          ...p,
+                          navBarVisibleItems: {},
+                        }));
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = "var(--danger-light)";
+                        e.currentTarget.style.borderColor = "var(--danger)";
+                        e.currentTarget.style.color = "var(--danger)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.color = "var(--text)";
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
                 <div style={{ background: "var(--card)", padding: 12, borderRadius: 8 }}>
                   {(() => {
                     const allNavItems = [

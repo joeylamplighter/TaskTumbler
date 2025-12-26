@@ -514,7 +514,7 @@
     border: 2px solid var(--border); border-top: none; border-radius: 12px; 
     padding: 14px; /* Equal padding on all sides */
     display: flex; flex-direction: column; align-items: center; flex: 1;
-    position: relative; overflow: visible; min-height: 100px; max-height: 180px; 
+    position: relative; overflow: hidden; min-height: 100px; max-height: 180px; 
     max-width: 280px; width: 100%; margin: 0 auto 24px; cursor: pointer;
     text-align: left; justify-content: flex-start; transition: border-color 0.3s ease, transform 0.3s ease;
     isolation: isolate; /* Creates new stacking context to contain shadows */

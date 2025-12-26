@@ -163,6 +163,32 @@ import ReactDOM from 'react-dom'
     useEffect(() => localStorage.setItem("tt_spin_show_toolbar", showToolbar), [showToolbar]);
 
     const [bulkMode, setBulkMode] = useState(false);
+    const [showActionMenu, setShowActionMenu] = useState(false);
+    const [isNarrow, setIsNarrow] = useState(false);
+    const actionMenuRef = useRef(null);
+
+    // Check if screen is narrow
+    useEffect(() => {
+      const checkWidth = () => {
+        setIsNarrow(window.innerWidth < 480);
+      };
+      checkWidth();
+      window.addEventListener('resize', checkWidth);
+      return () => window.removeEventListener('resize', checkWidth);
+    }, []);
+
+    // Close action menu when clicking outside
+    useEffect(() => {
+      if (!showActionMenu) return;
+      const handleClickOutside = (e) => {
+        if (actionMenuRef.current && !actionMenuRef.current.contains(e.target) && 
+            !e.target.closest('.action-menu-dropdown')) {
+          setShowActionMenu(false);
+        }
+      };
+      window.addEventListener('mousedown', handleClickOutside);
+      return () => window.removeEventListener('mousedown', handleClickOutside);
+    }, [showActionMenu]);
     const [aiMode, setAiMode] = useState(false);
     const [bulkText, setBulkText] = useState("");
     const [quickText, setQuickText] = useState("");
@@ -706,26 +732,129 @@ import ReactDOM from 'react-dom'
               marginBottom: 12
             }}
           >
-            {/* LEFT: Action Buttons */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button 
-                style={glowStyle(bulkMode)} 
-                onClick={() => setBulkMode(!bulkMode)} 
-                title="Bulk Import"
-                onMouseEnter={(e) => !bulkMode && (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-                onMouseLeave={(e) => !bulkMode && (e.currentTarget.style.background = "transparent")}
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>📦</span>
-              </button>
-              <button 
-                style={glowStyle(false)} 
-                onClick={() => (openAdd || OpenAdd)?.()} 
-                title="Full Add Task"
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>➕</span>
-              </button>
+            {/* LEFT: Action Buttons or Hamburger Menu */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              {isNarrow ? (
+                <>
+                  <button
+                    ref={actionMenuRef}
+                    type="button"
+                    onClick={() => setShowActionMenu(!showActionMenu)}
+                    style={{
+                      padding: '6px 10px',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: showActionMenu ? 'var(--primary)' : 'transparent',
+                      color: showActionMenu ? '#fff' : 'var(--text-light)',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Actions"
+                  >
+                    ☰
+                  </button>
+                  
+                  {/* Action Menu Dropdown */}
+                  {showActionMenu && ReactDOM.createPortal(
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'fixed',
+                        top: actionMenuRef.current ? actionMenuRef.current.getBoundingClientRect().bottom + 8 : 100,
+                        left: actionMenuRef.current ? actionMenuRef.current.getBoundingClientRect().left : 0,
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        padding: '4px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        zIndex: 10000,
+                        minWidth: '140px'
+                      }}
+                      className="action-menu-dropdown"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkMode(!bulkMode);
+                          setShowActionMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background: bulkMode ? 'var(--primary)' : 'transparent',
+                          color: bulkMode ? '#fff' : 'var(--text)',
+                          transition: 'all 0.15s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span>📦</span>
+                        <span>Bulk Import</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          (openAdd || OpenAdd)?.();
+                          setShowActionMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: 'var(--text)',
+                          transition: 'all 0.15s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span>➕</span>
+                        <span>Full Add Task</span>
+                      </button>
+                    </div>,
+                    document.body
+                  )}
+                </>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button 
+                    style={glowStyle(bulkMode)} 
+                    onClick={() => setBulkMode(!bulkMode)} 
+                    title="Bulk Import"
+                    onMouseEnter={(e) => !bulkMode && (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                    onMouseLeave={(e) => !bulkMode && (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span style={{ fontSize: 16, lineHeight: 1 }}>📦</span>
+                  </button>
+                  <button 
+                    style={glowStyle(false)} 
+                    onClick={() => (openAdd || OpenAdd)?.()} 
+                    title="Full Add Task"
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span style={{ fontSize: 16, lineHeight: 1 }}>➕</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />

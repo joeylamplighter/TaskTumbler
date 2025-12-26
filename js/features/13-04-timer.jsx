@@ -523,82 +523,62 @@ function TimerTab({ timerState, updateTimer, onToggle, onReset, onSave, categori
       </div>
 
       {/* Actions */}
-      <div style={{ maxWidth: 540, margin: "0 auto", width: "100%" }}>
+      <div style={{ maxWidth: "90%", margin: "0 auto", width: "90%", boxSizing: "border-box", padding: "0", display: "flex", justifyContent: "center" }}>
         <div style={{ 
-          display: "grid", 
-          gap: 16, 
-          gridTemplateColumns: "1fr 1fr",
-          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4, 
+          width: "auto",
+          maxWidth: "90px",
           minWidth: 0,
+          boxSizing: "border-box",
         }}>
-          {(() => {
-            // Always show two buttons if timer has been started (isRunning) or has any time
-            const hasElapsed = (getElapsed() || 0) > 0;
-            const hasStoredTime = (timerState?.storedTime || 0) > 0;
-            const hasStartTime = !!timerState?.startTime;
-            const shouldShowTwoButtons = hasElapsed || isRunning || hasStoredTime || hasStartTime;
-            return shouldShowTwoButtons;
-          })() ? (
-            <>
-              <button
-                onClick={onToggle}
-                style={{
-                  height: 68,
-                  borderRadius: 4,
-                  fontSize: 18,
-                  fontWeight: 900,
-                  background: isRunning 
-                    ? "rgba(255,255,255,0.08)" 
-                    : "var(--primary)",
-                  border: isRunning 
-                    ? "2px solid rgba(255,255,255,0.15)" 
-                    : "2px solid transparent",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: isRunning 
-                    ? "0 4px 20px rgba(0,0,0,0.2)" 
-                    : "0 6px 24px rgba(255, 107, 53, 0.35)",
-                  boxSizing: "border-box",
-                }}
-              >
-                {isRunning ? "⏸ Pause" : "▶ Resume"}
-              </button>
-              <button
-                onClick={handleFinish}
-                style={{
-                  height: 68,
-                  borderRadius: 4,
-                  fontSize: 18,
-                  fontWeight: 900,
-                  background: "var(--success)",
-                  border: "2px solid transparent",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 6px 24px rgba(0, 184, 148, 0.35)",
-                  boxSizing: "border-box",
-                }}
-              >
-                ✓ Finish
-              </button>
-            </>
-          ) : (
+          <button
+            onClick={onToggle}
+            title={isRunning ? "Pause" : (getElapsed() || 0) > 0 ? "Resume" : "Start"}
+            style={{
+              height: "clamp(36px, 8vw, 48px)",
+              width: "clamp(60px, 15vw, 100px)",
+              borderRadius: 3,
+              fontSize: "clamp(18px, 4.5vw, 22px)",
+              fontWeight: 900,
+              background: "var(--primary)",
+              border: "1px solid transparent",
+              color: "#fff",
+              cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(255, 107, 53, 0.35)",
+              boxSizing: "border-box",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {isRunning ? "⏸" : "▶"}
+          </button>
+          {isRunning && (
             <button
-              onClick={onToggle}
+              onClick={handleFinish}
+              title="Finish"
               style={{
-                height: 68,
-                borderRadius: 4,
-                fontSize: 18,
+                height: "clamp(36px, 8vw, 48px)",
+                width: "clamp(60px, 15vw, 100px)",
+                borderRadius: 3,
+                fontSize: "clamp(18px, 4.5vw, 22px)",
                 fontWeight: 900,
-                background: "var(--primary)",
-                border: "2px solid transparent",
+                background: "var(--success)",
+                border: "1px solid transparent",
                 color: "#fff",
                 cursor: "pointer",
-                boxShadow: "0 6px 24px rgba(255, 107, 53, 0.35)",
+                boxShadow: "0 2px 12px rgba(0, 184, 148, 0.35)",
                 boxSizing: "border-box",
-                gridColumn: "1 / -1",
+                padding: "0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              ▶ Start
+              ✓
             </button>
           )}
         </div>

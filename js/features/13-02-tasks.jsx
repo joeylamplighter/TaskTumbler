@@ -472,6 +472,32 @@ import ReactDOM from 'react-dom'
     useEffect(() => { if(Array.isArray(categories)) setLocalCategories(p=>Array.from(new Set([...categories,...p])).filter(Boolean)); }, [categories]);
     const visibleCategories = localCategories.filter(c => (settings?.categoryMultipliers?.[c] === undefined || settings.categoryMultipliers[c] >= 0));
     const [quickCat, setQuickCat] = useState(visibleCategories[0] || 'General');
+    const [showActionMenu, setShowActionMenu] = useState(false);
+    const [isVeryNarrow, setIsVeryNarrow] = useState(false);
+    const actionMenuRef = useRef(null);
+
+    // Check if screen is very narrow (for collapsing export/bulk/add into hamburger)
+    useEffect(() => {
+      const checkWidth = () => {
+        setIsVeryNarrow(window.innerWidth < 400);
+      };
+      checkWidth();
+      window.addEventListener('resize', checkWidth);
+      return () => window.removeEventListener('resize', checkWidth);
+    }, []);
+
+    // Close action menu when clicking outside
+    useEffect(() => {
+      if (!showActionMenu) return;
+      const handleClickOutside = (e) => {
+        if (actionMenuRef.current && !actionMenuRef.current.contains(e.target) && 
+            !e.target.closest('.action-menu-dropdown')) {
+          setShowActionMenu(false);
+        }
+      };
+      window.addEventListener('mousedown', handleClickOutside);
+      return () => window.removeEventListener('mousedown', handleClickOutside);
+    }, [showActionMenu]);
 
     // --- FILTERING (use shared utilities) ---
     const TabUtils = window.TabUtils || {};
@@ -614,146 +640,235 @@ import ReactDOM from 'react-dom'
       <div>
         {/* TOP BAR - IMPROVED UI */}
         <div style={{
-            height: "56px", 
+            minHeight: "56px", 
             background: "var(--card)", 
             borderRadius: "12px", 
             border: "1px solid var(--border)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             display: "flex", 
+            flexWrap: "wrap",
             alignItems: "center", 
-            padding: "0 8px", 
+            padding: "8px", 
             gap: 8, 
             marginBottom: 12
           }}>
           
-          {/* LEFT: Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-             <button 
-               type="button" 
-               style={glowStyle(showBulkAdd)} 
-               onClick={() => setShowBulkAdd(!showBulkAdd)} 
-               title="Bulk Import"
-               onMouseEnter={(e) => !showBulkAdd && (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-               onMouseLeave={(e) => !showBulkAdd && (e.currentTarget.style.background = "transparent")}
-             >
-               <span style={{ fontSize: 16, lineHeight: 1 }}>📦</span>
-             </button>
-             <button 
-               type="button" 
-               style={glowStyle(false)} 
-               onClick={openAdd} 
-               title="Full Add Task"
-               onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-             >
-               <span style={{ fontSize: 16, lineHeight: 1 }}>➕</span>
-             </button>
-          </div>
+          {/* TOP ROW: Export, Bulk, Add (or hamburger when very narrow), Mode Toggles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {/* Export, Bulk, Add buttons or Hamburger */}
+            {isVeryNarrow ? (
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={actionMenuRef}
+                  type="button"
+                  onClick={() => setShowActionMenu(!showActionMenu)}
+                  style={{
+                    padding: '6px 10px',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: showActionMenu ? 'var(--primary)' : 'transparent',
+                    color: showActionMenu ? '#fff' : 'var(--text-light)',
+                    transition: 'all 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Actions"
+                >
+                  ☰
+                </button>
+                
+                {/* Action Menu Dropdown */}
+                {showActionMenu && ReactDOM.createPortal(
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'fixed',
+                      top: actionMenuRef.current ? actionMenuRef.current.getBoundingClientRect().bottom + 8 : 100,
+                      left: actionMenuRef.current ? actionMenuRef.current.getBoundingClientRect().left : 0,
+                      background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '4px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      zIndex: 10000,
+                      minWidth: '140px'
+                    }}
+                    className="action-menu-dropdown"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowExportModal(true);
+                        setShowActionMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        color: 'var(--text)',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        textAlign: 'left'
+                      }}
+                    >
+                      <span>📤</span>
+                      <span>Export Tasks</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowBulkAdd(!showBulkAdd);
+                        setShowActionMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: showBulkAdd ? 'var(--primary)' : 'transparent',
+                        color: showBulkAdd ? '#fff' : 'var(--text)',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        textAlign: 'left'
+                      }}
+                    >
+                      <span>📦</span>
+                      <span>Bulk Import</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openAdd();
+                        setShowActionMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        color: 'var(--text)',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        textAlign: 'left'
+                      }}
+                    >
+                      <span>➕</span>
+                      <span>Full Add Task</span>
+                    </button>
+                  </div>,
+                  document.body
+                )}
+              </div>
+            ) : (
+              <>
+                {/* EXPORT BUTTON */}
+                <button 
+                  type="button" 
+                  style={{ 
+                    ...glowStyle(false), 
+                    padding: 4, 
+                    minWidth: 36, 
+                    height: 36, 
+                    flexShrink: 0 
+                  }} 
+                  onClick={() => setShowExportModal(true)} 
+                  title="Export Tasks"
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>📤</span>
+                </button>
 
-          <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
+                <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
 
-          {/* MODE TOGGLES */}
-          <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 8, padding: 2 }}>
-            <button 
-              type="button" 
-              style={{
-                ...glowStyle(activeMode === "add"),
-                background: activeMode === "add" ? "var(--primary)" : "transparent",
-                color: activeMode === "add" ? "#fff" : "rgba(255,255,255,0.7)",
-                minWidth: 40,
-                height: 32,
-                borderRadius: 6,
-                fontSize: 16,
-                lineHeight: 1
-              }} 
-              onClick={() => setActiveMode("add")} 
-              title="Quick Add"
-            >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>⚡</span>
-            </button>
-            <button 
-              type="button" 
-              style={{
-                ...glowStyle(activeMode === "filter"),
-                background: activeMode === "filter" ? "var(--primary)" : "transparent",
-                color: activeMode === "filter" ? "#fff" : "rgba(255,255,255,0.7)",
-                minWidth: 40,
-                height: 32,
-                borderRadius: 6,
-                fontSize: 16,
-                lineHeight: 1
-              }} 
-              onClick={() => setActiveMode("filter")} 
-              title="Search & Filter"
-            >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>🔍</span>
-            </button>
+                <button 
+                  type="button" 
+                  style={glowStyle(showBulkAdd)} 
+                  onClick={() => setShowBulkAdd(!showBulkAdd)} 
+                  title="Bulk Import"
+                  onMouseEnter={(e) => !showBulkAdd && (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  onMouseLeave={(e) => !showBulkAdd && (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>📦</span>
+                </button>
+                <button 
+                  type="button" 
+                  style={glowStyle(false)} 
+                  onClick={openAdd} 
+                  title="Full Add Task"
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>➕</span>
+                </button>
+              </>
+            )}
+
+            <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
+
+            {/* MODE TOGGLES */}
+            <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 8, padding: 2, flexShrink: 0 }}>
+              <button 
+                type="button" 
+                style={{
+                  ...glowStyle(activeMode === "add"),
+                  background: activeMode === "add" ? "var(--primary)" : "transparent",
+                  color: activeMode === "add" ? "#fff" : "rgba(255,255,255,0.7)",
+                  minWidth: 40,
+                  height: 32,
+                  borderRadius: 6,
+                  fontSize: 16,
+                  lineHeight: 1
+                }} 
+                onClick={() => setActiveMode("add")} 
+                title="Quick Add"
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>⚡</span>
+              </button>
+              <button 
+                type="button" 
+                style={{
+                  ...glowStyle(activeMode === "filter"),
+                  background: activeMode === "filter" ? "var(--primary)" : "transparent",
+                  color: activeMode === "filter" ? "#fff" : "rgba(255,255,255,0.7)",
+                  minWidth: 40,
+                  height: 32,
+                  borderRadius: 6,
+                  fontSize: 16,
+                  lineHeight: 1
+                }} 
+                onClick={() => setActiveMode("filter")} 
+                title="Search & Filter"
+              >
+                <span style={{ fontSize: 16, lineHeight: 1 }}>🔍</span>
+              </button>
+            </div>
           </div>
           
-          <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
-
-          {/* VIEW MODE SELECTOR */}
-          <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 8, padding: 2 }}>
-            <button 
-              type="button" 
-              onClick={() => { setDisplayView('list'); try { localStorage.setItem('tasksDisplayView', 'list'); } catch {} }}
-              style={{
-                padding: '4px 10px',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: displayView === 'list' ? 'var(--primary)' : 'transparent',
-                color: displayView === 'list' ? '#fff' : 'var(--text-light)',
-                transition: 'all 0.15s'
-              }}
-              title="List View"
-            >
-              📋
-            </button>
-            <button 
-              type="button" 
-              onClick={() => { setDisplayView('kanban'); try { localStorage.setItem('tasksDisplayView', 'kanban'); } catch {} }}
-              style={{
-                padding: '4px 10px',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: displayView === 'kanban' ? 'var(--primary)' : 'transparent',
-                color: displayView === 'kanban' ? '#fff' : 'var(--text-light)',
-                transition: 'all 0.15s'
-              }}
-              title="Kanban View"
-            >
-              📌
-            </button>
-            <button 
-              type="button" 
-              onClick={() => { setDisplayView('calendar'); try { localStorage.setItem('tasksDisplayView', 'calendar'); } catch {} }}
-              style={{
-                padding: '4px 10px',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: displayView === 'calendar' ? 'var(--primary)' : 'transparent',
-                color: displayView === 'calendar' ? '#fff' : 'var(--text-light)',
-                transition: 'all 0.15s'
-              }}
-              title="Calendar View"
-            >
-              📅
-            </button>
-          </div>
-          
-          <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
-          
-          {/* CENTER: Input Box */}
-          <div style={{ flex: 1, height: "100%", display: "flex", alignItems: "center", minWidth: 0 }}>
+          {/* BOTTOM ROW: Input Box (wraps when narrow) */}
+          <div style={{ flex: "1 1 100%", minWidth: 0, height: "40px", display: "flex", alignItems: "center" }}>
             <div style={{ 
                 flex: 1, 
                 height: '40px', 
@@ -889,25 +1004,6 @@ import ReactDOM from 'react-dom'
             </div>
           </div>
           
-          <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
-          
-          {/* RIGHT: Export Button */}
-          <button 
-            type="button" 
-            style={{ 
-              ...glowStyle(false), 
-              padding: 4, 
-              minWidth: 36, 
-              height: 36, 
-              flexShrink: 0 
-            }} 
-            onClick={() => setShowExportModal(true)} 
-            title="Export Tasks"
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>📤</span>
-          </button>
         </div>
 
         {/* ✅ COMPACT FILTER MODAL */}

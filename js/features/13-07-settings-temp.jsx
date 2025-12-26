@@ -1535,7 +1535,7 @@ function Fold({ title, right, open, onToggle, children }) {
             <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 12, marginTop: 24 }}>Navigation Bar Items</h4>
             <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
               <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 12 }}>
-                Choose which items appear in the main navigation bar. All items (tabs and subtabs) are shown in a flat, sortable list. Subtabs can be clicked directly with their own permalink.
+                Choose which items appear in the main navigation dock (bottom bar). This controls which nav items are visible, not the dock visibility itself. All items (tabs and subtabs) are shown in a flat, sortable list. Subtabs can be clicked directly with their own permalink.
               </p>
               {(() => {
                 const allNavItems = [

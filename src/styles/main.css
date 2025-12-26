@@ -82,10 +82,16 @@ body {
 }
 
 .brand-icon {
-  font-size: 32px;
+  font-size: 24px;
   line-height: 1;
   display: inline-block;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (min-width: 768px) {
+  .brand-icon {
+    font-size: 32px;
+  }
 }
 
 .brand-text {
@@ -96,11 +102,11 @@ body {
 
 .brand-title {
   font-family: 'Fredoka', sans-serif;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 900;
 }
 
-/* Desktop: Larger brand text */
+/* Tablet: Medium brand text */
 @media (min-width: 768px) {
   .brand-title {
     font-size: 22px;
@@ -114,11 +120,20 @@ body {
 }
 
 .brand-subtitle {
-  font-size: 11px;
+  font-size: 8px;
   color: var(--text-light);
   font-weight: 700;
-  margin-top: 2px;
+  margin-top: 1px;
 }
+
+/* Tablet: Medium subtitle */
+@media (min-width: 768px) {
+  .brand-subtitle {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+}
+
 
 /* Content */
 .content {
