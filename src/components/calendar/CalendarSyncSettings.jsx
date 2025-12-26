@@ -13,10 +13,11 @@ import {
   syncCalendarToTasks,
   importCalendarEventsAsTasks
 } from '../../utils/calendarSync';
+import DataManager from '../../core/dataManager';
 
 export default function CalendarSyncSettings({ settings, setSettings, tasks: tasksProp, updateTask: updateTaskProp, addTask: addTaskProp, notify }) {
-  // Get tasks and updateTask from props or DataManager
-  const DM = window.DataManager;
+  // Get tasks and updateTask from props or DataManager (ES6 import)
+  const DM = DataManager;
   const tasks = tasksProp || (DM?.tasks?.getAll?.() || []);
   const updateTask = updateTaskProp || ((id, updates) => {
     const allTasks = DM?.tasks?.getAll?.() || [];
