@@ -18,18 +18,23 @@
     // ==========================================
     // VIEW TASK MODAL (Focus + Logging + Subtasks)
     // ==========================================
-    function ViewTaskModal({ task, onClose, onEdit, onComplete, updateTask, goals }) {
+    function ViewTaskModal({ task, onClose, onEdit, onComplete, updateTask, goals, tasks, settings }) {
         const [logInput, setLogInput] = useState('');
         const [newSubtask, setNewSubtask] = useState(''); 
         const [isTimerRunning, setIsTimerRunning] = useState(false);
         const [timerSeconds, setTimerSeconds] = useState(0);
         const [isFocusMode, setIsFocusMode] = useState(false);
 
+        // Get the latest task from tasks array to ensure we have the most up-to-date data
+        const currentTask = (tasks && Array.isArray(tasks) && task?.id) 
+            ? tasks.find(t => t.id === task.id) || task 
+            : task;
+
         // ----------------------------------------------------
         // LOGIC: Subtask Stats & Actions
         // ----------------------------------------------------
-        const totalSubtasks = (task.subtasks || []).length;
-        const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
+        const totalSubtasks = (currentTask.subtasks || []).length;
+        const completedSubtasks = (currentTask.subtasks || []).filter(s => s.completed).length;
         const progress = totalSubtasks === 0 ? 0 : Math.round((completedSubtasks / totalSubtasks) * 100);
 
         // Helper function to calculate progress based on subtasks
@@ -40,25 +45,81 @@
         };
 
         const toggleSubtask = (subId) => {
-            const updatedSubtasks = (task.subtasks || []).map(s => 
-                s.id === subId ? { ...s, completed: !s.completed } : s
-            );
+            const updatedSubtasks = (currentTask.subtasks || []).map(s => {
+                const sId = s.id || s.title || s.text;
+                return sId === subId ? { ...s, completed: !s.completed } : s;
+            });
             const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
-            // Update both progress and percentComplete for compatibility
-            updateTask(task.id, { 
+            
+            // Check if all subtasks are now completed
+            const completedCount = updatedSubtasks.filter(s => s.completed).length;
+            const allSubtasksCompleted = updatedSubtasks.length > 0 && completedCount === updatedSubtasks.length;
+            
+            // Check if auto-complete setting is enabled (defaults to true if not set)
+            const autoCompleteEnabled = settings?.autoCompleteSubtask !== false;
+            
+            // Auto-complete main task when all subtasks are done (only if setting is enabled)
+            const taskUpdates = {
                 subtasks: updatedSubtasks,
                 progress: newProgress,
                 percentComplete: newProgress
-            });
+            };
+            
+            // If all subtasks completed and task isn't already complete, complete it (only if setting enabled)
+            const wasCompleted = currentTask.completed;
+            if (allSubtasksCompleted && !wasCompleted && autoCompleteEnabled) {
+                taskUpdates.completed = true;
+                taskUpdates.completedAt = new Date().toISOString();
+                console.log('[ViewTaskModal] Auto-completing task - all subtasks done');
+            }
+            // If any subtask is incomplete but task is marked complete, uncomplete it (only if setting enabled)
+            // This includes when all subtasks are undone (completedCount === 0) or when some are incomplete
+            else if (!allSubtasksCompleted && wasCompleted && completedCount < updatedSubtasks.length && autoCompleteEnabled) {
+                taskUpdates.completed = false;
+                taskUpdates.completedAt = null;
+                console.log('[ViewTaskModal] Auto-uncompleting task - not all subtasks done');
+            }
+            
+            // Update both progress and percentComplete for compatibility
+            updateTask(currentTask.id, taskUpdates);
+            
+            // Trigger completion effects manually if we're completing the task (not uncompleting)
+            if (allSubtasksCompleted && !wasCompleted && autoCompleteEnabled) {
+                // Trigger notification and sound manually (don't call onComplete as it toggles)
+                if (window.notify) {
+                    window.notify("Task Completed!", "🎉");
+                }
+                if (settings?.sound !== false && typeof window.SoundFX !== 'undefined') {
+                    window.SoundFX.playComplete();
+                }
+                if (settings?.confetti && typeof window.fireSmartConfetti === 'function') {
+                    window.fireSmartConfetti('taskComplete', settings);
+                }
+                // Add activity log
+                if (window.addActivity) {
+                    window.addActivity({
+                        taskId: currentTask.id,
+                        title: currentTask.title,
+                        type: "complete",
+                        duration: 0,
+                        timestamp: new Date().toISOString(),
+                        people: Array.isArray(currentTask.people) ? currentTask.people : [],
+                        category: currentTask.category || 'General',
+                    });
+                }
+            }
         };
 
         const deleteSubtask = (e, subId) => {
             e.stopPropagation();
             // WARNING REMOVED: Instantly deletes the subtask
-            const updatedSubtasks = (task.subtasks || []).filter(s => s.id !== subId);
+            const updatedSubtasks = (currentTask.subtasks || []).filter(s => {
+                const sId = s.id || s.title || s.text;
+                return sId !== subId;
+            });
             const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
             // Update both progress and percentComplete for compatibility
-            updateTask(task.id, { 
+            updateTask(currentTask.id, { 
                 subtasks: updatedSubtasks,
                 progress: newProgress,
                 percentComplete: newProgress
@@ -67,14 +128,15 @@
 
         const handleAddSubtask = () => {
             if (!newSubtask.trim()) return;
-            const newId = Date.now().toString(); 
+            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            const newId = generateId('sub');
             // Saving as both title and text for compatibility
             const newItem = { id: newId, title: newSubtask.trim(), text: newSubtask.trim(), completed: false };
-            const currentSubtasks = task.subtasks || [];
+            const currentSubtasks = currentTask.subtasks || [];
             const updatedSubtasks = [...currentSubtasks, newItem];
             // Recalculate progress when adding a new subtask (progress decreases if we had completed subtasks)
             const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
-            updateTask(task.id, { 
+            updateTask(currentTask.id, { 
                 subtasks: updatedSubtasks,
                 progress: newProgress,
                 percentComplete: newProgress
@@ -116,8 +178,8 @@
                 timestamp: new Date().toISOString(),
                 type: 'system_log'
             };
-            const currentActivities = Array.isArray(task.activities) ? task.activities : [];
-            updateTask(task.id, { activities: [...currentActivities, newLog] });
+            const currentActivities = Array.isArray(currentTask.activities) ? currentTask.activities : [];
+            updateTask(currentTask.id, { activities: [...currentActivities, newLog] });
         };
 
         const handleAddManualLog = () => {
@@ -152,8 +214,8 @@
             return (
                 <div className="modal-overlay" style={{
                     zIndex: 1200, 
-                    background: '#0a0a0a', 
-                    color: '#fff', 
+                    background: 'var(--bg)', 
+                    color: 'var(--text)', 
                     display:'flex', 
                     flexDirection:'column', 
                     alignItems:'center', 
@@ -164,8 +226,8 @@
                             onClick={() => toggleFocusMode(false)} 
                             style={{
                                 background:'transparent', 
-                                border:'1px solid rgba(255,255,255,0.2)', 
-                                color:'rgba(255,255,255,0.6)', 
+                                border:'1px solid var(--border)', 
+                                color:'var(--text-light)', 
                                 padding:'8px 20px', 
                                 borderRadius: 30, 
                                 cursor:'pointer',
@@ -182,18 +244,18 @@
                         <div style={{fontSize: 12, color: 'var(--primary)', fontWeight: 700, letterSpacing: 3, marginBottom: 16, textTransform: 'uppercase'}}>
                             Now Focusing On
                         </div>
-                        <h1 style={{fontSize: 36, fontFamily:'Fredoka', margin: 0, maxWidth: '800px', lineHeight: 1.4}}>
-                            {task.title}
+                        <h1 style={{fontSize: 36, fontFamily:'Fredoka', margin: 0, maxWidth: '800px', lineHeight: 1.4, color: 'var(--text)'}}>
+                            {currentTask.title}
                         </h1>
                     </div>
 
-                    <div style={{fontSize: 120, fontFamily: 'monospace', fontWeight: 400, marginBottom: 60, color: isTimerRunning ? '#fff' : 'rgba(255,255,255,0.3)', textShadow: isTimerRunning ? '0 0 40px rgba(255,255,255,0.1)' : 'none', transition: 'color 0.3s ease'}}>
+                    <div style={{fontSize: 120, fontFamily: 'monospace', fontWeight: 400, marginBottom: 60, color: isTimerRunning ? 'var(--text)' : 'var(--text-light)', textShadow: isTimerRunning ? '0 0 40px var(--primary-glow)' : 'none', transition: 'color 0.3s ease'}}>
                         {formatTime(timerSeconds)}
                     </div>
 
                     <button 
                         onClick={toggleTimer}
-                        style={{width: 80, height: 80, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', background: isTimerRunning ? 'rgba(255,255,255,0.1)' : 'transparent', color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease'}}
+                        style={{width: 80, height: 80, borderRadius: '50%', border: '1px solid var(--border)', background: isTimerRunning ? 'var(--primary-light)' : 'transparent', color: 'var(--text)', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease'}}
                     >
                         {isTimerRunning ? '⏸' : '▶'}
                     </button>
@@ -206,7 +268,7 @@
         // ==========================================
         return (
             <div className="modal-overlay" onClick={onClose} style={{zIndex: 1100, backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.6)'}}>
-                <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '600px', width: '90%', borderRadius: '24px', padding: 0, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', background: '#1e1e1e', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
+                <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '600px', width: '90%', borderRadius: '24px', padding: 0, border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)', background: 'var(--card)', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
                     
                     {/* SCROLLABLE CONTENT AREA */}
                     <div style={{overflowY: 'auto', flex: 1}}>
@@ -216,13 +278,13 @@
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 16}}>
                                 <div style={{flex: 1}}>
                                     <div style={{display:'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap'}}>
-                                        <span style={{fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.1)', color: 'var(--text-light)', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px'}}>{(task.category || 'General').toUpperCase()}</span>
-                                        <span style={{fontSize: 11, fontWeight: 700, background: task.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.2)' : 'rgba(255, 159, 67, 0.2)', color: task.priority === 'Urgent' ? '#ff7675' : '#ff9f43', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 4}}>{task.priority === 'Urgent' ? '🔥' : '⚡'} {task.priority || 'Medium'}</span>
+                                        <span style={{fontSize: 11, fontWeight: 700, background: 'var(--input-bg)', color: 'var(--text-light)', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px'}}>{(currentTask.category || 'General').toUpperCase()}</span>
+                                        <span style={{fontSize: 11, fontWeight: 700, background: currentTask.priority === 'Urgent' ? 'rgba(255, 118, 117, 0.2)' : 'rgba(255, 159, 67, 0.2)', color: currentTask.priority === 'Urgent' ? '#ff7675' : '#ff9f43', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 4}}>{currentTask.priority === 'Urgent' ? '🔥' : '⚡'} {currentTask.priority || 'Medium'}</span>
                                     </div>
-                                    <h2 style={{margin: 0, fontFamily: 'Fredoka', fontSize: 24, lineHeight: 1.2, color: 'var(--text)'}}>{task.title}</h2>
+                                    <h2 style={{margin: 0, fontFamily: 'Fredoka', fontSize: 24, lineHeight: 1.2, color: 'var(--text)'}}>{currentTask.title}</h2>
                                     <div style={{display:'flex', gap: 16, marginTop: 12, fontSize: 13, color:'var(--text-light)', flexWrap: 'wrap'}}>
-                                        {task.location && <div style={{display:'flex', alignItems:'center', gap: 6}}><span>📍</span> {task.location}</div>}
-                                        {task.people && (() => {
+                                        {currentTask.location && <div style={{display:'flex', alignItems:'center', gap: 6}}><span>📍</span> {currentTask.location}</div>}
+                                        {currentTask.people && (() => {
                                             // Helper to get person record by name
                                             const getPersonRecord = (personName) => {
                                                 try {
@@ -241,8 +303,8 @@
                                             return (
                                                 <div style={{display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap'}}>
                                                     <span>👥</span>
-                                                    {Array.isArray(task.people) ? (
-                                                        task.people.map((personName, idx) => {
+                                                    {Array.isArray(currentTask.people) ? (
+                                                        currentTask.people.map((personName, idx) => {
                                                             const name = typeof personName === 'object' ? personName.name : personName;
                                                             const personRecord = getPersonRecord(name);
                                                             return (
@@ -322,7 +384,7 @@
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     e.preventDefault();
-                                                                    const name = typeof task.people === 'object' ? task.people.name : task.people;
+                                                                    const name = typeof currentTask.people === 'object' ? currentTask.people.name : currentTask.people;
                                                                     if (window.setTab) {
                                                                         window.setTab('stats');
                                                                     }
@@ -347,12 +409,12 @@
                                                                     e.target.style.textDecorationColor = 'rgba(255, 107, 53, 0.5)';
                                                                     e.target.style.opacity = 1;
                                                                 }}
-                                                                title={`Click to view ${typeof task.people === 'object' ? task.people.name : task.people}'s contact info`}
+                                                                title={`Click to view ${typeof currentTask.people === 'object' ? currentTask.people.name : currentTask.people}'s contact info`}
                                                             >
-                                                                {typeof task.people === 'object' ? task.people.name : task.people}
+                                                                {typeof currentTask.people === 'object' ? currentTask.people.name : currentTask.people}
                                                             </span>
                                                             {(() => {
-                                                                const name = typeof task.people === 'object' ? task.people.name : task.people;
+                                                                const name = typeof currentTask.people === 'object' ? currentTask.people.name : currentTask.people;
                                                                 const personRecord = getPersonRecord(name);
                                                                 return (personRecord?.externalId || personRecord?.compassCrmLink) && window.openCompass && (
                                                                     <span
@@ -394,7 +456,7 @@
                                                 </div>
                                             );
                                         })()}
-                                        {task.dueDate && <div style={{display:'flex', alignItems:'center', gap: 6}}><span>📅</span> {new Date(task.dueDate).toLocaleDateString()} <span style={{opacity:0.6, fontSize:12}}>{getRelativeDate(task.dueDate)}</span></div>}
+                                        {currentTask.dueDate && <div style={{display:'flex', alignItems:'center', gap: 6}}><span>📅</span> {new Date(currentTask.dueDate).toLocaleDateString()} <span style={{opacity:0.6, fontSize:12}}>{getRelativeDate(currentTask.dueDate)}</span></div>}
                                     </div>
                                 </div>
                                 <button onClick={onClose} style={{background: 'transparent', border: 'none', color: 'var(--text-light)', fontSize: 28, cursor: 'pointer', lineHeight: 1, padding: 8, marginTop: -8, marginRight: -8}}>×</button>
@@ -409,9 +471,9 @@
                                 <button onClick={() => toggleFocusMode(true)} style={{background:'var(--primary)', border:'none', color:'white', padding:'6px 12px', borderRadius: 20, fontSize: 12, fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap: 6}}><span>🧘</span> Focus Mode</button>
                             </div>
 
-                            {task.description && (
-                                <div style={{background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: 16, borderRadius: 16, marginBottom: 24, fontSize: 14, lineHeight: 1.5, color: 'var(--text-light)'}}>
-                                    {task.description}
+                            {currentTask.description && (
+                                <div style={{background: 'var(--input-bg)', border: '1px solid var(--border)', padding: 16, borderRadius: 16, marginBottom: 24, fontSize: 14, lineHeight: 1.5, color: 'var(--text-light)'}}>
+                                    {currentTask.description}
                                 </div>
                             )}
 
@@ -423,32 +485,35 @@
                                 </div>
 
                                 {totalSubtasks > 0 && (
-                                    <div style={{height: 4, width: '100%', background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 16, overflow:'hidden'}}>
+                                    <div style={{height: 4, width: '100%', background: 'var(--input-bg)', borderRadius: 2, marginBottom: 16, overflow:'hidden'}}>
                                         <div style={{height: '100%', width: `${progress}%`, background: 'var(--primary)', transition: 'width 0.3s ease'}}></div>
                                     </div>
                                 )}
 
                                 <div style={{display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12}}>
-                                    {(!task.subtasks || task.subtasks.length === 0) && (
+                                    {(!currentTask.subtasks || currentTask.subtasks.length === 0) && (
                                         <div style={{fontSize: 13, color:'var(--text-light)', fontStyle:'italic', opacity:0.6}}>No subtasks yet. Add one below!</div>
                                     )}
-                                    {(task.subtasks || []).map(s => (
-                                        <div key={s.id} onClick={() => toggleSubtask(s.id)} style={{display:'flex', alignItems:'center', gap: 10, padding: '10px 12px', cursor:'pointer', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)'}}>
+                                    {(currentTask.subtasks || []).map(s => {
+                                        const subtaskId = s.id || s.title || s.text || `subtask_${Math.random()}`;
+                                        return (
+                                        <div key={subtaskId} onClick={() => toggleSubtask(subtaskId)} style={{display:'flex', alignItems:'center', gap: 10, padding: '10px 12px', cursor:'pointer', background: 'var(--input-bg)', borderRadius: 12, border: '1px solid var(--border)'}}>
                                             <div style={{width: 18, height: 18, borderRadius: 6, border: s.completed ? 'none' : '2px solid var(--text-light)', background: s.completed ? 'var(--primary)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center'}}>
                                                 {s.completed && <span style={{fontSize: 12, color:'white', fontWeight:'bold'}}>✓</span>}
                                             </div>
-                                            <span style={{fontSize: 14, color: s.completed ? '#888' : '#fff', textDecoration: s.completed ? 'line-through' : 'none', flex: 1, opacity: s.completed ? 0.7 : 1}}>
+                                            <span style={{fontSize: 14, color: s.completed ? 'var(--text-muted)' : 'var(--text)', textDecoration: s.completed ? 'line-through' : 'none', flex: 1, opacity: s.completed ? 0.7 : 1}}>
                                                 {s.title || s.text || s.name || '(No Text)'}
                                             </span>
                                             <button 
-                                                onClick={(e) => deleteSubtask(e, s.id)} 
+                                                onClick={(e) => deleteSubtask(e, subtaskId)} 
                                                 style={{background:'transparent', border:'none', cursor:'pointer', fontSize: 14, padding: 4, opacity: 0.5, outline:'none'}} 
                                                 title="Delete subtask"
                                             >
                                                 🗑️
                                             </button>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* ADD SUBTASK INPUT */}
@@ -459,7 +524,7 @@
                                         value={newSubtask}
                                         onChange={(e) => setNewSubtask(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
-                                        style={{flex: 1, background: 'transparent', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 12, padding: '8px 12px', color: '#fff', fontSize: 13}}
+                                        style={{flex: 1, background: 'transparent', border: '1px dashed var(--border)', borderRadius: 12, padding: '8px 12px', color: 'var(--text)', fontSize: 13}}
                                     />
                                     {newSubtask.trim() && (
                                         <button onClick={handleAddSubtask} style={{background:'var(--primary)', border:'none', borderRadius: 8, color:'white', padding:'0 12px', cursor:'pointer', fontSize: 12, fontWeight:'bold'}}>Add</button>
@@ -469,22 +534,22 @@
                         </div>
 
                         {/* LOGS SECTION */}
-                        <div style={{background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '20px 24px'}}>
+                        <div style={{background: 'var(--input-bg)', borderTop: '1px solid var(--border)', padding: '20px 24px'}}>
                             <h4 style={{fontSize: 11, fontWeight: 700, color: 'var(--text-light)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1}}>🕒 Quick Log & Notes</h4>
                             <div style={{display: 'flex', gap: 10, marginBottom: 16}}>
                                 <input 
                                     className="f-input" 
-                                    style={{margin: 0, flex: 1, fontSize: 14, borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid transparent', padding: '10px 14px', color: 'var(--text)'}} 
+                                    style={{margin: 0, flex: 1, fontSize: 14, borderRadius: 12, background: 'var(--input-bg)', border: '1px solid var(--border)', padding: '10px 14px', color: 'var(--text)'}} 
                                     placeholder="Add a note..." 
                                     value={logInput}
                                     onChange={e => setLogInput(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleAddManualLog()}
                                 />
-                                <button onClick={handleAddManualLog} style={{padding: '0 20px', background: 'rgba(255,255,255,0.1)', color: 'var(--text)', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer'}}>Log</button>
+                                <button onClick={handleAddManualLog} style={{padding: '0 20px', background: 'var(--primary)', color: 'var(--text)', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer'}}>Log</button>
                             </div>
                             <div style={{maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4}}>
-                                {(task.activities || []).length === 0 && <div style={{fontSize: 12, color: 'var(--text-light)', opacity: 0.5, fontStyle: 'italic'}}>No activity recorded yet.</div>}
-                                {(task.activities || []).slice().reverse().map(log => (
+                                {(currentTask.activities || []).length === 0 && <div style={{fontSize: 12, color: 'var(--text-light)', opacity: 0.5, fontStyle: 'italic'}}>No activity recorded yet.</div>}
+                                {(currentTask.activities || []).slice().reverse().map(log => (
                                     <div key={log.id} style={{fontSize: 13, display: 'flex', gap: 10}}>
                                         <span style={{color: 'var(--primary)', fontWeight: 700, fontSize: 11, minWidth: 50, paddingTop: 3}}>{new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                         <span style={{color: 'var(--text-light)', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: 8, flex: 1}}>{log.text}</span>
@@ -495,9 +560,9 @@
                     </div>
 
                     {/* FOOTER ACTIONS */}
-                    <div style={{padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', display:'flex', gap: 12, background: '#1e1e1e', flexShrink: 0}}>
-                        <button onClick={() => onEdit(task)} style={{flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text)', borderRadius: 12, fontWeight: 600, cursor: 'pointer'}}>Edit Details</button>
-                        <button onClick={() => { onComplete(task.id); onClose(); }} style={{flex: 2, padding: '12px', background: 'var(--primary)', boxShadow: '0 4px 12px rgba(108, 92, 231, 0.3)', border: 'none', color: 'white', borderRadius: 12, fontWeight: 'bold', fontSize: 14, cursor: 'pointer'}}>✓ Complete Task</button>
+                    <div style={{padding: '20px 24px', borderTop: '1px solid var(--border)', display:'flex', gap: 12, background: 'var(--card)', flexShrink: 0}}>
+                        <button onClick={() => onEdit(currentTask)} style={{flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text)', borderRadius: 12, fontWeight: 600, cursor: 'pointer'}}>Edit Details</button>
+                        <button onClick={() => { onComplete(currentTask.id); onClose(); }} style={{flex: 2, padding: '12px', background: 'var(--primary)', boxShadow: '0 4px 12px rgba(108, 92, 231, 0.3)', border: 'none', color: 'white', borderRadius: 12, fontWeight: 'bold', fontSize: 14, cursor: 'pointer'}}>✓ Complete Task</button>
                     </div>
                 </div>
             </div>

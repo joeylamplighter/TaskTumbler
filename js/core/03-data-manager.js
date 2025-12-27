@@ -742,19 +742,31 @@
             excludeFromTumbler: Boolean(t.excludeFromTumbler),
             subtasks: (() => {
                 if (!Array.isArray(t.subtasks)) return [];
-                // Normalize subtasks: convert strings to objects, ensure all have title and completed
-                return t.subtasks.map(st => {
+                // Normalize subtasks: convert strings to objects, ensure all have title, completed, and ID
+                const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                return t.subtasks.map((st, index) => {
                     if (typeof st === 'string') {
-                        return { title: st, text: st, completed: false };
+                        return { 
+                            id: generateId('st'), 
+                            title: st, 
+                            text: st, 
+                            completed: false 
+                        };
                     }
                     if (typeof st === 'object' && st !== null) {
                         return {
+                            id: st.id || generateId('st'),
                             title: st.title || st.text || String(st).trim() || 'Untitled',
                             text: st.text || st.title || String(st).trim() || 'Untitled',
                             completed: Boolean(st.completed)
                         };
                     }
-                    return { title: 'Untitled', text: 'Untitled', completed: false };
+                    return { 
+                        id: generateId('st'), 
+                        title: 'Untitled', 
+                        text: 'Untitled', 
+                        completed: false 
+                    };
                 });
             })(),
             tags: Array.isArray(t.tags) ? t.tags.filter(Boolean) : [],

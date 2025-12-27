@@ -44,7 +44,8 @@
           if (!m) throw new Error("no array");
           const s = JSON.parse(m[0]);
           if (Array.isArray(s) && s.length) {
-            setData(p => ({ ...p, subtasks: [...(p.subtasks||[]), ...s.map(x => ({ title: x, completed: false }))] }));
+            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            setData(p => ({ ...p, subtasks: [...(p.subtasks||[]), ...s.map(x => ({ id: generateId('st'), title: x, text: x, completed: false }))] }));
             notify?.(`Added ${s.length} steps.`, "🧠");
             setExpanded?.((p)=>({ ...p, details: true }));
           }
@@ -107,7 +108,10 @@
             priority: aiData.priority || p.priority,
             estimatedTime: aiData.estimatedTime || p.estimatedTime,
             estimatedTimeUnit: "min",
-            subtasks: Array.isArray(aiData.subtasks) ? [...(p.subtasks||[]), ...aiData.subtasks.map(t => ({ title: t, completed: false }))] : (p.subtasks||[]),
+            subtasks: Array.isArray(aiData.subtasks) ? (() => {
+              const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+              return [...(p.subtasks||[]), ...aiData.subtasks.map(t => ({ id: generateId('st'), title: t, text: t, completed: false }))];
+            })() : (p.subtasks||[]),
             tags: Array.isArray(aiData.tags) ? [...new Set([...(p.tags||[]), ...aiData.tags])] : (p.tags||[])
           }));
           setExpanded?.((p)=>({ ...p, details: true }));

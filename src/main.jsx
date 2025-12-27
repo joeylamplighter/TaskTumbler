@@ -14,6 +14,8 @@ import './components/shared/LegacyControls'
 import './components/task-form/TaskTumblerReminders'
 import './components/task-form/ViewTaskModal'
 import './components/task-form/TaskFormModal'
+// Import OCR modal to ensure it's available on window
+import './components/ocr/OCRModal'
 // Import managers to ensure they're available on window
 import './components/managers/LocationsManager'
 import './components/managers/PeopleManager'

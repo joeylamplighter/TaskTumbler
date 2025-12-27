@@ -432,7 +432,8 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       if (!match) throw new Error();
       const s = JSON.parse(match[0]);
       if (Array.isArray(s) && s.length) {
-        setData((p) => ({ ...p, subtasks: [...(p.subtasks || []), ...s.map((x) => ({ title: String(x), completed: false }))] }));
+        const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+        setData((p) => ({ ...p, subtasks: [...(p.subtasks || []), ...s.map((x) => ({ id: generateId('st'), title: String(x), text: String(x), completed: false }))] }));
         notify?.(`Added ${s.length} steps.`, "🧠");
         setExpanded((p) => ({ ...p, details: true }));
       }
@@ -481,7 +482,10 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
           priority: aiData.priority || p.priority,
           estimatedTime: aiData.estimatedTime || p.estimatedTime,
           estimatedTimeUnit: "min",
-          subtasks: Array.isArray(aiData.subtasks) ? [...(p.subtasks || []), ...aiData.subtasks.map((t) => ({ title: String(t), completed: false }))] : p.subtasks,
+          subtasks: Array.isArray(aiData.subtasks) ? (() => {
+            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+            return [...(p.subtasks || []), ...aiData.subtasks.map((t) => ({ id: generateId('st'), title: String(t), text: String(t), completed: false }))];
+          })() : p.subtasks,
           tags: Array.isArray(aiData.tags) ? [...new Set([...(p.tags || []), ...aiData.tags.map(String)])] : p.tags,
         }));
         setExpanded((p) => ({ ...p, details: true }));
@@ -845,17 +849,54 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
                 <button type="button" onClick={handleAiSubtasks} className="btn-ai-small" aria-label="AI generate subtasks">✧</button>
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <input className="f-input" style={{ marginBottom: 0, flex: 1 }} value={subText} onChange={(e) => setSubText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && subText.trim()) { e.preventDefault(); setData((d) => ({ ...d, subtasks: [...(d.subtasks || []), { title: subText.trim(), completed: false }] })); setSubText(""); } }} placeholder="Add subtask..." />
-                <button type="button" className="btn-orange-small" onClick={() => { if (subText.trim()) { setData((d) => ({ ...d, subtasks: [...(d.subtasks || []), { title: subText.trim(), completed: false }] })); setSubText(""); } }}>Add</button>
+                <input className="f-input" style={{ marginBottom: 0, flex: 1 }} value={subText} onChange={(e) => setSubText(e.target.value)} onKeyDown={(e) => { 
+                  if (e.key === "Enter" && subText.trim()) { 
+                    e.preventDefault(); 
+                    const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                    setData((d) => ({ 
+                      ...d, 
+                      subtasks: [...(d.subtasks || []), { 
+                        id: generateId('st'), 
+                        title: subText.trim(), 
+                        text: subText.trim(), 
+                        completed: false 
+                      }] 
+                    })); 
+                    setSubText(""); 
+                  } 
+                }} placeholder="Add subtask..." />
+                <button type="button" className="btn-orange-small" onClick={() => { 
+                  if (subText.trim()) { 
+                    const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                    setData((d) => ({ 
+                      ...d, 
+                      subtasks: [...(d.subtasks || []), { 
+                        id: generateId('st'), 
+                        title: subText.trim(), 
+                        text: subText.trim(), 
+                        completed: false 
+                      }] 
+                    })); 
+                    setSubText(""); 
+                  } 
+                }}>Add</button>
               </div>
               <div style={{ background: "var(--input-bg)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                {(data.subtasks || []).map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-                    <input type="checkbox" checked={!!s.completed} onChange={() => { const next = [...(data.subtasks || [])]; next[i] = { ...next[i], completed: !next[i].completed }; setData({ ...data, subtasks: next }); }} />
-                    <span style={{ flex: 1, fontSize: 13 }}>{s.title}</span>
-                    <span onClick={() => setData((d) => ({ ...d, subtasks: (d.subtasks || []).filter((_, idx) => idx !== i) }))} style={{ color: "var(--danger)", cursor: "pointer" }}>×</span>
-                  </div>
-                ))}
+                {(data.subtasks || []).map((s) => {
+                  const subtaskId = s.id || s.title; // Fallback to title if no ID
+                  return (
+                    <div key={subtaskId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+                      <input type="checkbox" checked={!!s.completed} onChange={() => { 
+                        const next = (data.subtasks || []).map(st => 
+                          (st.id || st.title) === subtaskId ? { ...st, completed: !st.completed } : st
+                        ); 
+                        setData({ ...data, subtasks: next }); 
+                      }} />
+                      <span style={{ flex: 1, fontSize: 13 }}>{s.title || s.text}</span>
+                      <span onClick={() => setData((d) => ({ ...d, subtasks: (d.subtasks || []).filter(st => (st.id || st.title) !== subtaskId) }))} style={{ color: "var(--danger)", cursor: "pointer" }}>×</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
