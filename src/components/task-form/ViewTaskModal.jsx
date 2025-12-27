@@ -90,8 +90,13 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
 
   if (!task) return null;
 
-  const goalName = task.goalId ? goals?.find(g => g.id === task.goalId)?.title : null;
-  const isDone = task.completed;
+  // Get the latest task from tasks array to ensure we have the most up-to-date data
+  const currentTask = (tasks && Array.isArray(tasks) && task?.id) 
+    ? tasks.find(t => t.id === task.id) || task 
+    : task;
+
+  const goalName = currentTask.goalId ? goals?.find(g => g.id === currentTask.goalId)?.title : null;
+  const isDone = currentTask.completed;
 
   // Helper to check if a modal section should be shown
   const shouldShowSection = (sectionKey) => {
@@ -142,11 +147,6 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
   };
 
   const priorityBadge = getPriorityBadge();
-  
-  // Get the latest task from tasks array to ensure we have the most up-to-date data
-  const currentTask = (tasks && Array.isArray(tasks) && task?.id) 
-    ? tasks.find(t => t.id === task.id) || task 
-    : task;
   
   const subtasks = currentTask.subtasks || [];
   const completedSubtasks = subtasks.filter(s => s.completed).length;
@@ -350,7 +350,7 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
               wordBreak: 'break-word',
               color: 'var(--text)'
             }}>
-              {task.title}
+              {currentTask.title}
             </h2>
 
             {/* Compact action emoji and associated data links */}
@@ -1427,8 +1427,23 @@ function ViewTaskModal({ task, onClose, onEdit, onComplete, onFocus, onStartTime
 
 // Memoize to prevent re-renders when props.id hasn't changed
 const MemoizedViewTaskModal = memo(ViewTaskModal, (prevProps, nextProps) => {
-  return prevProps.task?.id === nextProps.task?.id && 
-         prevProps.task === nextProps.task;
+  const prevTask = prevProps.task;
+  const nextTask = nextProps.task;
+  const prevTasks = prevProps.tasks;
+  const nextTasks = nextProps.tasks;
+  
+  // Get current task from tasks array if available
+  const prevCurrentTask = (prevTasks && Array.isArray(prevTasks) && prevTask?.id) 
+    ? prevTasks.find(t => t.id === prevTask.id) || prevTask 
+    : prevTask;
+  const nextCurrentTask = (nextTasks && Array.isArray(nextTasks) && nextTask?.id) 
+    ? nextTasks.find(t => t.id === nextTask.id) || nextTask 
+    : nextTask;
+  
+  // Re-render if task ID changed, task object changed, or completed status changed
+  return prevTask?.id === nextTask?.id && 
+         prevTask === nextTask &&
+         prevCurrentTask?.completed === nextCurrentTask?.completed;
 });
 
 // Expose on window for backward compatibility

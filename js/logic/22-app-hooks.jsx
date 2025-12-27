@@ -119,6 +119,96 @@
         document.documentElement.removeAttribute('data-sharp-edges');
       }
 
+      // Apply advanced UI settings
+      const advancedUI = settings.advancedUI || {};
+      
+      // Font Size
+      const fontSize = advancedUI.fontSize || 'medium';
+      const fontSizeMap = {
+        small: '0.875',    // 14px base -> 12.25px
+        medium: '1',       // 14px base -> 14px
+        large: '1.125',    // 14px base -> 15.75px
+        xlarge: '1.25'     // 14px base -> 17.5px
+      };
+      document.documentElement.style.setProperty('--font-size-multiplier', fontSizeMap[fontSize] || '1');
+      document.documentElement.setAttribute('data-font-size', fontSize);
+      
+      // Border Radius (only if sharp edges is not enabled)
+      if (!settings.sharpEdges) {
+        const borderRadius = advancedUI.borderRadius || 'normal';
+        const radiusMap = {
+          sharp: { sm: '0px', md: '0px', lg: '0px', xl: '0px' },
+          normal: { sm: '6px', md: '10px', lg: '16px', xl: '20px' },
+          rounded: { sm: '8px', md: '12px', lg: '20px', xl: '24px' },
+          pill: { sm: '999px', md: '999px', lg: '999px', xl: '999px' }
+        };
+        const radii = radiusMap[borderRadius] || radiusMap.normal;
+        document.documentElement.style.setProperty('--radius-sm', radii.sm);
+        document.documentElement.style.setProperty('--radius-md', radii.md);
+        document.documentElement.style.setProperty('--radius-lg', radii.lg);
+        document.documentElement.style.setProperty('--radius-xl', radii.xl);
+        document.documentElement.style.setProperty('--border-radius-sm', radii.sm);
+        document.documentElement.style.setProperty('--border-radius-md', radii.md);
+        document.documentElement.style.setProperty('--border-radius-lg', radii.lg);
+        document.documentElement.style.setProperty('--border-radius-xl', radii.xl);
+        document.documentElement.setAttribute('data-border-radius', borderRadius);
+      } else {
+        // If sharp edges is enabled, remove border radius attribute
+        document.documentElement.removeAttribute('data-border-radius');
+      }
+      
+      // Animation Speed
+      const animationSpeed = advancedUI.animationSpeed || 'normal';
+      const speedMap = {
+        instant: '0s',
+        fast: '0.1s',
+        normal: '0.2s',
+        slow: '0.4s'
+      };
+      document.documentElement.style.setProperty('--transition-speed', speedMap[animationSpeed] || '0.2s');
+      document.documentElement.setAttribute('data-animation-speed', animationSpeed);
+      
+      // Glass Effect
+      if (advancedUI.glassEffect) {
+        document.documentElement.setAttribute('data-glass-effect', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-glass-effect');
+      }
+      
+      // Gradients
+      if (advancedUI.gradients) {
+        document.documentElement.setAttribute('data-gradients', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-gradients');
+      }
+      
+      // Compact Mode
+      if (advancedUI.compactMode) {
+        document.documentElement.setAttribute('data-compact-mode', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-compact-mode');
+      }
+      
+      // Reduced Motion (also check top-level setting)
+      if (advancedUI.reducedMotion || settings.reducedMotion) {
+        document.documentElement.setAttribute('data-reduced-motion', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-reduced-motion');
+      }
+      
+      // Font Family
+      const fontFamily = advancedUI.fontFamily || 'system';
+      const fontMap = {
+        system: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fredoka: "'Fredoka', sans-serif",
+        inter: "'Inter', sans-serif",
+        roboto: "'Roboto', sans-serif",
+        poppins: "'Poppins', sans-serif",
+        'comic-sans': "'Comic Sans MS', cursive"
+      };
+      document.documentElement.style.setProperty('--font-family-base', fontMap[fontFamily] || fontMap.system);
+      document.documentElement.setAttribute('data-font-family', fontFamily);
+
       // Apply custom theme if it exists
       const customThemes = settings.customThemes || {};
       if (customThemes[theme]) {
@@ -160,7 +250,7 @@
         const primaryColor = customTheme?.cssVariables?.['--primary'] || colors[theme] || '#ff6b35';
         metaThemeColor.setAttribute("content", primaryColor);
       }
-    }, [settings.theme, settings.customThemes, settings.sharpEdges]);
+    }, [settings.theme, settings.customThemes, settings.sharpEdges, settings.advancedUI, settings.reducedMotion]);
 
     return {
       tasks, setTasks,

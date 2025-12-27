@@ -762,11 +762,11 @@ import ReactDOM from 'react-dom'
             marginBottom: 12
           }}>
           
-          {/* TOP ROW: Export, Bulk, Add (or hamburger when very narrow), Mode Toggles */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {/* Export, Bulk, Add buttons or Hamburger */}
+          {/* SINGLE ROW: Buttons and Search Input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            {/* Export, Bulk, Add, Filter buttons or Hamburger */}
             {isVeryNarrow ? (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
                 <button
                   ref={actionMenuRef}
                   type="button"
@@ -886,6 +886,48 @@ import ReactDOM from 'react-dom'
                       <span>➕</span>
                       <span>Full Add Task</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowFilterGrid(true);
+                        setShowActionMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: isFilterActive ? 'var(--primary)' : 'transparent',
+                        color: isFilterActive ? '#fff' : 'var(--text)',
+                        transition: 'all 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        textAlign: 'left',
+                        position: 'relative'
+                      }}
+                    >
+                      <span>🎛️</span>
+                      <span>Filters</span>
+                      {activeFilterCount > 0 && (
+                        <span style={{ 
+                          marginLeft: 'auto',
+                          background: 'var(--primary)', 
+                          color: '#fff', 
+                          fontSize: 9, 
+                          fontWeight: 700, 
+                          padding: '2px 6px', 
+                          borderRadius: 8 
+                        }}>
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </button>
                   </div>,
                   document.body
                 )}
@@ -910,7 +952,7 @@ import ReactDOM from 'react-dom'
                   <span style={{ fontSize: 16, lineHeight: 1 }}>📤</span>
                 </button>
 
-                <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
+                <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1, flexShrink: 0 }} />
 
                 <button 
                   type="button" 
@@ -932,52 +974,53 @@ import ReactDOM from 'react-dom'
                 >
                   <span style={{ fontSize: 16, lineHeight: 1 }}>➕</span>
                 </button>
+
+                <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1, flexShrink: 0 }} />
+
+                {/* FILTER BUTTON - Always visible */}
+                <button 
+                  type="button" 
+                  style={{ 
+                    ...glowStyle(isFilterActive), 
+                    padding: 4, 
+                    width: 36, 
+                    height: 36, 
+                    flexShrink: 0, 
+                    position: 'relative',
+                    borderRadius: 8
+                  }} 
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFilterGrid(true); }} 
+                  title="Filters"
+                  onMouseEnter={(e) => !isFilterActive && (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                  onMouseLeave={(e) => !isFilterActive && (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>🎛️</span>
+                  {activeFilterCount > 0 && (
+                      <span style={{ 
+                        position: 'absolute', 
+                        top: -4, 
+                        right: -4, 
+                        background: 'var(--primary)', 
+                        color: '#fff', 
+                        fontSize: 10, 
+                        fontWeight: 800, 
+                        minWidth: 16, 
+                        height: 16, 
+                        borderRadius: '50%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        border: "2px solid var(--card)",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                      }}>
+                        {activeFilterCount}
+                      </span>
+                  )}
+                </button>
               </>
             )}
 
-            <div style={{ width: 1, height: 24, background: "var(--border)", opacity: 0.2, borderRadius: 1 }} />
-
-            {/* MODE TOGGLES */}
-            <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 8, padding: 2, flexShrink: 0 }}>
-              <button 
-                type="button" 
-                style={{
-                  ...glowStyle(activeMode === "add"),
-                  background: activeMode === "add" ? "var(--primary)" : "transparent",
-                  color: activeMode === "add" ? "#fff" : "rgba(255,255,255,0.7)",
-                  minWidth: 40,
-                  height: 32,
-                  borderRadius: 6,
-                  fontSize: 16,
-                  lineHeight: 1
-                }} 
-                onClick={() => setActiveMode("add")} 
-                title="Quick Add"
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>⚡</span>
-              </button>
-              <button 
-                type="button" 
-                style={{
-                  ...glowStyle(activeMode === "filter"),
-                  background: activeMode === "filter" ? "var(--primary)" : "transparent",
-                  color: activeMode === "filter" ? "#fff" : "rgba(255,255,255,0.7)",
-                  minWidth: 40,
-                  height: 32,
-                  borderRadius: 6,
-                  fontSize: 16,
-                  lineHeight: 1
-                }} 
-                onClick={() => setActiveMode("filter")} 
-                title="Search & Filter"
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>🔍</span>
-              </button>
-            </div>
-          </div>
-          
-          {/* BOTTOM ROW: Input Box (wraps when narrow) */}
-          <div style={{ flex: "1 1 100%", minWidth: 0, height: "40px", display: "flex", alignItems: "center" }}>
+            {/* SEARCH INPUT - Always visible on same line */}
             <div style={{ 
                 flex: 1, 
                 height: '40px', 
@@ -995,6 +1038,45 @@ import ReactDOM from 'react-dom'
             onFocus={(e) => e.currentTarget.style.borderColor = "rgba(var(--primary-rgb, 255, 107, 53), 0.3)"}
             onBlur={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"}
             >
+                {/* MODE TOGGLES - Always visible inside input */}
+                <div style={{ display: "flex", gap: 4, background: "var(--input-bg)", borderRadius: 6, padding: 2, flexShrink: 0 }}>
+                  <button 
+                    type="button" 
+                    style={{
+                      ...glowStyle(activeMode === "add"),
+                      background: activeMode === "add" ? "var(--primary)" : "transparent",
+                      color: activeMode === "add" ? "#fff" : "rgba(255,255,255,0.7)",
+                      minWidth: 32,
+                      height: 28,
+                      borderRadius: 4,
+                      fontSize: 14,
+                      lineHeight: 1,
+                      padding: 0
+                    }} 
+                    onClick={() => setActiveMode("add")} 
+                    title="Quick Add"
+                  >
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>⚡</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    style={{
+                      ...glowStyle(activeMode === "filter"),
+                      background: activeMode === "filter" ? "var(--primary)" : "transparent",
+                      color: activeMode === "filter" ? "#fff" : "rgba(255,255,255,0.7)",
+                      minWidth: 32,
+                      height: 28,
+                      borderRadius: 4,
+                      fontSize: 14,
+                      lineHeight: 1,
+                      padding: 0
+                    }} 
+                    onClick={() => setActiveMode("filter")} 
+                    title="Search & Filter"
+                  >
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>🔍</span>
+                  </button>
+                </div>
                 {activeMode === 'add' ? (
                     <>
                         <QuickCatDongle value={quickCat} onChange={setQuickCat} categories={visibleCategories} defaultCat="General" onAddCategory={(newCat) => {
@@ -1050,46 +1132,6 @@ import ReactDOM from 'react-dom'
                     </>
                 ) : (
                     <>
-                        {/* FILTER BUTTON - Inside input, to the left of text */}
-                        <button 
-                          type="button" 
-                          style={{ 
-                            ...glowStyle(isFilterActive), 
-                            padding: 4, 
-                            width: 32, 
-                            height: 32, 
-                            flexShrink: 0, 
-                            position: 'relative',
-                            borderRadius: 6
-                          }} 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFilterGrid(true); }} 
-                          title="Filters"
-                          onMouseEnter={(e) => !isFilterActive && (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-                          onMouseLeave={(e) => !isFilterActive && (e.currentTarget.style.background = "transparent")}
-                        >
-                          <span style={{ fontSize: 16, lineHeight: 1 }}>🎛️</span>
-                          {activeFilterCount > 0 && (
-                              <span style={{ 
-                                position: 'absolute', 
-                                top: -4, 
-                                right: -4, 
-                                background: 'var(--primary)', 
-                                color: '#fff', 
-                                fontSize: 10, 
-                                fontWeight: 800, 
-                                minWidth: 16, 
-                                height: 16, 
-                                borderRadius: '50%', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                border: "2px solid var(--card)",
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                              }}>
-                                {activeFilterCount}
-                              </span>
-                          )}
-                        </button>
                         <input 
                           className="naked-input" 
                           style={{ 

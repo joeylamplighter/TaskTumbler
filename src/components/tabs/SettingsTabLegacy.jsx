@@ -1392,31 +1392,215 @@ function Fold({ title, right, open, onToggle, children }) {
         {settingsView === "view" && (
           <div className="fade-in-up">
             <h3 style={{ fontFamily: "Fredoka", fontSize: 18, marginBottom: 16 }}>🎨 Appearance</h3>
-            <div style={{ background: "var(--card)", padding: 12, borderRadius: 12, marginBottom: 16 }}>
-              <select className="f-select" style={{ width: "100%", marginBottom: 12 }} value={settings?.theme || "dark"} onChange={(e) => handleChange("theme", e.target.value)}>
-                <option value="dark">🌙 Dark Default</option>
-                <option value="light">☀️ Light Theme</option>
-                <option value="midnight">🌌 Midnight Blue</option>
-                <option value="forest">🌲 Deep Forest</option>
-                <option value="synthwave">👾 Synthwave</option>
-                <option value="coffee">☕ Warm Coffee</option>
-                {/* Custom themes */}
-                {settings?.customThemes && Object.entries(settings.customThemes).map(([themeName, themeData]) => (
-                  <option key={themeName} value={themeName}>✨ {themeData.displayName || themeName} (Custom)</option>
-                ))}
-              </select>
+            
+            {/* Unified Theme Selection - Searchable by "appearance" */}
+            <div 
+              style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #10b981" }}
+              data-search-keywords="appearance theme library"
+            >
+              {/* Hidden text for searchability */}
+              <span style={{ display: 'none' }}>appearance</span>
               
-              {/* Show custom themes management */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h4 style={{ fontFamily: "Fredoka", fontSize: 16, margin: 0, fontWeight: 600 }}>✨ Theme</h4>
+                {/* Quick selector dropdown for power users */}
+                <select 
+                  className="f-select" 
+                  style={{ width: "auto", minWidth: 180, marginBottom: 0, fontSize: 12, padding: '6px 10px' }} 
+                  value={settings?.theme || "dark"} 
+                  onChange={(e) => handleChange("theme", e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="dark">🌙 Dark Default</option>
+                  <option value="light">☀️ Light Theme</option>
+                  <option value="midnight">🌌 Midnight Blue</option>
+                  <option value="forest">🌲 Deep Forest</option>
+                  <option value="synthwave">👾 Synthwave</option>
+                  <option value="coffee">☕ Warm Coffee</option>
+                  {/* Custom themes */}
+                  {settings?.customThemes && Object.entries(settings.customThemes).map(([themeName, themeData]) => (
+                    <option key={themeName} value={themeName}>✨ {themeData.displayName || themeName}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 16 }}>
+                All themes work the same way - built-in themes are pre-installed, library themes install automatically when selected
+              </p>
+              
+              {/* Built-in Themes Grid */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Core Themes (Always Available)
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: 8
+                }}>
+                  {[
+                    { key: 'dark', name: 'Dark Default', icon: '🌙' },
+                    { key: 'light', name: 'Light Theme', icon: '☀️' },
+                    { key: 'midnight', name: 'Midnight Blue', icon: '🌌' },
+                    { key: 'forest', name: 'Deep Forest', icon: '🌲' },
+                    { key: 'synthwave', name: 'Synthwave', icon: '👾' },
+                    { key: 'coffee', name: 'Warm Coffee', icon: '☕' }
+                  ].map(({ key, name, icon }) => {
+                    const isActive = settings?.theme === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleChange("theme", key)}
+                        style={{
+                          padding: 10,
+                          background: isActive ? 'var(--primary)' : 'var(--input-bg)',
+                          color: isActive ? '#fff' : 'var(--text)',
+                          border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          fontSize: 11,
+                          fontWeight: isActive ? 700 : 500,
+                          textAlign: 'center',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: 60
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.background = 'var(--border)';
+                            e.currentTarget.style.transform = 'scale(1.02)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.background = 'var(--input-bg)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }
+                        }}
+                      >
+                        <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+                        <div style={{ fontWeight: 700, fontSize: 12 }}>{name}</div>
+                        {isActive && <div style={{ fontSize: 9, opacity: 0.9 }}>✓ Active</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Theme Library */}
+              {window.PRELOADED_THEMES && Object.keys(window.PRELOADED_THEMES).length > 0 && (
+                <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Theme Library (Auto-Installs on Selection)
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--text-light)", marginBottom: 12 }}>
+                    Click any theme to install and apply it instantly
+                  </p>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gap: 8
+                  }}>
+                    {Object.entries(window.PRELOADED_THEMES).map(([themeKey, themeData]) => {
+                      const isActive = settings?.theme === `preloaded_${themeKey}`;
+                      return (
+                        <button
+                          key={themeKey}
+                          onClick={() => {
+                            // Save theme to custom themes
+                            const customThemes = settings?.customThemes || {};
+                            const newCustomThemes = {
+                              ...customThemes,
+                              [`preloaded_${themeKey}`]: themeData
+                            };
+                            handleChange('customThemes', newCustomThemes);
+                            handleChange('theme', `preloaded_${themeKey}`);
+                            safeNotify(`Applied ${themeData.displayName}!`, "✨");
+                          }}
+                          style={{
+                            padding: 10,
+                            background: isActive ? 'var(--primary)' : 'var(--input-bg)',
+                            color: isActive ? '#fff' : 'var(--text)',
+                            border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: isActive ? 700 : 500,
+                            textAlign: 'center',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: 60
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.background = 'var(--border)';
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.background = 'var(--input-bg)';
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            gap: 4,
+                            marginBottom: 4,
+                            flexWrap: 'wrap',
+                            justifyContent: 'center'
+                          }}>
+                            {themeData.cssVariables?.['--primary'] && (
+                              <div style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: 3,
+                                background: themeData.cssVariables['--primary'],
+                                border: '1px solid rgba(255,255,255,0.2)'
+                              }}></div>
+                            )}
+                            {themeData.cssVariables?.['--accent'] && (
+                              <div style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: 3,
+                                background: themeData.cssVariables['--accent'],
+                                border: '1px solid rgba(255,255,255,0.2)'
+                              }}></div>
+                            )}
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 12 }}>{themeData.displayName}</div>
+                          {isActive && <div style={{ fontSize: 9, opacity: 0.9 }}>✓ Active</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {/* Custom Themes Management */}
               {settings?.customThemes && Object.keys(settings.customThemes).length > 0 && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: 'var(--text-light)' }}>Custom Themes</div>
+                <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-light)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Custom Themes
+                  </div>
                   {Object.entries(settings.customThemes).map(([themeName, themeData]) => (
                     <div key={themeName} style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       alignItems: 'center',
-                      padding: '6px 0',
-                      fontSize: 12
+                      padding: '8px 0',
+                      fontSize: 12,
+                      borderBottom: '1px solid var(--border)'
                     }}>
                       <span>✨ {themeData.displayName || themeName}</span>
                       <button
@@ -1445,111 +1629,17 @@ function Fold({ title, right, open, onToggle, children }) {
                   ))}
                 </div>
               )}
-
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginTop: 12 }}>
-                <span>Show Task Times</span>
-                <input type="checkbox" checked={!!settings?.showTaskTimes} onChange={() => handleToggle("showTaskTimes")} />
-              </label>
-
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", marginTop: 12 }}>
-                <span>🔲 Sharp Edges</span>
-                <input type="checkbox" checked={!!settings?.sharpEdges} onChange={() => handleToggle("sharpEdges")} />
-              </label>
-              <p style={{ fontSize: 11, color: "var(--text-light)", marginTop: 4, marginBottom: 0 }}>
-                Remove rounded corners from buttons, cards, and other UI elements
-              </p>
-            </div>
-
-            {/* Preloaded Theme Library */}
-            <div style={{ background: "var(--card)", padding: 16, borderRadius: 12, marginBottom: 16, borderLeft: "4px solid #10b981" }}>
-              <h4 style={{ fontFamily: "Fredoka", fontSize: 16, marginBottom: 8, fontWeight: 600 }}>✨ Theme Library</h4>
-              <p style={{ fontSize: 12, color: "var(--text-light)", marginBottom: 12 }}>
-                Choose from our collection of professionally designed themes - no AI needed!
-              </p>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: 8,
-                marginBottom: 12
-              }}>
-                {window.PRELOADED_THEMES && Object.entries(window.PRELOADED_THEMES).map(([themeKey, themeData]) => {
-                  const isActive = settings?.theme === `preloaded_${themeKey}`;
-                  return (
-                    <button
-                      key={themeKey}
-                      onClick={() => {
-                        // Save theme to custom themes
-                        const customThemes = settings?.customThemes || {};
-                        const newCustomThemes = {
-                          ...customThemes,
-                          [`preloaded_${themeKey}`]: themeData
-                        };
-                        handleChange('customThemes', newCustomThemes);
-                        handleChange('theme', `preloaded_${themeKey}`);
-                        safeNotify(`Applied ${themeData.displayName}!`, "✨");
-                      }}
-                      style={{
-                        padding: 10,
-                        background: isActive ? 'var(--primary)' : 'var(--input-bg)',
-                        color: isActive ? '#fff' : 'var(--text)',
-                        border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        fontSize: 11,
-                        fontWeight: isActive ? 700 : 500,
-                        textAlign: 'center',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: 60
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = 'var(--border)';
-                          e.currentTarget.style.transform = 'scale(1.02)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = 'var(--input-bg)';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        gap: 4,
-                        marginBottom: 4,
-                        flexWrap: 'wrap',
-                        justifyContent: 'center'
-                      }}>
-                        <div style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 3,
-                          background: themeData.cssVariables['--primary'],
-                          border: '1px solid rgba(255,255,255,0.2)'
-                        }}></div>
-                        <div style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 3,
-                          background: themeData.cssVariables['--accent'],
-                          border: '1px solid rgba(255,255,255,0.2)'
-                        }}></div>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: 12 }}>{themeData.displayName}</div>
-                      {isActive && <div style={{ fontSize: 9, opacity: 0.9 }}>✓ Active</div>}
-                    </button>
-                  );
-                })}
+              
+              {/* Sharp Edges Setting */}
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>🔲 Sharp Edges</span>
+                    <span style={{ fontSize: 11, color: "var(--text-light)" }}>Remove rounded corners from buttons, cards, and other UI elements</span>
+                  </div>
+                  <input type="checkbox" checked={!!settings?.sharpEdges} onChange={() => handleToggle("sharpEdges")} />
+                </label>
               </div>
-              <p style={{ fontSize: 10, color: "var(--text-light)", fontStyle: 'italic', margin: 0 }}>
-                💡 Tip: These themes are ready to use instantly. For custom colors, try the AI Theme Creator below!
-              </p>
             </div>
 
             {/* Advanced UI/UX Settings */}
@@ -2576,6 +2666,13 @@ function Fold({ title, right, open, onToggle, children }) {
                       <span className="logic-setting-label-hint">Automatically refresh data when switching tabs</span>
                     </div>
                     <input type="checkbox" checked={settings?.autoRefreshData !== false} onChange={() => handleToggle("autoRefreshData")} />
+                  </div>
+                  <div className="logic-setting-row">
+                    <div className="logic-setting-label">
+                      <span className="logic-setting-label-text">⏱️ Show Task Times</span>
+                      <span className="logic-setting-label-hint">Display estimated and actual time for tasks in the task list</span>
+                    </div>
+                    <input type="checkbox" checked={!!settings?.showTaskTimes} onChange={() => handleToggle("showTaskTimes")} />
                   </div>
                 </div>
               )}
