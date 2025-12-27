@@ -218,6 +218,11 @@ const loadFromStorage = (key, fallback = null) => {
 };
 
 const saveToStorage = (key, value) => {
+    // Prevent saves during reset to avoid race conditions
+    if (typeof window !== 'undefined' && window.DataManager?._resetInProgress) {
+        console.log('[DataManager] Save blocked during reset:', key);
+        return false;
+    }
     queueSave(key, value);
     return true;
 };
@@ -682,6 +687,54 @@ const FoodLogs = createCollection({
     }
 });
 
+const normalizeWaterLog = (log) => {
+    if (!log || typeof log !== 'object') return null;
+    
+    return {
+        id: log.id || makeId(),
+        date: String(log.date || new Date().toISOString().split('T')[0]),
+        timestamp: String(log.timestamp || new Date().toISOString()),
+        amount: log.amount ? Number(log.amount) : 0, // in oz (or ml, user preference)
+        unit: String(log.unit || 'oz') // 'oz' or 'ml'
+    };
+};
+
+const WaterLogs = createCollection({
+    storageKey: 'waterLogs',
+    eventName: 'waterLogs-updated',
+    normalize: normalizeWaterLog,
+    dedupe: (list) => {
+        const map = new Map();
+        for (const item of list) { if (item.id && !map.has(item.id)) map.set(item.id, item); }
+        return Array.from(map.values());
+    }
+});
+
+const normalizeWeightLog = (log) => {
+    if (!log || typeof log !== 'object') return null;
+    
+    return {
+        id: log.id || makeId(),
+        date: String(log.date || new Date().toISOString().split('T')[0]),
+        timestamp: String(log.timestamp || new Date().toISOString()),
+        weight: log.weight ? Number(log.weight) : null, // in lbs (or kg, user preference)
+        unit: String(log.unit || 'lbs'), // 'lbs' or 'kg'
+        bodyFat: log.bodyFat ? Number(log.bodyFat) : null, // optional %
+        notes: String(log.notes || '')
+    };
+};
+
+const WeightLogs = createCollection({
+    storageKey: 'weightLogs',
+    eventName: 'weightLogs-updated',
+    normalize: normalizeWeightLog,
+    dedupe: (list) => {
+        const map = new Map();
+        for (const item of list) { if (item.id && !map.has(item.id)) map.set(item.id, item); }
+        return Array.from(map.values());
+    }
+});
+
 const makeSingleton = (storageKey, eventName, normalize, defaults) => {
     let _cache = null;
     return {
@@ -971,6 +1024,8 @@ const DataManager = {
     activities: Activities,
     savedNotes: SavedNotes,
     foodLogs: FoodLogs,
+    waterLogs: WaterLogs,
+    weightLogs: WeightLogs,
     settings: Settings,
     userStats: UserStats,
     timerState: TimerState,

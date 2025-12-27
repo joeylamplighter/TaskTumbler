@@ -1474,6 +1474,7 @@ const removeSubCategory = (parentCat, subName) => {
           if (type === 'respin') return `🔄 ${typeLabel}`;
           if (type === 'focus') return `🎯 ${typeLabel}${act.duration ? ` (${act.duration}m)` : ''}`;
           if (type === 'complete') return `✅ Task Completed`;
+          if (type === 'subtask-complete') return `✓ Subtask: ${act.subtaskTitle || 'Completed'}`;
           return `${typeLabel}${act.duration ? ` (${act.duration}m)` : ''}`;
         })();
         
@@ -1580,13 +1581,17 @@ const removeSubCategory = (parentCat, subName) => {
     let shouldAutoComplete = false;
     let completionEffectsData = null;
     
-    if (autoCompleteProgressEnabled && !u.completed && oldTask && !oldTask.completed) {
+    // CRITICAL: Only auto-complete via progress if:
+    // 1. autoCompleteProgress is enabled
+    // 2. The update itself doesn't explicitly set completed (to avoid conflicting with subtask auto-complete)
+    // 3. The old task exists and was NOT already completed
+    if (autoCompleteProgressEnabled && u.completed === undefined && oldTask && !oldTask.completed) {
       // Calculate what the new progress will be after the update
-      const newProgress = u.progress !== undefined ? u.progress : 
-                         (u.percentComplete !== undefined ? u.percentComplete : 
-                         (oldTask.progress !== undefined ? oldTask.progress : 
+      const newProgress = u.progress !== undefined ? u.progress :
+                         (u.percentComplete !== undefined ? u.percentComplete :
+                         (oldTask.progress !== undefined ? oldTask.progress :
                          (oldTask.percentComplete !== undefined ? oldTask.percentComplete : 0)));
-      
+
       // If progress reaches 100%, auto-complete the task
       if (newProgress >= 100) {
         shouldAutoComplete = true;
@@ -3269,12 +3274,32 @@ const removeSubCategory = (parentCat, subName) => {
   // Reset / Dev overlay
   const handleEmergencyReset = () => {
     if (!resetReady) return;
+
+    // Stop all data operations immediately
+    if (window.DataManager?.batchUpdate) {
+      // Disable the DataManager to prevent any saves during reset
+      window.DataManager._resetInProgress = true;
+    }
+
+    // Clear all storage
     try {
       localStorage.clear();
-    } catch {}
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Clear storage error:', e);
+    }
+
     clearInitFlag();
     notify("Factory Reset Initiated...", "🚨");
-    setTimeout(() => window.location.reload(true), 900);
+
+    // Reload immediately without delay to prevent race conditions
+    // Use requestAnimationFrame to ensure the notify message displays
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Force hard refresh by setting a cache-busting parameter
+        window.location.href = window.location.href.split('?')[0] + '?_=' + Date.now();
+      });
+    });
   };
 
   const dataStats = getDataStats();

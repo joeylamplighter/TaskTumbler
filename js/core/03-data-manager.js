@@ -551,6 +551,11 @@
     };
 
     const saveToStorage = (key, value) => {
+        // Prevent saves during reset to avoid race conditions
+        if (typeof window !== 'undefined' && window.DataManager?._resetInProgress) {
+            console.log('[DataManager] Save blocked during reset:', key);
+            return false;
+        }
         // Use queue system to prevent race conditions
         queueSave(key, value);
         return true;
