@@ -68,7 +68,9 @@
 const makeId = () => {
         try {
             if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-        } catch (e) {}
+        } catch (e) {
+            console.warn('crypto.randomUUID not available, using fallback:', e);
+        }
         return Math.random().toString(36).slice(2) + Date.now().toString(36);
     };
 
@@ -421,7 +423,8 @@ const normalizeTask = (t) => {
             })(),
             subtype: t.subtype || null,
         calendarEventId: t.calendarEventId || null,
-        description: t.description || ''
+        description: t.description || '',
+        activities: Array.isArray(t.activities) ? t.activities.filter(Boolean) : []
     };
 };
 
@@ -631,6 +634,52 @@ const SavedNotes = createCollection({
     storageKey: 'savedNotes',
     eventName: 'notes-updated',
     normalize: normalizeNote
+});
+
+const normalizeFoodLog = (log) => {
+    if (!log || typeof log !== 'object') return null;
+    
+    return {
+        id: log.id || makeId(),
+        date: String(log.date || new Date().toISOString().split('T')[0]),
+        timestamp: String(log.timestamp || new Date().toISOString()),
+        image: String(log.image || ''),
+        description: String(log.description || ''),
+        mealType: String(log.mealType || 'meal'),
+        items: Array.isArray(log.items) ? log.items : [],
+        // Calories
+        calories: log.calories ? Number(log.calories) : (log.estimatedCalories ? Number(log.estimatedCalories) : null),
+        estimatedCalories: log.estimatedCalories ? Number(log.estimatedCalories) : (log.calories ? Number(log.calories) : null),
+        // Macros (in grams)
+        protein: log.protein ? Number(log.protein) : null,
+        carbs: log.carbs ? Number(log.carbs) : null,
+        fats: log.fats ? Number(log.fats) : null,
+        fiber: log.fiber ? Number(log.fiber) : null,
+        // Other nutrition
+        sugar: log.sugar ? Number(log.sugar) : null,
+        sodium: log.sodium ? Number(log.sodium) : null, // in mg
+        // Micronutrients (optional, in mg or mcg)
+        vitaminC: log.vitaminC ? Number(log.vitaminC) : null,
+        calcium: log.calcium ? Number(log.calcium) : null,
+        iron: log.iron ? Number(log.iron) : null,
+        // Health metrics
+        healthiness: log.healthiness ? Number(log.healthiness) : 5,
+        notes: String(log.notes || ''),
+        // Source
+        aiAnalyzed: Boolean(log.aiAnalyzed),
+        inputMethod: String(log.inputMethod || 'photo') // 'photo', 'text', 'manual'
+    };
+};
+
+const FoodLogs = createCollection({
+    storageKey: 'foodLogs',
+    eventName: 'foodLogs-updated',
+    normalize: normalizeFoodLog,
+    dedupe: (list) => {
+        const map = new Map();
+        for (const item of list) { if (item.id && !map.has(item.id)) map.set(item.id, item); }
+        return Array.from(map.values());
+    }
 });
 
 const makeSingleton = (storageKey, eventName, normalize, defaults) => {
@@ -921,6 +970,7 @@ const DataManager = {
     categories: Categories,
     activities: Activities,
     savedNotes: SavedNotes,
+    foodLogs: FoodLogs,
     settings: Settings,
     userStats: UserStats,
     timerState: TimerState,

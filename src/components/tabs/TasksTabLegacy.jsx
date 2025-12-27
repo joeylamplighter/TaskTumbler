@@ -319,7 +319,7 @@ function SwipeableTaskRow({ task, onView, onComplete, onDelete, urgencyStyle = {
   const startX = useRef(null);
   const isDragging = useRef(false);
   
-  const safeCall = (fn, ...args) => { if (typeof fn === 'function') try { fn(...args); } catch (e) {} };
+  const safeCall = (fn, ...args) => { if (typeof fn === 'function') try { fn(...args); } catch (e) { console.warn('safeCall error:', e); } };
   const onTouchStart = (e) => { startX.current = e.touches[0].clientX; isDragging.current = true; };
   const onTouchMove = (e) => { 
     if (!isDragging.current) return;

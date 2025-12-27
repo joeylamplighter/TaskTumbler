@@ -68,18 +68,20 @@ export const preprocessImage = async (imageSrc) => {
  * @returns {Promise<{text: string, confidence: number}>}
  */
 export const extractTextWithTesseract = async (image, onProgress = null) => {
+    let worker = null;
     try {
         let imageSrc = image;
-        
+
         // Convert File to data URL if needed
         if (image instanceof File) {
             imageSrc = await imageToBase64(image);
         }
-        
+
         // Preprocess image
         const processedImage = await preprocessImage(imageSrc);
-        
-        const { data } = await Tesseract.recognize(processedImage, 'eng', {
+
+        // Create worker for better memory management
+        worker = await Tesseract.createWorker('eng', 1, {
             logger: (m) => {
                 if (onProgress && m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -87,7 +89,9 @@ export const extractTextWithTesseract = async (image, onProgress = null) => {
                 }
             }
         });
-        
+
+        const { data } = await worker.recognize(processedImage);
+
         return {
             text: data.text.trim(),
             confidence: data.confidence || 0
@@ -95,6 +99,15 @@ export const extractTextWithTesseract = async (image, onProgress = null) => {
     } catch (error) {
         console.error('Tesseract OCR error:', error);
         throw new Error(`OCR failed: ${error.message}`);
+    } finally {
+        // Clean up worker to prevent memory leaks
+        if (worker) {
+            try {
+                await worker.terminate();
+            } catch (e) {
+                console.warn('Failed to terminate Tesseract worker:', e);
+            }
+        }
     }
 };
 

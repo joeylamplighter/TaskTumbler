@@ -8,7 +8,9 @@ const makeId = (prefix = 'id') => {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return `${prefix}_${crypto.randomUUID()}`;
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('crypto.randomUUID not available, using fallback:', e);
+    }
     const ts = Date.now().toString(36);
     const perf = typeof performance !== 'undefined' ? performance.now().toString(36).replace('.', '') : '';
     const rnd = Math.random().toString(36).substring(2, 10);

@@ -239,8 +239,11 @@ export default function SettingsTabLegacy(props) {
 
     const handleChange = useCallback(
       (key, val) => {
+        console.log('[SettingsTab DEBUG] handleChange called:', { key, val, typeof_val: typeof val });
         setSettings?.((p) => {
           const newSettings = { ...p, [key]: val };
+          console.log('[SettingsTab DEBUG] New settings object:', newSettings);
+          console.log('[SettingsTab DEBUG] settings.duration after change:', newSettings.duration);
           // Dispatch event for NavBar to update in real-time
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('settings-updated'));

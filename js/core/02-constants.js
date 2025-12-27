@@ -29,13 +29,14 @@
       duel: true,
       settings: true,
     },
-    navItemsOrder: ["spin", "tasks", "kanban", "calendar", "timer", "lists", "goals", "crm", "crm:people", "crm:places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:ai", "settings:game", "settings:calendar", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
+    navItemsOrder: ["spin", "tasks", "kanban", "calendar", "timer", "food", "lists", "goals", "crm", "crm:people", "crm:places", "stats", "stats:overview", "stats:charts", "stats:history", "duel", "settings", "settings:view", "settings:logic", "settings:ai", "settings:game", "settings:calendar", "settings:cats", "settings:data"], // Custom order for nav bar items (includes subtabs)
     navBarVisibleItems: {
       spin: true,
       tasks: true,
       kanban: false,
       calendar: false,
       timer: true,
+      food: true,
       lists: false,
       goals: false,
       crm: false,
@@ -127,6 +128,20 @@
 
     // --- Integrations ---
     geminiApiKey: "",
+  };
+
+  // ===========================================
+  // Advanced UI Defaults
+  // ===========================================
+  const ADVANCED_UI_DEFAULTS = {
+    fontFamily: 'system',
+    fontSize: 'medium',
+    borderRadius: 'normal',
+    animationSpeed: 'normal',
+    glassEffect: false,
+    gradients: false,
+    compactMode: false,
+    reducedMotion: false
   };
 
   // ===========================================
@@ -267,6 +282,7 @@
   // Export to window
   // ===========================================
   window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
+  window.ADVANCED_UI_DEFAULTS = ADVANCED_UI_DEFAULTS;
   window.TOOLBAR = TOOLBAR;
   window.XP_CONFIG = XP_CONFIG;
   window.LEVELING_CONFIG = LEVELING_CONFIG;

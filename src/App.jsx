@@ -1,8 +1,13 @@
 // Helper to ensure task has all fields
 export const completeTask = (task, locationMap) => {
-  const locCoords = task.locationIds?.[0] && locationMap[task.locationIds[0]] 
-    ? { lat: locationMap[task.locationIds[0]].lat, lon: locationMap[task.locationIds[0]].lon }
-    : null;
+  // Safely get location coordinates with proper null checking
+  let locCoords = null;
+  if (task.locationIds?.[0] && locationMap) {
+    const location = locationMap[task.locationIds[0]];
+    if (location && location.lat !== undefined && location.lon !== undefined) {
+      locCoords = { lat: location.lat, lon: location.lon };
+    }
+  }
   
   return {
     id: task.id,

@@ -198,7 +198,9 @@ function DuelTabLegacy({ tasks = [], onUpdate, settings = {}, notify = () => {},
       if (typeof SoundFX !== 'undefined' && settings?.sound !== false) {
         SoundFX.playDuelSelect();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Failed to play duel sound:', e);
+    }
 
     const winBoost = Number(settings.duelWinBoost ?? 10);
     const lossPenalty = Number(settings.duelLossPenalty ?? 5);

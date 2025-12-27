@@ -798,6 +798,7 @@
             })(),
             subtype: t.subtype || null,
             description: t.description || '',
+            activities: Array.isArray(t.activities) ? t.activities.filter(Boolean) : [],
             images: Array.isArray(t.images) ? t.images.filter(Boolean) : []
         };
     };

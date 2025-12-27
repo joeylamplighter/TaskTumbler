@@ -418,7 +418,8 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
   };
 
   const handleAutoTime = () => callAI(`Estimate minutes for task: "${data.title}". Respond with number only.`, (t) => {
-    const m = parseInt((t.match(/\d+/) || ["0"])[0], 10);
+    const match = t.match(/\d+/);
+    const m = parseInt(match ? match[0] : "0", 10);
     if (m > 0) {
       if (m >= 60) setData((p) => ({ ...p, estimatedTime: Math.round((m/60)*10)/10, estimatedTimeUnit: "hr" }));
       else setData((p) => ({ ...p, estimatedTime: m, estimatedTimeUnit: "min" }));
@@ -687,7 +688,7 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
       if (!next) return prev;
       return { ...prev, reminders: next };
     });
-  }, [data.startDate, data.startTime, data.dueDate, data.dueTime, settings?.autoAddReminders]);
+  }, [data.startDate, data.startTime, data.dueDate, data.dueTime, settings]);
 
   const handleSave = () => {
     if (!String(data.title || "").trim()) return notify?.("Title required", "⚠️");
@@ -882,18 +883,19 @@ export default function TaskFormModal({ task, categories, onClose, onSave, setti
                 }}>Add</button>
               </div>
               <div style={{ background: "var(--input-bg)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                {(data.subtasks || []).map((s) => {
-                  const subtaskId = s.id || s.title; // Fallback to title if no ID
+                {(data.subtasks || []).map((s, index) => {
+                  // Use index as fallback only if no ID exists - this ensures unique keys
+                  const subtaskId = s.id || `subtask-${index}-${s.title?.substring(0, 10) || ''}`;
                   return (
                     <div key={subtaskId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-                      <input type="checkbox" checked={!!s.completed} onChange={() => { 
-                        const next = (data.subtasks || []).map(st => 
-                          (st.id || st.title) === subtaskId ? { ...st, completed: !st.completed } : st
-                        ); 
-                        setData({ ...data, subtasks: next }); 
+                      <input type="checkbox" checked={!!s.completed} onChange={() => {
+                        const next = (data.subtasks || []).map((st, idx) =>
+                          idx === index ? { ...st, completed: !st.completed } : st
+                        );
+                        setData({ ...data, subtasks: next });
                       }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{s.title || s.text}</span>
-                      <span onClick={() => setData((d) => ({ ...d, subtasks: (d.subtasks || []).filter(st => (st.id || st.title) !== subtaskId) }))} style={{ color: "var(--danger)", cursor: "pointer" }}>×</span>
+                      <span onClick={() => setData((d) => ({ ...d, subtasks: (d.subtasks || []).filter((_, idx) => idx !== index) }))} style={{ color: "var(--danger)", cursor: "pointer" }}>×</span>
                     </div>
                   );
                 })}

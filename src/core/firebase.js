@@ -100,8 +100,8 @@ const initializeFirebase = () => {
         // Expose firebase globally for other modules
         window.firebase = firebase;
 
-        enablePersistenceWithRetry().catch(() => {
-            // Already logged in the function
+        enablePersistenceWithRetry().catch((err) => {
+            console.error('Failed to enable persistence after retries:', err);
         });
 
         console.log('✅ Firebase initialized');

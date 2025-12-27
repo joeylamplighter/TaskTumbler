@@ -146,6 +146,18 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
     const spinDurationSec = Number.isFinite(parseInt(settings?.duration, 10)) ? parseInt(settings.duration, 10) : 3;
     const activeCurve = SPIN_PHYSICS[settings?.spinStyle] || SPIN_PHYSICS.standard;
 
+    // DEBUG: Log settings on every render
+    console.log('[SpinTab DEBUG] Component render:', {
+      'settings object': settings,
+      'settings.duration': settings?.duration,
+      'spinDurationSec': spinDurationSec,
+      'settings.spinStyle': settings?.spinStyle,
+      'activeCurve': activeCurve,
+      'typeof duration': typeof settings?.duration,
+      'raw parseInt': parseInt(settings?.duration, 10),
+      'isFinite check': Number.isFinite(parseInt(settings?.duration, 10))
+    });
+
     const spinShowWinnerPopup = settings?.spinShowWinnerPopup !== false;
     const spinAutoOpenWinnerTask = !!settings?.spinAutoOpenWinnerTask;
     const spinUseWeighted = settings?.spinUseWeighted !== false;
@@ -473,13 +485,28 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
 
     const resetStripInstant = () => {
       const el = stripRef.current;
-      if (!el) return;
+      if (!el) {
+        console.log('[SpinTab DEBUG] resetStripInstant: no element ref');
+        return;
+      }
       el.style.transition = "none";
       el.style.transform = "translateY(0px)";
       void el.offsetHeight;
 
-      if (spinDurationSec > 0) {
-        el.style.transition = `transform ${spinDurationSec}s ${activeCurve}`;
+      // Use current settings values to ensure we're using the latest settings
+      const currentDuration = Number.isFinite(parseInt(settings?.duration, 10)) ? parseInt(settings.duration, 10) : 3;
+      const currentCurve = SPIN_PHYSICS[settings?.spinStyle] || SPIN_PHYSICS.standard;
+
+      console.log('[SpinTab DEBUG] resetStripInstant:', {
+        'settings.duration': settings?.duration,
+        'currentDuration': currentDuration,
+        'settings.spinStyle': settings?.spinStyle,
+        'currentCurve': currentCurve,
+        'transition applied': currentDuration > 0 ? `transform ${currentDuration}s ${currentCurve}` : 'none'
+      });
+
+      if (currentDuration > 0) {
+        el.style.transition = `transform ${currentDuration}s ${currentCurve}`;
       }
     };
 
@@ -492,7 +519,7 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
         clearInterval(tickIntervalRef.current);
         tickIntervalRef.current = null;
       }
-    }, [filterDue, filterCats, filterPriorities, filterDuration, pool.length, spinDurationSec, settings?.spinStyle]);
+    }, [filterDue, filterCats, filterPriorities, filterDuration, pool.length, settings?.duration, settings?.spinStyle]);
 
     // Cleanup on unmount and when winner popup closes
     useEffect(() => {
@@ -518,6 +545,13 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
     }, [showWinner, spinning]);
 
     const doSpin = () => {
+      console.log('[SpinTab DEBUG] doSpin called with:', {
+        'spinDurationSec': spinDurationSec,
+        'activeCurve': activeCurve,
+        'settings.duration': settings?.duration,
+        'settings.spinStyle': settings?.spinStyle
+      });
+
       if (spinning) return;
       if (isLocked) {
         notify?.(`Cooldown! Wait ${cooldownRemaining}s`, "⏳");
@@ -603,9 +637,21 @@ import WinnerPopup from "./SpinWinnerPopupLegacy";
           }
           return;
         }
+        const transitionString = `transform ${spinDurationSec}s ${activeCurve}`;
+        console.log('[SpinTab DEBUG] Applying animation:', {
+          'spinDurationSec': spinDurationSec,
+          'activeCurve': activeCurve,
+          'transitionString': transitionString,
+          'targetY': targetY,
+          'element': el
+        });
         if (spinDurationSec === 0) el.style.transition = "none";
-        else el.style.transition = `transform ${spinDurationSec}s ${activeCurve}`;
+        else el.style.transition = transitionString;
         el.style.transform = `translateY(${targetY}px)`;
+        console.log('[SpinTab DEBUG] Applied styles:', {
+          'el.style.transition': el.style.transition,
+          'el.style.transform': el.style.transform
+        });
       });
 
       const onEnd = (e) => {

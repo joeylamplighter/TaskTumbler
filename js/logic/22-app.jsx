@@ -691,6 +691,8 @@ const removeSubCategory = (parentCat, subName) => {
   const PlacesTab = window.PlacesTab;
   const DuelTab = window.DuelTab;
   const SettingsTab = window.SettingsTab;
+  const FoodTrackTab = window.FoodTrackTab;
+  const TabSearchModal = window.TabSearchModal;
 
   // --- Safe wrappers (prevents React #130) ---
   const AppHeaderComp = SafeComponent(AppHeader, "AppHeader");
@@ -708,6 +710,8 @@ const removeSubCategory = (parentCat, subName) => {
   const PlacesTabComp = SafeComponent(PlacesTab, "PlacesTab");
   const DuelTabComp = SafeComponent(DuelTab, "DuelTab");
   const SettingsTabComp = SafeComponent(SettingsTab, "SettingsTab");
+  const FoodTrackTabComp = SafeComponent(FoodTrackTab, "FoodTrackTab");
+  const TabSearchModalComp = SafeComponent(TabSearchModal, "TabSearchModal");
 
   const seeded = isInitialized();
 
@@ -738,6 +742,41 @@ const removeSubCategory = (parentCat, subName) => {
       delete window.setTab;
     };
   }, []);
+
+  // Check for factory reset URL parameter (permalink for emergency reset)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    
+    // Check both URL search params and hash params for factory reset
+    const factoryReset = urlParams.get('factoryReset') === 'true' || 
+                        urlParams.get('reset') === 'true' ||
+                        hashParams.get('factoryReset') === 'true' ||
+                        hashParams.get('reset') === 'true';
+    
+    if (factoryReset) {
+      console.warn('🚨 Factory Reset triggered via URL parameter');
+      try {
+        localStorage.clear();
+        clearInitFlag();
+        // Remove the parameter from URL to prevent re-triggering on reload
+        const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+        window.history.replaceState({}, '', newUrl);
+        // Show notification and reload
+        if (window.notify) {
+          window.notify("Factory Reset Initiated via URL...", "🚨");
+        }
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (err) {
+        console.error('Factory reset failed:', err);
+        if (window.notify) {
+          window.notify("Factory Reset Failed", "❌");
+        }
+      }
+    }
+  }, []); // Run once on mount
 
   // Listen for hash changes to switch tabs
   React.useEffect(() => {
@@ -942,6 +981,9 @@ const removeSubCategory = (parentCat, subName) => {
   // Modal stack for persistent modals
   const [modalStack, setModalStack] = React.useState([]);
   
+  // Tab search modal state
+  const [isTabSearchOpen, setIsTabSearchOpen] = React.useState(false);
+  
   const pushModal = React.useCallback((modal) => {
     setModalStack(prev => [...prev, modal]);
   }, []);
@@ -954,27 +996,62 @@ const removeSubCategory = (parentCat, subName) => {
     setModalStack([]);
   }, []);
   
-  // Keyboard shortcut: Ctrl+Esc or Esc (when multiple modals) to close all
+  // Track recent tabs when tab changes
+  React.useEffect(() => {
+    if (tab) {
+      try {
+        const stored = localStorage.getItem('recentTabs');
+        const recent = stored ? JSON.parse(stored) : [];
+        const updated = [tab, ...recent.filter(t => t !== tab)].slice(0, 10);
+        localStorage.setItem('recentTabs', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save recent tab:', e);
+      }
+    }
+  }, [tab]);
+  
+  // Keyboard shortcuts: Ctrl+Alt+O for tab search, Ctrl+Esc/Esc for modals
   React.useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+      
+      // Ctrl+Alt+O or Cmd+Alt+O: Open tab search
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        setIsTabSearchOpen(true);
+        return;
+      }
+      
       // Ctrl+Esc or Cmd+Esc: Close all modals
       if ((e.ctrlKey || e.metaKey) && e.key === 'Escape') {
         e.preventDefault();
         closeAllModals();
+        setIsTabSearchOpen(false);
         return;
       }
-      // Esc: Close only top modal (default behavior)
-      if (e.key === 'Escape' && modalStack.length > 0) {
-        // Only handle if no other component is handling it
-        // (WinnerPopup and other modals handle their own Esc)
-        const topModal = modalStack[modalStack.length - 1];
-        // Only auto-close if it's a modal that should respond to Esc
-        // (ViewTaskModal, TaskFormModal handle their own Esc)
+      
+      // Esc: Close tab search or top modal
+      if (e.key === 'Escape') {
+        if (isTabSearchOpen) {
+          e.preventDefault();
+          setIsTabSearchOpen(false);
+          return;
+        }
+        if (modalStack.length > 0) {
+          // Only handle if no other component is handling it
+          // (WinnerPopup and other modals handle their own Esc)
+          const topModal = modalStack[modalStack.length - 1];
+          // Only auto-close if it's a modal that should respond to Esc
+          // (ViewTaskModal, TaskFormModal handle their own Esc)
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalStack, closeAllModals]);
+  }, [modalStack, closeAllModals, isTabSearchOpen]);
   
   // Legacy state for backward compatibility (mapped to modal stack)
   const viewTask = React.useMemo(() => {
@@ -1104,8 +1181,17 @@ const removeSubCategory = (parentCat, subName) => {
 
   const setSettings = (val) => {
     const n = typeof val === "function" ? val(settings) : val;
+    console.log('[22-app DEBUG] setSettings called with:', {
+      val,
+      computed_n: n,
+      'n.duration': n?.duration,
+      'DM available': !!DM,
+      'DM.settings available': !!DM?.settings,
+      'DM.settings.set available': !!DM?.settings?.set
+    });
     setSettingsInternal(n);
-    DM?.settings?.set?.(n);
+    const result = DM?.settings?.set?.(n);
+    console.log('[22-app DEBUG] DM.settings.set result:', result);
   };
 
   // ✅ Persist timer in DM every change
@@ -1477,7 +1563,9 @@ const removeSubCategory = (parentCat, subName) => {
     
     // Sync to calendar if task has start date/time
     if (newTask.startDate && settings?.calendarSync?.autoSync) {
-      setTimeout(() => syncTaskToCalendar(newTask), 500);
+      setTimeout(() => syncTaskToCalendar(newTask).catch(err => {
+        console.error('Failed to sync task to calendar:', err);
+      }), 500);
     }
     
     notify("Task Added", "✅");
@@ -1485,6 +1573,35 @@ const removeSubCategory = (parentCat, subName) => {
 
   const updateTask = (id, u) => {
     const oldTask = tasks.find(t => t.id === id);
+    
+    // Check if progress-based auto-completion should trigger
+    // Check if auto-complete is enabled (defaults to true for progress-based completion)
+    const autoCompleteProgressEnabled = settings?.autoCompleteProgress !== false;
+    let shouldAutoComplete = false;
+    let completionEffectsData = null;
+    
+    if (autoCompleteProgressEnabled && !u.completed && oldTask && !oldTask.completed) {
+      // Calculate what the new progress will be after the update
+      const newProgress = u.progress !== undefined ? u.progress : 
+                         (u.percentComplete !== undefined ? u.percentComplete : 
+                         (oldTask.progress !== undefined ? oldTask.progress : 
+                         (oldTask.percentComplete !== undefined ? oldTask.percentComplete : 0)));
+      
+      // If progress reaches 100%, auto-complete the task
+      if (newProgress >= 100) {
+        shouldAutoComplete = true;
+        // Add completed flag to the update
+        u = { ...u, completed: true, completedAt: new Date().toISOString() };
+        // Store data for completion effects
+        completionEffectsData = {
+          taskId: id,
+          title: oldTask.title,
+          people: Array.isArray(oldTask.people) ? oldTask.people : [],
+          category: oldTask.category || 'General',
+        };
+      }
+    }
+    
     setTasks((p) => {
       const updated = p.map((t) => (t.id === id ? { ...t, ...u, lastModified: new Date().toISOString() } : t));
       const newTask = updated.find(t => t.id === id);
@@ -1516,7 +1633,9 @@ const removeSubCategory = (parentCat, subName) => {
         
         // Sync to calendar if task has start date/time and auto-sync is enabled
         if (newTask.startDate && settings?.calendarSync?.autoSync) {
-          setTimeout(() => syncTaskToCalendar(newTask), 500);
+          setTimeout(() => syncTaskToCalendar(newTask).catch(err => {
+            console.error('Failed to sync task to calendar:', err);
+          }), 500);
         }
         
         // Atomic Goal Sync: If task has goalId, recalculate goal progress
@@ -1542,6 +1661,36 @@ const removeSubCategory = (parentCat, subName) => {
       
       return updated;
     });
+    
+    // Trigger completion effects if we auto-completed via progress (outside of setTasks to avoid nested updates)
+    if (shouldAutoComplete && completionEffectsData) {
+      // Defer effects to next tick to avoid interfering with state update
+      setTimeout(() => {
+        // Trigger completion effects
+        if (window.notify) {
+          window.notify("Task Completed!", "🎉");
+        }
+        if (settings?.sound !== false && typeof window.SoundFX !== 'undefined') {
+          window.SoundFX.playComplete();
+        }
+        if (settings?.confetti && typeof window.fireSmartConfetti === 'function') {
+          window.fireSmartConfetti('taskComplete', settings);
+        }
+        
+        // Add activity log
+        if (addActivity) {
+          addActivity({
+            taskId: completionEffectsData.taskId,
+            title: completionEffectsData.title,
+            type: "complete",
+            duration: 0,
+            timestamp: new Date().toISOString(),
+            people: completionEffectsData.people,
+            category: completionEffectsData.category,
+          });
+        }
+      }, 0);
+    }
   };
 
   const deleteTask = (id) => {
@@ -3023,6 +3172,7 @@ const removeSubCategory = (parentCat, subName) => {
     { key: "kanban", icon: "📊", label: "Kanban", displayLabel: "Kanban" },
     { key: "calendar", icon: "📅", label: "Calendar", displayLabel: "Calendar" },
     { key: "timer", icon: "⏱️", label: "Track", displayLabel: "Track" },
+    { key: "food", icon: "🍽️", label: "Food Track", displayLabel: "Food" },
     { key: "lists", icon: "💡", label: "Ideas", displayLabel: "Ideas" },
     { key: "goals", icon: "🎯", label: "Goals", displayLabel: "Goals" },
     { key: "chatbot", icon: "🤖", label: "AI Assistant", displayLabel: "AI" },
@@ -3313,6 +3463,16 @@ const removeSubCategory = (parentCat, subName) => {
               />
             )}
 
+            {tab === "food" && (
+              <FoodTrackTabComp
+                settings={settings}
+                notify={notify}
+                addActivity={addActivity}
+                userStats={userStats}
+                setUserStats={setUserStats}
+              />
+            )}
+
             {tab === "lists" && (
               <IdeasTabComp
                 text={scratchpad}
@@ -3369,8 +3529,34 @@ const removeSubCategory = (parentCat, subName) => {
     onFullReset={handleNukeAll}
     initialView={settingsView}
   />
-)}
+  )}
           </div>
+
+          {/* Tab Search Modal */}
+          {TabSearchModalComp && (
+            <TabSearchModalComp
+              isOpen={isTabSearchOpen}
+              onClose={() => setIsTabSearchOpen(false)}
+              allNavItems={allNavItems}
+              currentTab={tab}
+              onTabChange={(tabKey) => {
+                setTab(tabKey);
+                // Update URL hash
+                if (tabKey.includes(':')) {
+                  const [parentTab, subtab] = tabKey.split(':');
+                  if (parentTab === 'stats') {
+                    window.location.hash = `#stats?subView=${subtab}`;
+                  } else if (parentTab === 'settings') {
+                    window.location.hash = `#settings?view=${subtab}`;
+                  } else if (parentTab === 'crm') {
+                    window.location.hash = `#${subtab}`;
+                  }
+                } else {
+                  window.location.hash = `#${tabKey}`;
+                }
+              }}
+            />
+          )}
 
           <NavBarComp
             current={tab}
@@ -3502,11 +3688,11 @@ const removeSubCategory = (parentCat, subName) => {
         if (modal.type === 'viewTask' && ViewTaskModal) {
           const task = tasks.find((t) => t.id === modal.data.id) || modal.data;
           return (
-            <div 
-              key={`viewTask-${index}`} 
-              style={{ 
-                position: 'fixed', 
-                inset: 0, 
+            <div
+              key={`viewTask-${index}`}
+              style={{
+                position: 'fixed',
+                inset: 0,
                 zIndex,
                 pointerEvents: isTopModal ? 'auto' : 'none'
               }}

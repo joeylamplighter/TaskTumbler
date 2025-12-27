@@ -202,6 +202,7 @@ import ReactDOM from 'react-dom'
     const stripRef = useRef(null);
     const spinTokenRef = useRef(0);
     const tickIntervalRef = useRef(null);
+    const isAnimatingRef = useRef(false); // Track if animation is in progress to prevent React from interfering
 
     const [filterDue, setFilterDue] = useState("Any");
     const [filterDuration, setFilterDuration] = useState("Any");
@@ -496,25 +497,44 @@ import ReactDOM from 'react-dom'
     const resetStripInstant = () => {
       const el = stripRef.current;
       if (!el) return;
+      // Don't reset if animation is in progress
+      if (isAnimatingRef.current) return;
+      
+      // Force a reflow to ensure the transition reset takes effect
       el.style.transition = "none";
       el.style.transform = "translateY(0px)";
-      void el.offsetHeight;
+      void el.offsetHeight; // Force reflow
 
-      if (spinDurationSec > 0) {
-        el.style.transition = `transform ${spinDurationSec}s ${activeCurve}`;
+      // Set the transition for future animations
+      // Use current settings values to ensure we're using the latest settings
+      const currentDuration = Number.isFinite(parseInt(settings?.duration, 10)) ? parseInt(settings.duration, 10) : 3;
+      const currentCurve = SPIN_PHYSICS[settings?.spinStyle] || SPIN_PHYSICS.standard;
+      
+      if (currentDuration > 0) {
+        el.style.transition = `transform ${currentDuration}s ${currentCurve}`;
+      } else {
+        el.style.transition = "none";
       }
     };
 
+    // Initialize strip on mount
     useEffect(() => {
       resetStripInstant();
-      setWinner(null);
-      setSpinning(false);
+    }, []);
+
+    // Reset strip when filters or settings change (but not during a spin)
+    useEffect(() => {
+      // Only reset if not currently spinning to avoid interrupting animations
+      if (!spinning) {
+        resetStripInstant();
+        setWinner(null);
+      }
       // Clean up tick interval when filters change
       if (tickIntervalRef.current) {
         clearInterval(tickIntervalRef.current);
         tickIntervalRef.current = null;
       }
-    }, [filterDue, filterCats, filterPriorities, filterDuration, pool.length, spinDurationSec, settings?.spinStyle]);
+    }, [filterDue, filterCats, filterPriorities, filterDuration, pool.length, settings?.duration, settings?.spinStyle]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -545,6 +565,7 @@ import ReactDOM from 'react-dom'
 
       recordSpin();
       const token = ++spinTokenRef.current;
+      isAnimatingRef.current = true; // Mark animation as starting
       setSpinning(true);
       setWinner(null);
 
@@ -604,45 +625,95 @@ import ReactDOM from 'react-dom'
         }, tickIntervalMs);
       }
 
-      requestAnimationFrame(() => {
-        if (token !== spinTokenRef.current) {
-          if (tickIntervalRef.current) {
-            clearInterval(tickIntervalRef.current);
-            tickIntervalRef.current = null;
-          }
-          return;
-        }
-        if (spinDurationSec === 0) el.style.transition = "none";
-        else el.style.transition = `transform ${spinDurationSec}s ${activeCurve}`;
-        el.style.transform = `translateY(${targetY}px)`;
-      });
-
+      // Get current settings values to ensure we're using the latest
+      const currentDuration = Number.isFinite(parseInt(settings?.duration, 10)) ? parseInt(settings.duration, 10) : 3;
+      const currentCurve = SPIN_PHYSICS[settings?.spinStyle] || SPIN_PHYSICS.standard;
+      
+      // Set up fallback timeout in case transitionend doesn't fire
+      let fallbackTimeout = null;
+      
+      // Set up the completion handler BEFORE starting the animation
       const onEnd = (e) => {
+        // Only handle transform transitions
         if (e?.propertyName && e.propertyName !== "transform") return;
+        
+        // Clear the fallback timeout since transition completed
+        if (fallbackTimeout) {
+          clearTimeout(fallbackTimeout);
+          fallbackTimeout = null;
+        }
+        
         el.removeEventListener("transitionend", onEnd);
         if (token !== spinTokenRef.current) {
           if (tickIntervalRef.current) {
             clearInterval(tickIntervalRef.current);
             tickIntervalRef.current = null;
           }
+          isAnimatingRef.current = false;
           return;
         }
         if (tickIntervalRef.current) {
           clearInterval(tickIntervalRef.current);
           tickIntervalRef.current = null;
         }
+        isAnimatingRef.current = false; // Mark animation as complete
         finalizeSpin(chosen);
       };
 
-      if (spinDurationSec === 0) {
-        if (tickIntervalRef.current) {
-          clearInterval(tickIntervalRef.current);
-          tickIntervalRef.current = null;
-        }
-        setTimeout(() => finalizeSpin(chosen), 50);
-      } else {
+      if (currentDuration > 0) {
+        // Add a small buffer (200ms) to the duration for the fallback
+        fallbackTimeout = setTimeout(() => {
+          if (token === spinTokenRef.current) {
+            el.removeEventListener("transitionend", onEnd);
+            if (tickIntervalRef.current) {
+              clearInterval(tickIntervalRef.current);
+              tickIntervalRef.current = null;
+            }
+            isAnimatingRef.current = false; // Mark animation as complete
+            finalizeSpin(chosen);
+          }
+        }, (currentDuration * 1000) + 200);
+        
+        // Set up the event listener BEFORE applying the transform
         el.addEventListener("transitionend", onEnd, { once: true });
       }
+
+      // Use double requestAnimationFrame to ensure the reset has taken effect before applying the transform
+      // This ensures the browser has processed the transition reset
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (token !== spinTokenRef.current) {
+            if (tickIntervalRef.current) {
+              clearInterval(tickIntervalRef.current);
+              tickIntervalRef.current = null;
+            }
+            if (fallbackTimeout) {
+              clearTimeout(fallbackTimeout);
+            }
+            return;
+          }
+          
+          // Set transition before applying transform
+          if (currentDuration === 0) {
+            el.style.transition = "none";
+            // For instant spins, finalize immediately
+            if (tickIntervalRef.current) {
+              clearInterval(tickIntervalRef.current);
+              tickIntervalRef.current = null;
+            }
+            if (fallbackTimeout) {
+              clearTimeout(fallbackTimeout);
+            }
+            isAnimatingRef.current = false; // Mark animation as complete
+            setTimeout(() => finalizeSpin(chosen), 50);
+          } else {
+            // Use setProperty with important flag to prevent React from overriding
+            el.style.setProperty('transition', `transform ${currentDuration}s ${currentCurve}`, 'important');
+            // Apply the transform to trigger the animation
+            el.style.transform = `translateY(${targetY}px)`;
+          }
+        });
+      });
     };
 
     const finalizeSpin = (chosenTask) => {
@@ -681,9 +752,7 @@ import ReactDOM from 'react-dom'
             timestamp: now, // Also include timestamp for compatibility
             priority: chosenTask.priority || "Medium",
           };
-          console.log("🎰 Logging spin activity:", JSON.stringify(activity, null, 2));
-          const result = addActivity(activity);
-          console.log("🎰 Activity add result:", result);
+          addActivity(activity);
         } catch (e) {
           console.error("Failed to log spin activity:", e);
         }
@@ -1614,8 +1683,11 @@ import ReactDOM from 'react-dom'
             ref={stripRef} 
             className={spinning ? (spinDurationSec < 2 ? "tumbler-strip-spinning-fast" : "tumbler-strip-spinning") : ""}
             style={{ 
-              transition: `transform ${spinDurationSec}s ${activeCurve}`,
-              willChange: spinning ? "transform" : "auto"
+              // Transition is managed via direct DOM manipulation in resetStripInstant and doSpin
+              // to avoid conflicts between React's style prop and direct DOM updates
+              willChange: spinning ? "transform" : "auto",
+              // Prevent React from resetting transition during animation
+              transition: isAnimatingRef.current ? undefined : "none"
             }}
           >
             {buildStripItems.length ? (

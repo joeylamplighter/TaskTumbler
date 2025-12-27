@@ -3,7 +3,7 @@
 // 📄 OCR SCANNER COMPONENT
 // ===========================================
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { processDocumentOCR } from '../../utils/ocr.js';
 
 export default function OCRScanner({ onTasksExtracted, onClose, settings = {} }) {
@@ -13,8 +13,12 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
     const [documentType, setDocumentType] = useState('document');
     const [ocrResult, setOcrResult] = useState(null);
     const [error, setError] = useState(null);
+    const [cameraMode, setCameraMode] = useState(false);
+    const [isCameraActive, setIsCameraActive] = useState(false);
     const fileInputRef = useRef(null);
     const canvasRef = useRef(null);
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
@@ -85,7 +89,85 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+        stopCamera();
     };
+
+    const startCamera = async () => {
+        try {
+            setError(null);
+            setIsCameraActive(true);
+            setCameraMode(true);
+            
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment', // Prefer back camera
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            });
+            streamRef.current = stream;
+            
+            // Set stream on video element when it's available
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error('Camera error:', err);
+            setError(err.message || 'Failed to access camera. Please check permissions.');
+            setIsCameraActive(false);
+            setCameraMode(false);
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+        }
+    };
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+        setIsCameraActive(false);
+        setCameraMode(false);
+    };
+
+    const capturePhoto = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+
+        // Set canvas dimensions to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert to data URL
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setPreview(dataUrl);
+        stopCamera();
+    };
+
+    // Set stream on video element when it becomes available
+    useEffect(() => {
+        if (isCameraActive && streamRef.current && videoRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+        }
+    }, [isCameraActive]);
+
+    // Cleanup camera on unmount
+    useEffect(() => {
+        return () => {
+            stopCamera();
+        };
+    }, []);
 
     return (
         <div className="ocr-scanner" style={{
@@ -96,7 +178,7 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
             <div style={{ marginBottom: '20px' }}>
                 <h2 style={{ marginBottom: '10px' }}>📄 Document Scanner</h2>
                 <p style={{ color: '#666', fontSize: '14px' }}>
-                    Upload an image of a receipt, to-do list, or document to extract actionable tasks
+                    Use your camera or upload an image of a receipt, to-do list, or document to extract actionable tasks
                 </p>
             </div>
 
@@ -124,20 +206,109 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
                 </select>
             </div>
 
-            {/* File Upload */}
-            <div style={{ marginBottom: '20px' }}>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    disabled={isProcessing}
-                    style={{ marginBottom: '10px' }}
-                />
+            {/* Input Method Selection */}
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                    onClick={startCamera}
+                    disabled={isProcessing || isCameraActive}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: isCameraActive ? '#4CAF50' : '#2196F3',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: (isProcessing || isCameraActive) ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        opacity: (isProcessing || isCameraActive) ? 0.7 : 1
+                    }}
+                >
+                    {isCameraActive ? '📷 Camera Active' : '📷 Use Camera'}
+                </button>
+                {isCameraActive && (
+                    <button
+                        onClick={stopCamera}
+                        style={{
+                            padding: '10px 20px',
+                            backgroundColor: '#f44336',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        Stop Camera
+                    </button>
+                )}
             </div>
 
+            {/* Camera Video Feed */}
+            {isCameraActive && (
+                <div style={{ marginBottom: '20px', position: 'relative' }}>
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        style={{
+                            width: '100%',
+                            maxHeight: '400px',
+                            border: '2px solid #2196F3',
+                            borderRadius: '4px',
+                            display: 'block',
+                            margin: '0 auto',
+                            objectFit: 'contain',
+                            backgroundColor: '#000'
+                        }}
+                    />
+                    <button
+                        onClick={capturePhoto}
+                        disabled={isProcessing}
+                        style={{
+                            position: 'absolute',
+                            bottom: '20px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            padding: '15px 30px',
+                            backgroundColor: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '70px',
+                            height: '70px',
+                            cursor: isProcessing ? 'not-allowed' : 'pointer',
+                            fontSize: '24px',
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                            opacity: isProcessing ? 0.6 : 1
+                        }}
+                    >
+                        📸
+                    </button>
+                </div>
+            )}
+
+            {/* File Upload */}
+            {!isCameraActive && (
+                <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                        Or Upload Image:
+                    </label>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileSelect}
+                        disabled={isProcessing}
+                        style={{ marginBottom: '10px' }}
+                    />
+                </div>
+            )}
+
             {/* Preview */}
-            {preview && (
+            {preview && !isCameraActive && (
                 <div style={{ marginBottom: '20px' }}>
                     <img
                         src={preview}
@@ -153,6 +324,9 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
                     />
                 </div>
             )}
+
+            {/* Hidden Canvas for Photo Capture */}
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
 
             {/* Progress Bar */}
             {isProcessing && (
@@ -226,7 +400,7 @@ export default function OCRScanner({ onTasksExtracted, onClose, settings = {} })
                                 margin: 0
                             }}>
                                 {ocrResult.tasks.map((task, index) => (
-                                    <li key={`ocr-task-${index}-${task.title?.substring(0, 20)}`} style={{
+                                    <li key={`ocr-task-${index}-${task.title || 'task'}`} style={{
                                         padding: '10px',
                                         backgroundColor: '#fff',
                                         border: '1px solid #ddd',

@@ -25,6 +25,9 @@ import '../js/features/contact/13-11-view-contact-modal.jsx'
 import './components/tabs/PeopleTab'
 import './components/tabs/PlacesTab'
 import './components/tabs/OCRTab'
+import './components/tabs/FoodTrackTab'
+// Import TabSearchModal
+import './components/TabSearchModal'
 // Import core infrastructure FIRST (must load before other modules)
 import './core/constants'
 import './core/dataManager'

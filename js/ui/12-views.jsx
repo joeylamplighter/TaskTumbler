@@ -13,110 +13,292 @@
         }
         
         const React = window.React;
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
-    // ==========================================
-    // VIEW TASK MODAL (Focus + Logging + Subtasks)
-    // ==========================================
-    function ViewTaskModal({ task, onClose, onEdit, onComplete, updateTask, goals, tasks, settings }) {
-        const [logInput, setLogInput] = useState('');
-        const [newSubtask, setNewSubtask] = useState(''); 
-        const [isTimerRunning, setIsTimerRunning] = useState(false);
-        const [timerSeconds, setTimerSeconds] = useState(0);
-        const [isFocusMode, setIsFocusMode] = useState(false);
+        // Constants for debouncing (inside initViews scope, accessible to all components)
+        const TOGGLE_DEBOUNCE_MS = 150; // 150ms debounce (just enough to prevent double-clicks)
+        const COMPLETION_ACTIVITY_COOLDOWN_MS = 2000; // 2 second cooldown for completion activities
 
-        // Get the latest task from tasks array to ensure we have the most up-to-date data
-        const currentTask = (tasks && Array.isArray(tasks) && task?.id) 
-            ? tasks.find(t => t.id === task.id) || task 
-            : task;
-
-        // ----------------------------------------------------
-        // LOGIC: Subtask Stats & Actions
-        // ----------------------------------------------------
-        const totalSubtasks = (currentTask.subtasks || []).length;
-        const completedSubtasks = (currentTask.subtasks || []).filter(s => s.completed).length;
-        const progress = totalSubtasks === 0 ? 0 : Math.round((completedSubtasks / totalSubtasks) * 100);
-
-        // Helper function to calculate progress based on subtasks
-        const calculateProgressFromSubtasks = (subtasks) => {
-            if (!subtasks || subtasks.length === 0) return 0;
-            const completed = subtasks.filter(s => s.completed).length;
-            return Math.round((completed / subtasks.length) * 100);
-        };
-
-        const toggleSubtask = (subId) => {
-            const updatedSubtasks = (currentTask.subtasks || []).map(s => {
-                const sId = s.id || s.title || s.text;
-                return sId === subId ? { ...s, completed: !s.completed } : s;
-            });
-            const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
-            
-            // Check if all subtasks are now completed
-            const completedCount = updatedSubtasks.filter(s => s.completed).length;
-            const allSubtasksCompleted = updatedSubtasks.length > 0 && completedCount === updatedSubtasks.length;
-            
-            // Check if auto-complete setting is enabled (defaults to true if not set)
-            const autoCompleteEnabled = settings?.autoCompleteSubtask !== false;
-            
-            // Auto-complete main task when all subtasks are done (only if setting is enabled)
-            const taskUpdates = {
-                subtasks: updatedSubtasks,
-                progress: newProgress,
-                percentComplete: newProgress
-            };
-            
-            // If all subtasks completed and task isn't already complete, complete it (only if setting enabled)
-            const wasCompleted = currentTask.completed;
-            if (allSubtasksCompleted && !wasCompleted && autoCompleteEnabled) {
-                taskUpdates.completed = true;
-                taskUpdates.completedAt = new Date().toISOString();
-                console.log('[ViewTaskModal] Auto-completing task - all subtasks done');
+        // ==========================================
+        // VIEW TASK MODAL (Focus + Logging + Subtasks)
+        // ==========================================
+        function ViewTaskModal({ task, onClose, onEdit, onComplete, updateTask, goals, tasks, settings }) {
+            // Debug: Check if updateTask is available
+            if (!updateTask) {
+                console.warn('[ViewTaskModal] updateTask prop is missing! Subtasks will not work.');
             }
-            // If any subtask is incomplete but task is marked complete, uncomplete it (only if setting enabled)
-            // This includes when all subtasks are undone (completedCount === 0) or when some are incomplete
-            else if (!allSubtasksCompleted && wasCompleted && completedCount < updatedSubtasks.length && autoCompleteEnabled) {
-                taskUpdates.completed = false;
-                taskUpdates.completedAt = null;
-                console.log('[ViewTaskModal] Auto-uncompleting task - not all subtasks done');
-            }
+            const [logInput, setLogInput] = useState('');
+            const [newSubtask, setNewSubtask] = useState(''); 
+            const [isTimerRunning, setIsTimerRunning] = useState(false);
+            const [timerSeconds, setTimerSeconds] = useState(0);
+            const [isFocusMode, setIsFocusMode] = useState(false);
             
-            // Update both progress and percentComplete for compatibility
-            updateTask(currentTask.id, taskUpdates);
+            // Refs to prevent rapid-fire toggles and duplicate completion activities
+            const lastToggleRef = useRef({ subId: null, timestamp: 0 });
+            const completionActivityRef = useRef({ taskId: null, timestamp: 0 });
+            // Ref to track the latest subtasks state to avoid race conditions
+            const latestSubtasksRef = useRef([]);
+            // Ref to track the actual completion state we've set (to avoid stale currentTask.completed)
+            const taskCompletionStateRef = useRef(false);
+
+            // Get the latest task from tasks array to ensure we have the most up-to-date data
+            // Use useMemo to ensure it updates when tasks array changes
+            // CRITICAL: Only depend on 'tasks' array, NOT 'task' prop, otherwise updates won't trigger re-render
+            const currentTask = useMemo(() => {
+                if (tasks && Array.isArray(tasks) && task?.id) {
+                    return tasks.find(t => t.id === task.id) || task;
+                }
+                return task;
+            }, [tasks, task?.id]);
             
-            // Trigger completion effects manually if we're completing the task (not uncompleting)
-            if (allSubtasksCompleted && !wasCompleted && autoCompleteEnabled) {
-                // Trigger notification and sound manually (don't call onComplete as it toggles)
-                if (window.notify) {
-                    window.notify("Task Completed!", "🎉");
-                }
-                if (settings?.sound !== false && typeof window.SoundFX !== 'undefined') {
-                    window.SoundFX.playComplete();
-                }
-                if (settings?.confetti && typeof window.fireSmartConfetti === 'function') {
-                    window.fireSmartConfetti('taskComplete', settings);
-                }
-                // Add activity log
-                if (window.addActivity) {
-                    window.addActivity({
-                        taskId: currentTask.id,
-                        title: currentTask.title,
-                        type: "complete",
-                        duration: 0,
-                        timestamp: new Date().toISOString(),
-                        people: Array.isArray(currentTask.people) ? currentTask.people : [],
-                        category: currentTask.category || 'General',
+            // Update refs when currentTask changes to keep them in sync
+            useEffect(() => {
+                if (currentTask?.subtasks) {
+                    // Ensure all subtasks have stable IDs - add IDs to any that are missing
+                    // These IDs will be persisted when the next updateTask call happens
+                    const subtasksWithIds = currentTask.subtasks.map((s, index) => {
+                        // If subtask has no id, title, or text, generate a stable ID based on index
+                        if (!s.id && !s.title && !s.text) {
+                            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                            return { ...s, id: generateId('sub'), title: `Subtask ${index + 1}`, text: `Subtask ${index + 1}` };
+                        }
+                        // If subtask has title/text but no id, generate one based on content
+                        if (!s.id && (s.title || s.text)) {
+                            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                            return { ...s, id: generateId('sub') };
+                        }
+                        return s;
                     });
+                    latestSubtasksRef.current = subtasksWithIds;
+                } else {
+                    latestSubtasksRef.current = [];
                 }
-            }
-        };
+                if (currentTask?.completed !== undefined) {
+                    taskCompletionStateRef.current = currentTask.completed;
+                } else {
+                    // Initialize from task prop if currentTask doesn't have completed yet
+                    taskCompletionStateRef.current = task?.completed || false;
+                }
+            }, [currentTask?.subtasks, currentTask?.completed, task?.completed]);
+
+            // ----------------------------------------------------
+            // LOGIC: Subtask Stats & Actions
+            // ----------------------------------------------------
+            const totalSubtasks = (currentTask.subtasks || []).length;
+            const completedSubtasks = (currentTask.subtasks || []).filter(s => s.completed).length;
+            const progress = totalSubtasks === 0 ? 0 : Math.round((completedSubtasks / totalSubtasks) * 100);
+
+            // Helper function to calculate progress based on subtasks
+            const calculateProgressFromSubtasks = (subtasks) => {
+                if (!subtasks || subtasks.length === 0) return 0;
+                const completed = subtasks.filter(s => s.completed).length;
+                return Math.round((completed / subtasks.length) * 100);
+            };
+
+            const toggleSubtask = (subId, e) => {
+                // Stop event propagation to prevent any parent handlers
+                if (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+                
+                // Debounce: prevent rapid-fire toggles of the SAME subtask only
+                // Allow different subtasks to be toggled quickly
+                const now = Date.now();
+                const lastToggle = lastToggleRef.current;
+                if (lastToggle.subId === subId && 
+                    (now - lastToggle.timestamp) < TOGGLE_DEBOUNCE_MS) {
+                    console.log('[ViewTaskModal] Toggle debounced for same subtask:', subId);
+                    return;
+                }
+                // Update ref for this subtask
+                lastToggleRef.current = { subId, timestamp: now };
+                
+                console.log('[ViewTaskModal] toggleSubtask called:', { subId, updateTask: !!updateTask, currentTask: currentTask?.id });
+                
+                if (!updateTask) {
+                    console.error('[ViewTaskModal] updateTask is not defined!');
+                    return;
+                }
+                
+                if (!currentTask || !currentTask.id) {
+                    console.error('[ViewTaskModal] currentTask or currentTask.id is missing!');
+                    return;
+                }
+                
+                // Use ref to get the most up-to-date subtasks (avoids race conditions with rapid clicks)
+                // Always prefer the ref, but fallback to currentTask.subtasks if ref is empty
+                let currentSubtasks = latestSubtasksRef.current.length > 0 
+                    ? latestSubtasksRef.current 
+                    : (currentTask.subtasks || []);
+                
+                // Ensure we have the latest from currentTask if ref seems stale
+                // This helps catch the last subtask that might not be in the ref yet
+                if (currentTask.subtasks && currentTask.subtasks.length > currentSubtasks.length) {
+                    currentSubtasks = currentTask.subtasks;
+                    // Update ref immediately
+                    latestSubtasksRef.current = currentSubtasks;
+                }
+                
+                console.log('[ViewTaskModal] Current subtasks:', currentSubtasks, 'Looking for:', subId);
+                
+                // Find the subtask to toggle - try multiple matching strategies
+                let subtaskToToggle = currentSubtasks.find(s => {
+                    const sId = s.id || s.title || s.text;
+                    return sId === subId;
+                });
+                
+                // If not found by exact match, try finding by index (for last item edge cases)
+                if (!subtaskToToggle && currentSubtasks.length > 0) {
+                    // Try to match by checking if it's the last item
+                    const lastIndex = currentSubtasks.length - 1;
+                    const lastSubtask = currentSubtasks[lastIndex];
+                    const lastSubtaskId = lastSubtask.id || lastSubtask.title || lastSubtask.text;
+                    if (lastSubtaskId === subId || (!lastSubtaskId && lastIndex === currentSubtasks.length - 1)) {
+                        subtaskToToggle = lastSubtask;
+                    }
+                }
+                
+                // Prevent toggling if subtask not found
+                if (!subtaskToToggle) {
+                    console.warn('[ViewTaskModal] Subtask not found:', subId);
+                    return;
+                }
+                
+                const updatedSubtasks = currentSubtasks.map(s => {
+                    const sId = s.id || s.title || s.text;
+                    if (sId === subId) {
+                        const newCompleted = !s.completed;
+                        console.log('[ViewTaskModal] Toggling subtask:', sId, 'from', s.completed, 'to', newCompleted);
+                        return { ...s, completed: newCompleted };
+                    }
+                    return s;
+                });
+                console.log('[ViewTaskModal] Updated subtasks array:', JSON.stringify(updatedSubtasks));
+                // Update ref immediately to prevent race conditions
+                latestSubtasksRef.current = updatedSubtasks;
+                const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
+                
+                // Check if all subtasks are now completed
+                const completedCount = updatedSubtasks.filter(s => s.completed).length;
+                const allSubtasksCompleted = updatedSubtasks.length > 0 && completedCount === updatedSubtasks.length;
+                
+                console.log('[ViewTaskModal] Completion check:', {
+                    totalSubtasks: updatedSubtasks.length,
+                    completedCount,
+                    allSubtasksCompleted,
+                    currentTaskCompleted: currentTask.completed
+                });
+                
+                // Check if auto-complete setting is enabled (defaults to true if not set)
+                const autoCompleteEnabled = settings?.autoCompleteSubtask !== false;
+                
+                // Prepare the update object with subtasks and progress
+                const taskUpdates = {
+                    subtasks: updatedSubtasks,
+                    progress: newProgress,
+                    percentComplete: newProgress
+                };
+                
+                // Handle auto-completion based on subtask state (only if setting enabled)
+                // Use ref to get the actual completion state (avoids stale currentTask.completed)
+                const wasCompleted = taskCompletionStateRef.current;
+                
+                if (autoCompleteEnabled) {
+                    if (allSubtasksCompleted && !wasCompleted) {
+                        // All subtasks are done → auto-complete the main task
+                        console.log('[ViewTaskModal] Auto-completing task because all subtasks are done');
+                        taskUpdates.completed = true;
+                        taskUpdates.completedAt = new Date().toISOString();
+                        // Update ref immediately to track the new state
+                        taskCompletionStateRef.current = true;
+                    } else if (!allSubtasksCompleted && wasCompleted) {
+                        // At least one subtask is incomplete → uncomplete the main task
+                        console.log('[ViewTaskModal] Uncompleting task because not all subtasks are done');
+                        taskUpdates.completed = false;
+                        taskUpdates.completedAt = null;
+                        // Update ref immediately to track the new state
+                        taskCompletionStateRef.current = false;
+                        // Reset completion activity ref when uncompleting to allow new completion activity
+                        completionActivityRef.current = { taskId: null, timestamp: 0 };
+                    }
+                } else {
+                    console.log('[ViewTaskModal] Auto-complete is disabled');
+                }
+                
+                // Update task with all changes in a single call
+                console.log('[ViewTaskModal] Calling updateTask with:', { taskId: currentTask.id, updates: taskUpdates });
+                updateTask(currentTask.id, taskUpdates);
+                console.log('[ViewTaskModal] updateTask called successfully');
+                
+                // Trigger completion effects manually if we're completing the task (not uncompleting)
+                // Use cooldown to prevent duplicate completion activities
+                const shouldTriggerCompletion = allSubtasksCompleted && !wasCompleted && autoCompleteEnabled;
+                const canAddCompletionActivity = !completionActivityRef.current.taskId || 
+                    completionActivityRef.current.taskId !== currentTask.id ||
+                    (now - completionActivityRef.current.timestamp) >= COMPLETION_ACTIVITY_COOLDOWN_MS;
+                
+                console.log('[ViewTaskModal] Completion activity check:', {
+                    shouldTriggerCompletion,
+                    canAddCompletionActivity,
+                    lastActivityTaskId: completionActivityRef.current.taskId,
+                    lastActivityTime: completionActivityRef.current.timestamp,
+                    timeSinceLastActivity: now - completionActivityRef.current.timestamp
+                });
+                
+                if (shouldTriggerCompletion && canAddCompletionActivity) {
+                    completionActivityRef.current = { taskId: currentTask.id, timestamp: now };
+                    
+                    // Defer effects to next tick to avoid interfering with checkbox click
+                    setTimeout(() => {
+                        // Trigger notification and sound manually (don't call onComplete as it toggles)
+                        if (window.notify) {
+                            window.notify("Task Completed!", "🎉");
+                        }
+                        if (settings?.sound !== false && typeof window.SoundFX !== 'undefined') {
+                            window.SoundFX.playComplete();
+                        }
+                        if (settings?.confetti && typeof window.fireSmartConfetti === 'function') {
+                            window.fireSmartConfetti('taskComplete', settings);
+                        }
+                        // Add activity log (only once per cooldown period)
+                        if (window.addActivity) {
+                            window.addActivity({
+                                taskId: currentTask.id,
+                                title: currentTask.title,
+                                type: "complete",
+                                duration: 0,
+                                timestamp: new Date().toISOString(),
+                                people: Array.isArray(currentTask.people) ? currentTask.people : [],
+                                category: currentTask.category || 'General',
+                            });
+                        }
+                    }, 100); // Small delay to ensure checkbox click completes
+                }
+            };
 
         const deleteSubtask = (e, subId) => {
             e.stopPropagation();
+            e.preventDefault();
+            // Use ref to get most up-to-date subtasks, but fallback to currentTask
+            let currentSubtasks = latestSubtasksRef.current.length > 0 
+                ? latestSubtasksRef.current 
+                : (currentTask.subtasks || []);
+            
+            // Ensure we have the latest
+            if (currentTask.subtasks && currentTask.subtasks.length > currentSubtasks.length) {
+                currentSubtasks = currentTask.subtasks;
+            }
+            
             // WARNING REMOVED: Instantly deletes the subtask
-            const updatedSubtasks = (currentTask.subtasks || []).filter(s => {
+            const updatedSubtasks = currentSubtasks.filter(s => {
                 const sId = s.id || s.title || s.text;
                 return sId !== subId;
             });
+            
+            // Update ref immediately
+            latestSubtasksRef.current = updatedSubtasks;
+            
             const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
             // Update both progress and percentComplete for compatibility
             updateTask(currentTask.id, { 
@@ -132,8 +314,15 @@
             const newId = generateId('sub');
             // Saving as both title and text for compatibility
             const newItem = { id: newId, title: newSubtask.trim(), text: newSubtask.trim(), completed: false };
-            const currentSubtasks = currentTask.subtasks || [];
+            // Use ref to get most up-to-date subtasks
+            const currentSubtasks = latestSubtasksRef.current.length > 0 
+                ? latestSubtasksRef.current 
+                : (currentTask.subtasks || []);
             const updatedSubtasks = [...currentSubtasks, newItem];
+            
+            // Update ref immediately to prevent race conditions
+            latestSubtasksRef.current = updatedSubtasks;
+            
             // Recalculate progress when adding a new subtask (progress decreases if we had completed subtasks)
             const newProgress = calculateProgressFromSubtasks(updatedSubtasks);
             updateTask(currentTask.id, { 
@@ -494,19 +683,79 @@
                                     {(!currentTask.subtasks || currentTask.subtasks.length === 0) && (
                                         <div style={{fontSize: 13, color:'var(--text-light)', fontStyle:'italic', opacity:0.6}}>No subtasks yet. Add one below!</div>
                                     )}
-                                    {(currentTask.subtasks || []).map(s => {
-                                        const subtaskId = s.id || s.title || s.text || `subtask_${Math.random()}`;
+                                    {(currentTask.subtasks || []).map((s, index) => {
+                                        // Use stable ID - prefer id, then title, then text, then generate stable one based on index
+                                        let subtaskId = s.id || s.title || s.text;
+                                        if (!subtaskId) {
+                                            // Generate a stable ID based on index to avoid random IDs on re-render
+                                            const generateId = window.generateId || ((prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+                                            subtaskId = generateId('sub');
+                                            // Also update the subtask in the array if possible (but don't mutate directly)
+                                            // The useEffect will handle this on next render
+                                        }
+                                        // Use index as part of key for React stability, but use subtaskId for the click handler
+                                        const stableKey = s.id || `subtask_${index}_${s.title || s.text || 'unnamed'}`;
                                         return (
-                                        <div key={subtaskId} onClick={() => toggleSubtask(subtaskId)} style={{display:'flex', alignItems:'center', gap: 10, padding: '10px 12px', cursor:'pointer', background: 'var(--input-bg)', borderRadius: 12, border: '1px solid var(--border)'}}>
-                                            <div style={{width: 18, height: 18, borderRadius: 6, border: s.completed ? 'none' : '2px solid var(--text-light)', background: s.completed ? 'var(--primary)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                        <div 
+                                            key={stableKey} 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                toggleSubtask(subtaskId, e);
+                                            }} 
+                                            style={{
+                                                display:'flex', 
+                                                alignItems:'center', 
+                                                gap: 10, 
+                                                padding: '10px 12px', 
+                                                cursor:'pointer', 
+                                                background: 'var(--input-bg)', 
+                                                borderRadius: 12, 
+                                                border: '1px solid var(--border)',
+                                                userSelect: 'none'
+                                            }}
+                                        >
+                                            <div 
+                                                style={{
+                                                    width: 18, 
+                                                    height: 18, 
+                                                    borderRadius: 6, 
+                                                    border: s.completed ? 'none' : '2px solid var(--text-light)', 
+                                                    background: s.completed ? 'var(--primary)' : 'transparent', 
+                                                    display:'flex', 
+                                                    alignItems:'center', 
+                                                    justifyContent:'center',
+                                                    flexShrink: 0
+                                                }}
+                                            >
                                                 {s.completed && <span style={{fontSize: 12, color:'white', fontWeight:'bold'}}>✓</span>}
                                             </div>
-                                            <span style={{fontSize: 14, color: s.completed ? 'var(--text-muted)' : 'var(--text)', textDecoration: s.completed ? 'line-through' : 'none', flex: 1, opacity: s.completed ? 0.7 : 1}}>
+                                            <span style={{
+                                                fontSize: 14, 
+                                                color: s.completed ? 'var(--text-muted)' : 'var(--text)', 
+                                                textDecoration: s.completed ? 'line-through' : 'none', 
+                                                flex: 1, 
+                                                opacity: s.completed ? 0.7 : 1,
+                                                pointerEvents: 'none'
+                                            }}>
                                                 {s.title || s.text || s.name || '(No Text)'}
                                             </span>
                                             <button 
-                                                onClick={(e) => deleteSubtask(e, subtaskId)} 
-                                                style={{background:'transparent', border:'none', cursor:'pointer', fontSize: 14, padding: 4, opacity: 0.5, outline:'none'}} 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    deleteSubtask(e, subtaskId);
+                                                }} 
+                                                style={{
+                                                    background:'transparent', 
+                                                    border:'none', 
+                                                    cursor:'pointer', 
+                                                    fontSize: 14, 
+                                                    padding: 4, 
+                                                    opacity: 0.5, 
+                                                    outline:'none',
+                                                    flexShrink: 0
+                                                }} 
                                                 title="Delete subtask"
                                             >
                                                 🗑️
